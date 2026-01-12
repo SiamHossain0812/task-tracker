@@ -1,0 +1,29 @@
+/* Small custom tweaks to complement Tailwind */
+body { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+.card { background: white; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); transition: all 0.3s ease; }
+.card:hover { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025); }
+.truncate-2 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* Custom Animations */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+.animate-slide-up { animation: slideUp 0.4s ease-out forwards; opacity: 0; }
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+
+/* Improve focus states */
+:focus { outline: none; }
+.focus-ring { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2); }
+
+/* Mobile menu visual tweaks */
+#mobile-menu { z-index: 40; }
+
+/* Slight header backdrop for small screens */
+header .max-w-6xl { background: rgba(255,255,255,0.6); backdrop-filter: blur(6px); }
+
+/* Improve small-screen live time readability */
+#live-time { letter-spacing: -0.02em; }
+#live-date { letter-spacing: 0.08em; }

@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda Pro - Smart Project & Task Manager</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            min-height: 100vh;
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .glass-light {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+        }
+        
+        .project-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .project-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        
+        .agenda-item {
+            transition: all 0.3s ease;
+        }
+        
+        .agenda-item:hover {
+            transform: translateX(4px);
+            background: rgba(99, 102, 241, 0.1);
+        }
+        
+        .status-pending { border-left: 4px solid #f59e0b; }
+        .status-in-progress { border-left: 4px solid #3b82f6; }
+        .status-completed { border-left: 4px solid #10b981; }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .glow {
+            box-shadow: 0 0 40px rgba(99, 102, 241, 0.3);
+        }
+        
+        .stat-card {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+            pointer-events: none;
+        }
+        
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+        }
+        
+        .btn-glow {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-glow::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn-glow:hover::before {
+            left: 100%;
+        }
+        
+        .floating-shapes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+        
+        .shape {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.1;
+            animation: float 20s infinite ease-in-out;
+        }
+        
+        .shape-1 {
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            top: -100px;
+            right: -100px;
+            animation-delay: 0s;
+        }
+        
+        .shape-2 {
+            width: 300px;
+            height: 300px;
+            background: linear-gradient(135deg, #ec4899, #f59e0b);
+            bottom: -50px;
+            left: -50px;
+            animation-delay: -5s;
+        }
+        
+        .shape-3 {
+            width: 200px;
+            height: 200px;
+            background: linear-gradient(135deg, #10b981, #3b82f6);
+            top: 50%;
+            left: 50%;
+            animation-delay: -10s;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(20px, -20px) rotate(5deg); }
+            50% { transform: translate(-10px, 20px) rotate(-5deg); }
+            75% { transform: translate(-20px, -10px) rotate(3deg); }
+        }
+        
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 10px;
+        }
+        
+        .pulse-dot {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.1); }
+        }
+        
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        input, textarea, select {
+            transition: all 0.3s ease;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            transform: scale(1.01);
+        }
+    </style>
+</head>
+<body class="text-white">
+    <!-- Floating Background Shapes -->
+    <div class="floating-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="fixed left-0 top-0 h-full w-72 glass p-6 z-40 hidden lg:block">
+        <div class="flex items-center space-x-3 mb-10">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center glow">
+                <i class="fas fa-calendar-check text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold">Agenda Pro</h1>
+                <p class="text-xs text-gray-400">Smart Task Manager</p>
+            </div>
+        </div>
+        
+        <!-- Mini Stats -->
+        <div class="space-y-3 mb-8">
+            <div class="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-indigo-500/20 to-transparent">
+                <div class="flex items-center space-x-3">
+                    <div class="w-2 h-2 rounded-full bg-indigo-400 pulse-dot"></div>
+                    <span class="text-sm text-gray-300">Projects</span>
+                </div>
+                <span id="side-stat-projects" class="text-lg font-bold text-indigo-400">0</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-yellow-500/20 to-transparent">
+                <div class="flex items-center space-x-3">
+                    <div class="w-2 h-2 rounded-full bg-yellow-400 pulse-dot"></div>
+                    <span class="text-sm text-gray-300">Pending</span>
+                </div>
+                <span id="side-stat-pending" class="text-lg font-bold text-yellow-400">0</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-blue-500/20 to-transparent">
+                <div class="flex items-center space-x-3">
+                    <div class="w-2 h-2 rounded-full bg-blue-400 pulse-dot"></div>
+                    <span class="text-sm text-gray-300">In Progress</span>
+                </div>
+                <span id="side-stat-progress" class="text-lg font-bold text-blue-400">0</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-green-500/20 to-transparent">
+                <div class="flex items-center space-x-3">
+                    <div class="w-2 h-2 rounded-full bg-green-400 pulse-dot"></div>
+                    <span class="text-sm text-gray-300">Completed</span>
+                </div>
+                <span id="side-stat-completed" class="text-lg font-bold text-green-400">0</span>
+            </div>
+        </div>
+        
+        <!-- Progress Circle -->
+        <div class="p-6 rounded-2xl bg-white/5 text-center">
+            <div class="relative inline-block mb-4">
+                <svg class="progress-ring w-32 h-32">
+                    <circle cx="64" cy="64" r="56" stroke="rgba(255,255,255,0.1)" stroke-width="8" fill="none"/>
+                    <circle id="progress-circle" cx="64" cy="64" r="56" stroke="url(#gradient)" stroke-width="8" fill="none" 
+                            stroke-dasharray="351.86" stroke-dashoffset="351.86" stroke-linecap="round"/>
+                    <defs>
+                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#6366f1"/>
+                            <stop offset="100%" stop-color="#a855f7"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <div>
+                        <span id="progress-percent" class="text-2xl font-bold">0%</span>
+                        <p class="text-xs text-gray-400">Complete</p>
+                    </div>
+                </div>
+            </div>
+            <p class="text-sm text-gray-400">Overall Progress</p>
+        </div>
+        
+        <!-- Quick Add Button -->
+        <button onclick="openProjectModal()" class="w-full mt-6 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 font-semibold flex items-center justify-center space-x-2 hover:shadow-lg hover:shadow-indigo-500/30 transition-all btn-glow">
+            <i class="fas fa-plus"></i>
+            <span>New Project</span>
+        </button>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="lg:ml-72 p-4 lg:p-8 relative z-10 min-h-screen">
+        <!-- Mobile Header -->
+        <header class="lg:hidden glass rounded-2xl p-4 mb-6 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <h1 class="text-lg font-bold">Agenda Pro</h1>
+            </div>
+            <button onclick="openProjectModal()" class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                <i class="fas fa-plus"></i>
+            </button>
+        </header>
+
+        <!-- Welcome Section -->
+        <div class="mb-8">
+            <h2 class="text-3xl lg:text-4xl font-bold mb-2">
+                Good <span id="greeting-time" class="gradient-text">Morning</span>! 👋
+            </h2>
+            <p class="text-gray-400 text-lg">Here's an overview of your projects and tasks</p>
+        </div>
+
+        <!-- Stats Cards - Desktop -->
+        <div class="hidden lg:grid grid-cols-4 gap-6 mb-8">
+            <div class="stat-card glass rounded-2xl p-6 hover:glow transition-all duration-300">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center">
+                        <i class="fas fa-folder-open text-2xl"></i>
+                    </div>
+                    <span class="text-xs px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300">
+                        <i class="fas fa-arrow-up mr-1"></i>Active
+                    </span>
+                </div>
+                <p class="text-gray-400 text-sm mb-1">Total Projects</p>
+                <p id="stat-projects" class="text-4xl font-bold">0</p>
+            </div>
+            <div class="stat-card glass rounded-2xl p-6 hover:glow transition-all duration-300">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center">
+                        <i class="fas fa-hourglass-half text-2xl"></i>
+                    </div>
+                    <span class="text-xs px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-300">
+                        <i class="fas fa-clock mr-1"></i>Waiting
+                    </span>
+                </div>
+                <p class="text-gray-400 text-sm mb-1">Pending Tasks</p>
+                <p id="stat-pending" class="text-4xl font-bold">0</p>
+            </div>
+            <div class="stat-card glass rounded-2xl p-6 hover:glow transition-all duration-300">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                        <i class="fas fa-spinner text-2xl"></i>
+                    </div>
+                    <span class="text-xs px-3 py-1 rounded-full bg-blue-500/20 text-blue-300">
+                        <i class="fas fa-bolt mr-1"></i>Active
+                    </span>
+                </div>
+                <p class="text-gray-400 text-sm mb-1">In Progress</p>
+                <p id="stat-progress" class="text-4xl font-bold">0</p>
+            </div>
+            <div class="stat-card glass rounded-2xl p-6 hover:glow transition-all duration-300">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                        <i class="fas fa-check-double text-2xl"></i>
+                    </div>
+                    <span class="text-xs px-3 py-1 rounded-full bg-green-500/20 text-green-300">
+                        <i class="fas fa-trophy mr-1"></i>Done
+                    </span>
+                </div>
+                <p class="text-gray-400 text-sm mb-1">Completed</p>
+                <p id="stat-completed" class="text-4xl font-bold">0</p>
+            </div>
+        </div>
+
+        <!-- Section Header -->
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold flex items-center">
+                <i class="fas fa-layer-group mr-3 text-indigo-400"></i>
+                Your Projects
+            </h3>
+            <button onclick="openProjectModal()" class="hidden lg:flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 font-medium hover:shadow-lg hover:shadow-indigo-500/30 transition-all btn-glow">
+                <i class="fas fa-plus"></i>
+                <span>Add Project</span>
+            </button>
+        </div>
+
+        <!-- Projects Grid -->
+        <div id="projects-container" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <!-- Projects will be rendered here -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden">
+            <div class="glass rounded-3xl p-12 text-center max-w-lg mx-auto">
+                <div class="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-rocket text-4xl text-indigo-400"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-3">Ready to Get Started?</h3>
+                <p class="text-gray-400 mb-8">Create your first project and start organizing your tasks like a pro!</p>
+                <button onclick="openProjectModal()" class="px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 font-semibold hover:shadow-lg hover:shadow-indigo-500/30 transition-all btn-glow inline-flex items-center space-x-2">
+                    <i class="fas fa-plus"></i>
+                    <span>Create Your First Project</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Project Modal -->
+    <div id="project-modal" class="hidden fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
+        <div class="glass-light rounded-3xl shadow-2xl w-full max-w-md slide-in overflow-hidden">
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6">
+                <h2 id="project-modal-title" class="text-2xl font-bold text-white">Create New Project</h2>
+                <p class="text-indigo-200 text-sm mt-1">Add a new project to organize your tasks</p>
+            </div>
+            <form id="project-form" class="p-6 space-y-5">
+                <input type="hidden" id="project-id">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Project Name</label>
+                    <input type="text" id="project-name" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 text-gray-800 font-medium" placeholder="Enter project name">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+                    <textarea id="project-description" rows="3" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 text-gray-800" placeholder="What's this project about?"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Theme Color</label>
+                    <div class="flex flex-wrap gap-3">
+                        <button type="button" onclick="selectColor('indigo')" class="color-btn w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 hover:scale-110 transition-transform ring-offset-2" data-color="indigo"></button>
+                        <button type="button" onclick="selectColor('purple')" class="color-btn w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 hover:scale-110 transition-transform ring-offset-2" data-color="purple"></button>
+                        <button type="button" onclick="selectColor('pink')" class="color-btn w-10 h-10 rounded-xl bg-gradient-to-br from-pink-400 to-pink-600 hover:scale-110 transition-transform ring-offset-2" data-color="pink"></button>
+                        <button type="button" onclick="selectColor('red')" class="color-btn w-10 h-10 rounded-xl bg-gradient-to-br from-red-400 to-red-600 hover:scale-110 transition-transform ring-offset-2" data-color="red"></button>
+                        <button type="button" onclick="selectColor('orange')" class="color-btn w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 hover:scale-110 transition-transform ring-offset-2" data-color="orange"></button>
+                        <button type="button" onclick="selectColor('green')" class="color-btn w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-green-600 hover:scale-110 transition-transform ring-offset-2" data-color="green"></button>
+                        <button type="button" onclick="selectColor('teal')" class="color-btn w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-teal-600 hover:scale-110 transition-transform ring-offset-2" data-color="teal"></button>
+                        <button type="button" onclick="selectColor('cyan')" class="color-btn w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-600 hover:scale-110 transition-transform ring-offset-2" data-color="cyan"></button>
+                    </div>
+                    <input type="hidden" id="project-color" value="indigo">
+                </div>
+                <div class="flex space-x-3 pt-4">
+                    <button type="button" onclick="closeProjectModal()" class="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition font-semibold">Cancel</button>
+                    <button type="submit" class="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition font-semibold">Save Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Agenda Modal -->
+    <div id="agenda-modal" class="hidden fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
+        <div class="glass-light rounded-3xl shadow-2xl w-full max-w-md slide-in overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 sticky top-0">
+                <h2 id="agenda-modal-title" class="text-2xl font-bold text-white">Add New Agenda</h2>
+                <p class="text-indigo-200 text-sm mt-1">Create a task to track your progress</p>
+            </div>
+            <form id="agenda-form" class="p-6 space-y-5">
+                <input type="hidden" id="agenda-id">
+                <input type="hidden" id="agenda-project-id">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Task Title</label>
+                    <input type="text" id="agenda-title" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 text-gray-800 font-medium" placeholder="What needs to be done?">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+                    <textarea id="agenda-description" rows="2" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 text-gray-800" placeholder="Add more details..."></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Due Date</label>
+                        <input type="date" id="agenda-date" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 text-gray-800">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Time</label>
+                        <input type="time" id="agenda-time" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 text-gray-800">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+                        <select id="agenda-status" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 text-gray-800">
+                            <option value="pending">⏳ Pending</option>
+                            <option value="in-progress">🔄 In Progress</option>
+                            <option value="completed">✅ Completed</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Priority</label>
+                        <select id="agenda-priority" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 text-gray-800">
+                            <option value="low">🟢 Low</option>
+                            <option value="medium">🟡 Medium</option>
+                            <option value="high">🔴 High</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex space-x-3 pt-4">
+                    <button type="button" onclick="closeAgendaModal()" class="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition font-semibold">Cancel</button>
+                    <button type="submit" class="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition font-semibold">Save Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="hidden fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
+        <div class="glass-light rounded-3xl shadow-2xl w-full max-w-sm p-8 slide-in text-center">
+            <div class="w-20 h-20 rounded-full bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-trash-alt text-red-500 text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Delete Confirmation</h3>
+            <p id="delete-message" class="text-gray-500 mb-8">Are you sure you want to delete this?</p>
+            <div class="flex space-x-3">
+                <button onclick="closeDeleteModal()" class="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition font-semibold">Cancel</button>
+                <button id="confirm-delete-btn" class="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg transition font-semibold">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ Backend Simulation (Data Layer) ============
+        const DB = {
+            getProjects() {
+                return JSON.parse(localStorage.getItem('projects') || '[]');
+            },
+            saveProjects(projects) {
+                localStorage.setItem('projects', JSON.stringify(projects));
+            },
+            createProject(project) {
+                const projects = this.getProjects();
+                project.id = Date.now().toString();
+                project.createdAt = new Date().toISOString();
+                project.agendas = [];
+                projects.push(project);
+                this.saveProjects(projects);
+                return project;
+            },
+            updateProject(id, updates) {
+                const projects = this.getProjects();
+                const index = projects.findIndex(p => p.id === id);
+                if (index !== -1) {
+                    projects[index] = { ...projects[index], ...updates };
+                    this.saveProjects(projects);
+                    return projects[index];
+                }
+                return null;
+            },
+            deleteProject(id) {
+                const projects = this.getProjects().filter(p => p.id !== id);
+                this.saveProjects(projects);
+            },
+            addAgenda(projectId, agenda) {
+                const projects = this.getProjects();
+                const project = projects.find(p => p.id === projectId);
+                if (project) {
+                    agenda.id = Date.now().toString();
+                    agenda.createdAt = new Date().toISOString();
+                    project.agendas.push(agenda);
+                    this.saveProjects(projects);
+                    return agenda;
+                }
+                return null;
+            },
+            updateAgenda(projectId, agendaId, updates) {
+                const projects = this.getProjects();
+                const project = projects.find(p => p.id === projectId);
+                if (project) {
+                    const agendaIndex = project.agendas.findIndex(a => a.id === agendaId);
+                    if (agendaIndex !== -1) {
+                        project.agendas[agendaIndex] = { ...project.agendas[agendaIndex], ...updates };
+                        this.saveProjects(projects);
+                        return project.agendas[agendaIndex];
+                    }
+                }
+                return null;
+            },
+            deleteAgenda(projectId, agendaId) {
+                const projects = this.getProjects();
+                const project = projects.find(p => p.id === projectId);
+                if (project) {
+                    project.agendas = project.agendas.filter(a => a.id !== agendaId);
+                    this.saveProjects(projects);
+                }
+            },
+            getStats() {
+                const projects = this.getProjects();
+                let pending = 0, progress = 0, completed = 0;
+                projects.forEach(p => {
+                    p.agendas.forEach(a => {
+                        if (a.status === 'pending') pending++;
+                        else if (a.status === 'in-progress') progress++;
+                        else if (a.status === 'completed') completed++;
+                    });
+                });
+                return { projects: projects.length, pending, progress, completed };
+            }
+        };
+
+        // ============ UI State ============
+        let selectedColor = 'indigo';
+        let deleteCallback = null;
+
+        // ============ Greeting ============
+        function updateGreeting() {
+            const hour = new Date().getHours();
+            let greeting = 'Morning';
+            if (hour >= 12 && hour < 17) greeting = 'Afternoon';
+            else if (hour >= 17) greeting = 'Evening';
+            document.getElementById('greeting-time').textContent = greeting;
+        }
+
+        // ============ Render Functions ============
+        function renderProjects() {
+            const projects = DB.getProjects();
+            const container = document.getElementById('projects-container');
+            const emptyState = document.getElementById('empty-state');
+
+            if (projects.length === 0) {
+                container.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                updateStats();
+                return;
+            }
+
+            container.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            container.innerHTML = projects.map(project => {
+                const completed = project.agendas.filter(a => a.status === 'completed').length;
+                const total = project.agendas.length;
+                const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+                
+                return `
+                <div class="project-card glass rounded-3xl overflow-hidden">
+                    <div class="bg-gradient-to-r from-${project.color}-500 to-${project.color}-600 p-6 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                        <div class="absolute bottom-0 left-0 w-20 h-20 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+                        <div class="flex items-start justify-between relative z-10">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                                        <i class="fas fa-folder text-sm"></i>
+                                    </div>
+                                    <span class="text-xs font-medium text-white/70 uppercase tracking-wider">Project</span>
+                                </div>
+                                <h3 class="text-2xl font-bold text-white">${escapeHtml(project.name)}</h3>
+                                ${project.description ? `<p class="text-white/70 text-sm mt-2 line-clamp-2">${escapeHtml(project.description)}</p>` : ''}
+                            </div>
+                            <div class="flex space-x-1">
+                                <button onclick="openProjectModal('${project.id}')" class="w-9 h-9 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition" title="Edit">
+                                    <i class="fas fa-pen text-sm"></i>
+                                </button>
+                                <button onclick="confirmDeleteProject('${project.id}')" class="w-9 h-9 rounded-xl bg-white/20 hover:bg-red-500/50 flex items-center justify-center transition" title="Delete">
+                                    <i class="fas fa-trash text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Progress Bar -->
+                        <div class="mt-6 relative z-10">
+                            <div class="flex items-center justify-between text-sm mb-2">
+                                <span class="text-white/80">${completed}/${total} tasks completed</span>
+                                <span class="font-bold">${percent}%</span>
+                            </div>
+                            <div class="h-2 bg-white/20 rounded-full overflow-hidden">
+                                <div class="h-full bg-white rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-sm text-gray-400">
+                                <i class="fas fa-list-check mr-2"></i>${project.agendas.length} Agenda${project.agendas.length !== 1 ? 's' : ''}
+                            </span>
+                            <button onclick="openAgendaModal('${project.id}')" class="px-4 py-2 rounded-xl bg-gradient-to-r from-${project.color}-500/20 to-${project.color}-600/20 text-${project.color}-400 text-sm font-medium hover:from-${project.color}-500/30 hover:to-${project.color}-600/30 transition flex items-center space-x-2">
+                                <i class="fas fa-plus text-xs"></i>
+                                <span>Add Task</span>
+                            </button>
+                        </div>
+                        
+                        <div class="max-h-72 overflow-y-auto scrollbar-thin space-y-2">
+                            ${project.agendas.length === 0 ? `
+                                <div class="text-center py-8">
+                                    <div class="w-12 h-12 rounded-full bg-gray-700/50 flex items-center justify-center mx-auto mb-3">
+                                        <i class="fas fa-tasks text-gray-500"></i>
+                                    </div>
+                                    <p class="text-gray-500 text-sm">No tasks yet</p>
+                                </div>
+                            ` : project.agendas.sort((a, b) => new Date(a.date) - new Date(b.date)).map(agenda => `
+                                <div class="agenda-item status-${agenda.status} rounded-xl p-4 bg-white/5 ${agenda.status === 'completed' ? 'opacity-50' : ''}">
+                                    <div class="flex items-start gap-3">
+                                        <button onclick="toggleAgendaStatus('${project.id}', '${agenda.id}')" class="mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all
+                                            ${agenda.status === 'completed' ? 'bg-green-500 border-green-500' : agenda.status === 'in-progress' ? 'border-blue-400 bg-blue-400/20' : 'border-gray-500 hover:border-green-500'}">
+                                            ${agenda.status === 'completed' ? '<i class="fas fa-check text-xs text-white"></i>' : agenda.status === 'in-progress' ? '<i class="fas fa-play text-xs text-blue-400"></i>' : ''}
+                                        </button>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="font-medium ${agenda.status === 'completed' ? 'line-through text-gray-500' : 'text-white'}">${escapeHtml(agenda.title)}</span>
+                                                ${agenda.priority === 'high' ? '<span class="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-xs font-medium">High</span>' : ''}
+                                                ${agenda.priority === 'medium' ? '<span class="px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 text-xs font-medium">Medium</span>' : ''}
+                                            </div>
+                                            ${agenda.description ? `<p class="text-gray-500 text-sm mt-1 truncate">${escapeHtml(agenda.description)}</p>` : ''}
+                                            <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                                                <span class="flex items-center gap-1">
+                                                    <i class="far fa-calendar"></i>
+                                                    ${formatDate(agenda.date)}
+                                                </span>
+                                                ${agenda.time ? `<span class="flex items-center gap-1"><i class="far fa-clock"></i>${formatTime(agenda.time)}</span>` : ''}
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-1">
+                                            <button onclick="openAgendaModal('${project.id}', '${agenda.id}')" class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-gray-500 hover:text-indigo-400 transition">
+                                                <i class="fas fa-pen text-xs"></i>
+                                            </button>
+                                            <button onclick="confirmDeleteAgenda('${project.id}', '${agenda.id}')" class="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center text-gray-500 hover:text-red-400 transition">
+                                                <i class="fas fa-trash text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+
+            updateStats();
+        }
+
+        function updateStats() {
+            const stats = DB.getStats();
+            
+            // Update all stat displays
+            document.getElementById('stat-projects').textContent = stats.projects;
+            document.getElementById('stat-pending').textContent = stats.pending;
+            document.getElementById('stat-progress').textContent = stats.progress;
+            document.getElementById('stat-completed').textContent = stats.completed;
+            
+            // Sidebar stats
+            document.getElementById('side-stat-projects').textContent = stats.projects;
+            document.getElementById('side-stat-pending').textContent = stats.pending;
+            document.getElementById('side-stat-progress').textContent = stats.progress;
+            document.getElementById('side-stat-completed').textContent = stats.completed;
+            
+            // Update progress circle
+            const total = stats.pending + stats.progress + stats.completed;
+            const percent = total > 0 ? Math.round((stats.completed / total) * 100) : 0;
+            const circle = document.getElementById('progress-circle');
+            const circumference = 2 * Math.PI * 56;
+            const offset = circumference - (percent / 100) * circumference;
+            circle.style.strokeDashoffset = offset;
+            document.getElementById('progress-percent').textContent = percent + '%';
+        }
+
+        // ============ Modal Functions ============
+        function openProjectModal(projectId = null) {
+            const modal = document.getElementById('project-modal');
+            const title = document.getElementById('project-modal-title');
+            const form = document.getElementById('project-form');
+            
+            form.reset();
+            selectColor('indigo');
+
+            if (projectId) {
+                const project = DB.getProjects().find(p => p.id === projectId);
+                if (project) {
+                    title.textContent = 'Edit Project';
+                    document.getElementById('project-id').value = project.id;
+                    document.getElementById('project-name').value = project.name;
+                    document.getElementById('project-description').value = project.description || '';
+                    selectColor(project.color);
+                }
+            } else {
+                title.textContent = 'Create New Project';
+                document.getElementById('project-id').value = '';
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeProjectModal() {
+            document.getElementById('project-modal').classList.add('hidden');
+        }
+
+        function openAgendaModal(projectId, agendaId = null) {
+            const modal = document.getElementById('agenda-modal');
+            const title = document.getElementById('agenda-modal-title');
+            const form = document.getElementById('agenda-form');
+            
+            form.reset();
+            document.getElementById('agenda-project-id').value = projectId;
+            document.getElementById('agenda-date').value = new Date().toISOString().split('T')[0];
+
+            if (agendaId) {
+                const project = DB.getProjects().find(p => p.id === projectId);
+                const agenda = project?.agendas.find(a => a.id === agendaId);
+                if (agenda) {
+                    title.textContent = 'Edit Task';
+                    document.getElementById('agenda-id').value = agenda.id;
+                    document.getElementById('agenda-title').value = agenda.title;
+                    document.getElementById('agenda-description').value = agenda.description || '';
+                    document.getElementById('agenda-date').value = agenda.date;
+                    document.getElementById('agenda-time').value = agenda.time || '';
+                    document.getElementById('agenda-status').value = agenda.status;
+                    document.getElementById('agenda-priority').value = agenda.priority;
+                }
+            } else {
+                title.textContent = 'Add New Task';
+                document.getElementById('agenda-id').value = '';
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeAgendaModal() {
+            document.getElementById('agenda-modal').classList.add('hidden');
+        }
+
+        function openDeleteModal(message, callback) {
+            document.getElementById('delete-message').textContent = message;
+            deleteCallback = callback;
+            document.getElementById('delete-modal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.add('hidden');
+            deleteCallback = null;
+        }
+
+        // ============ Action Functions ============
+        function selectColor(color) {
+            selectedColor = color;
+            document.getElementById('project-color').value = color;
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                btn.classList.remove('ring-4', 'ring-indigo-300');
+                if (btn.dataset.color === color) {
+                    btn.classList.add('ring-4', 'ring-indigo-300');
+                }
+            });
+        }
+
+        function toggleAgendaStatus(projectId, agendaId) {
+            const project = DB.getProjects().find(p => p.id === projectId);
+            const agenda = project?.agendas.find(a => a.id === agendaId);
+            if (agenda) {
+                const statusOrder = ['pending', 'in-progress', 'completed'];
+                const currentIndex = statusOrder.indexOf(agenda.status);
+                const newStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
+                DB.updateAgenda(projectId, agendaId, { status: newStatus });
+                renderProjects();
+            }
+        }
+
+        function confirmDeleteProject(projectId) {
+            openDeleteModal('This will permanently delete the project and all its tasks. Continue?', () => {
+                DB.deleteProject(projectId);
+                renderProjects();
+                closeDeleteModal();
+            });
+        }
+
+        function confirmDeleteAgenda(projectId, agendaId) {
+            openDeleteModal('Are you sure you want to delete this task?', () => {
+                DB.deleteAgenda(projectId, agendaId);
+                renderProjects();
+                closeDeleteModal();
+            });
+        }
+
+        // ============ Utility Functions ============
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            if (dateStr === today.toISOString().split('T')[0]) return 'Today';
+            if (dateStr === tomorrow.toISOString().split('T')[0]) return 'Tomorrow';
+
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function formatTime(timeStr) {
+            const [hours, minutes] = timeStr.split(':');
+            const date = new Date();
+            date.setHours(parseInt(hours), parseInt(minutes));
+            return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        }
+
+        // ============ Event Listeners ============
+        document.getElementById('project-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('project-id').value;
+            const projectData = {
+                name: document.getElementById('project-name').value,
+                description: document.getElementById('project-description').value,
+                color: document.getElementById('project-color').value
+            };
+
+            if (id) {
+                DB.updateProject(id, projectData);
+            } else {
+                DB.createProject(projectData);
+            }
+
+            closeProjectModal();
+            renderProjects();
+        });
+
+        document.getElementById('agenda-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const agendaId = document.getElementById('agenda-id').value;
+            const projectId = document.getElementById('agenda-project-id').value;
+            const agendaData = {
+                title: document.getElementById('agenda-title').value,
+                description: document.getElementById('agenda-description').value,
+                date: document.getElementById('agenda-date').value,
+                time: document.getElementById('agenda-time').value,
+                status: document.getElementById('agenda-status').value,
+                priority: document.getElementById('agenda-priority').value
+            };
+
+            if (agendaId) {
+                DB.updateAgenda(projectId, agendaId, agendaData);
+            } else {
+                DB.addAgenda(projectId, agendaData);
+            }
+
+            closeAgendaModal();
+            renderProjects();
+        });
+
+        document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+            if (deleteCallback) deleteCallback();
+        });
+
+        // Close modals on outside click
+        ['project-modal', 'agenda-modal', 'delete-modal'].forEach(modalId => {
+            document.getElementById(modalId).addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal-overlay')) {
+                    document.getElementById(modalId).classList.add('hidden');
+                }
+            });
+        });
+
+        // ============ Initialize ============
+        updateGreeting();
+        renderProjects();
+    </script>
+</body>
+</html>
