@@ -5,8 +5,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Agenda Pro{% endblock %} - Agenda Pro</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <title>{% block title %}Agenda Tracker{% endblock %} - Dr. Niaz's Agenda Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/custom.css' %}">
@@ -18,27 +18,46 @@
     </style>
 </head>
 
-<body class="bg-gray-50 bg-gradient-to-br from-gray-50 to-emerald-50/50 text-gray-900 min-h-screen">
-    <header class="bg-white border-b border-gray-200">
+<body class="bg-gray-50 text-gray-900 min-h-screen font-sans antialiased">
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div class="flex items-center gap-3 w-full sm:w-auto justify-between">
                 <a href="{% url 'dashboard' %}" class="text-emerald-600 font-bold text-lg flex items-center gap-2">
                     <i class="fas fa-check-double"></i>
-                    <span class="text-sm sm:text-base">Agenda Pro - v1</span>
+                    <span class="text-sm sm:text-base">Dr. Niaz's Agenda Tracker - v1</span>
                 </a>
                 <div class="sm:hidden flex items-center gap-2">
-                    <button id="mobile-menu-button" class="p-2 rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none border border-gray-100 shadow-sm bg-white" aria-expanded="false" aria-label="Open menu">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    <button id="mobile-menu-button"
+                        class="p-2 rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none border border-gray-100 shadow-sm bg-white"
+                        aria-expanded="false" aria-label="Open menu">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
                 </div>
             </div>
 
+            <!-- Search Bar (Desktop) -->
+            <form method="GET" action="{% url 'search' %}" class="hidden lg:block flex-1 max-w-md mx-4">
+                <div class="relative">
+                    <input type="text" name="q" placeholder="Search..."
+                        class="w-full px-4 py-2 pl-10 rounded-lg border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                </div>
+            </form>
+
             <nav class="hidden sm:flex items-center gap-3 text-sm text-gray-600">
                 <a href="{% url 'dashboard' %}" class="hover:text-emerald-600">Dashboard</a>
+                <a href="{% url 'undone_tasks' %}" class="hover:text-emerald-600">Undone</a>
+                <a href="{% url 'calendar_view' %}" class="hover:text-emerald-600">Calendar</a>
                 <a href="{% url 'project_create' %}" class="hover:text-emerald-600">Projects</a>
-                <a href="{% url 'agenda_create_global' %}" class="px-3 py-2 bg-emerald-600 text-white rounded-md shadow-sm hover:bg-emerald-700"> <i class="fas fa-plus mr-1"></i> New Task</a>
+                <a href="{% url 'collaborator_list' %}" class="hover:text-emerald-600">Collaborators</a>
+                <a href="{% url 'search' %}" class="lg:hidden hover:text-emerald-600"><i class="fas fa-search"></i></a>
+                <a href="{% url 'agenda_create_global' %}"
+                    class="px-3 py-2 bg-emerald-600 text-white rounded-md shadow-sm hover:bg-emerald-700"> <i
+                        class="fas fa-plus mr-1"></i> New Task</a>
             </nav>
         </div>
 
@@ -46,8 +65,15 @@
         <div id="mobile-menu" class="sm:hidden hidden border-t border-gray-100 bg-white shadow-sm">
             <div class="px-4 py-3 flex flex-col gap-2">
                 <a href="{% url 'dashboard' %}" class="py-2 text-sm text-gray-700 hover:text-emerald-600">Dashboard</a>
-                <a href="{% url 'project_create' %}" class="py-2 text-sm text-gray-700 hover:text-emerald-600">Projects</a>
-                <a href="{% url 'agenda_create_global' %}" class="py-2 text-sm text-white bg-emerald-600 rounded-md text-center">New Task</a>
+                <a href="{% url 'undone_tasks' %}" class="py-2 text-sm text-gray-700 hover:text-emerald-600">Undone</a>
+                <a href="{% url 'calendar_view' %}"
+                    class="py-2 text-sm text-gray-700 hover:text-emerald-600">Calendar</a>
+                <a href="{% url 'project_create' %}"
+                    class="py-2 text-sm text-gray-700 hover:text-emerald-600">Projects</a>
+                <a href="{% url 'collaborator_list' %}"
+                    class="py-2 text-sm text-gray-700 hover:text-emerald-600">Collaborators</a>
+                <a href="{% url 'agenda_create_global' %}"
+                    class="py-2 text-sm text-white bg-emerald-600 rounded-md text-center">New Task</a>
             </div>
         </div>
     </header>
@@ -56,18 +82,47 @@
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="mt-8 py-6 text-center text-sm text-gray-500">
-        © {{ now|default:None }} Agenda Pro — Lightweight task tracker
+    <footer class="mt-12 border-t border-gray-200 bg-gray-50">
+        <div class="max-w-6xl mx-auto px-4 py-8">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <!-- App Info -->
+                <div class="text-center md:text-left">
+                    <div class="flex items-center gap-2 justify-center md:justify-start mb-2">
+                        <i class="fas fa-check-double text-emerald-600"></i>
+                        <span class="font-bold text-gray-900">Dr. Niaz's Agenda Tracker</span>
+                    </div>
+                    <p class="text-sm text-gray-500">Lightweight task tracker</p>
+                </div>
+
+                <!-- Owner Link -->
+                <div class="text-center md:text-right">
+                    <p class="text-sm text-gray-600">Developed by
+                        <a href="{% url 'about' %}"
+                            class="font-semibold text-emerald-600 hover:text-emerald-700 hover:underline">
+                            Dr. Niaz Md. Farhat Rahman
+                        </a>
+                    </p>
+                    <p class="text-xs text-gray-500 mt-1">Principal Scientist, BRRI</p>
+                </div>
+            </div>
+
+            <!-- Copyright -->
+            <div
+                class="mt-6 pt-4 border-t border-gray-200 text-center flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-gray-400">
+                <p>© {{ now|date:"Y" }} Dr. Niaz's Agenda Tracker. All rights reserved.</p>
+                <a href="{% url 'about' %}" class="hover:text-emerald-600 transition-colors">About Developer</a>
+            </div>
+        </div>
     </footer>
 
     {% block extra_js %}{% endblock %}
     <script>
         // Mobile menu toggle
-        (function(){
+        (function () {
             const btn = document.getElementById('mobile-menu-button');
             const menu = document.getElementById('mobile-menu');
             if (!btn || !menu) return;
-            btn.addEventListener('click', function(){
+            btn.addEventListener('click', function () {
                 const isHidden = menu.classList.contains('hidden');
                 menu.classList.toggle('hidden', !isHidden);
                 btn.setAttribute('aria-expanded', String(isHidden));

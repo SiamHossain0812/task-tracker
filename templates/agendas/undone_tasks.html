@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+
+{% block title %}Undone Tasks{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+    <!-- Header -->
+    <div class="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight mb-1">
+                <i class="fas fa-list-check text-emerald-600 mr-2"></i>Undone Tasks
+            </h2>
+            <p class="text-gray-500 font-medium">All tasks that need your attention</p>
+        </div>
+        <a href="{% url 'agenda_create_global' %}"
+            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg shadow-sm transition-colors">
+            <i class="fas fa-plus mr-2"></i>New Task
+        </a>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+            <div class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Total Undone</div>
+            <div class="flex items-center justify-between">
+                <span class="text-2xl font-bold text-gray-900">{{ total_undone }}</span>
+                <i class="fas fa-tasks text-gray-300 text-xl"></i>
+            </div>
+        </div>
+        <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+            <div class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Pending</div>
+            <div class="flex items-center justify-between">
+                <span class="text-2xl font-bold text-gray-900">{{ pending_count }}</span>
+                <i class="far fa-clock text-gray-300 text-xl"></i>
+            </div>
+        </div>
+        <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+            <div class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">In Progress</div>
+            <div class="flex items-center justify-between">
+                <span class="text-2xl font-bold text-blue-600">{{ in_progress_count }}</span>
+                <i class="fas fa-spinner text-gray-300 text-xl"></i>
+            </div>
+        </div>
+        <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+            <div class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">High Priority</div>
+            <div class="flex items-center justify-between">
+                <span class="text-2xl font-bold text-red-600">{{ high_priority_count }}</span>
+                <i class="fas fa-exclamation-circle text-gray-300 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    {% if total_undone == 0 %}
+    <!-- Empty State -->
+    <div class="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-emerald-100 flex items-center justify-center">
+            <i class="fas fa-check-double text-3xl text-emerald-600"></i>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">All Caught Up! 🎉</h3>
+        <p class="text-gray-500 mb-6">You have no undone tasks. Great job!</p>
+        <a href="{% url 'agenda_create_global' %}"
+            class="inline-block px-6 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition-colors">
+            <i class="fas fa-plus mr-2"></i>Create New Task
+        </a>
+    </div>
+    {% else %}
+    <!-- Overdue Tasks -->
+    {% if overdue %}
+    <div class="mb-8">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="fas fa-exclamation-triangle text-red-500"></i>
+            <h3 class="text-lg font-bold text-gray-900">Overdue ({{ overdue.count }})</h3>
+        </div>
+        <div class="bg-white/80 backdrop-blur-sm rounded-2xl border border-red-100 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr
+                            class="bg-red-50/50 border-b border-red-100/50 text-xs uppercase tracking-wider text-gray-400">
+                            <th class="px-6 py-4 font-bold w-12"></th>
+                            <th class="px-6 py-4 font-bold">Task</th>
+                            <th class="px-6 py-4 font-bold">Project</th>
+                            <th class="px-6 py-4 font-bold">Due Date</th>
+                            <th class="px-6 py-4 font-bold">Status</th>
+                            <th class="px-6 py-4 font-bold w-12"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-red-100/50">
+                        {% for task in overdue %}
+                        <tr class="group hover:bg-red-50/30 transition-colors">
+                            <td class="px-6 py-4">
+                                <div
+                                    class="w-2 h-2 rounded-full {% if task.priority == 'high' %}bg-red-500{% elif task.priority == 'medium' %}bg-amber-500{% else %}bg-emerald-500{% endif %}">
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="font-semibold text-gray-900">{{ task.title }}</div>
+                                {% if task.description %}
+                                <div class="text-xs text-gray-500 truncate max-w-xs">{{ task.description }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if task.project %}
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-{{ task.project.color }}-50 text-{{ task.project.color }}-700">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-{{ task.project.color }}-500"></span>
+                                    {{ task.project.name }}
+                                </span>
+                                {% else %}
+                                <span class="text-xs text-gray-400">Inbox</span>
+                                {% endif %}
+
+                                <!-- Resources -->
+                                <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                                    {% if task.external_link %}
+                                    <a href="{{ task.external_link }}" target="_blank"
+                                        class="text-indigo-400 hover:text-indigo-600" title="Link"><i
+                                            class="fas fa-link text-xs"></i></a>
+                                    {% endif %}
+                                    {% if task.attachment %}
+                                    <a href="{{ task.attachment.url }}" target="_blank"
+                                        class="text-gray-400 hover:text-gray-600" title="Attachment"><i
+                                            class="fas fa-paperclip text-xs"></i></a>
+                                    {% endif %}
+                                    {% if task.collaborators.all %}
+                                    <div class="flex items-center -space-x-1.5 ml-1">
+                                        {% for collaborator in task.collaborators.all %}
+                                        {% if collaborator.image %}
+                                        <img src="{{ collaborator.image.url }}"
+                                            class="w-5 h-5 rounded-full object-cover border border-white ring-1 ring-gray-100"
+                                            title="{{ collaborator.name }}">
+                                        {% else %}
+                                        <div class="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center border border-white ring-1 ring-gray-100"
+                                            title="{{ collaborator.name }}">
+                                            <span class="text-[8px] font-bold text-emerald-700">{{
+                                                collaborator.name|slice:":1" }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-medium text-red-600">{{ task.date|date:"M d, Y" }}</span>
+                                    {% if task.time %}
+                                    <span class="text-xs text-gray-400">{{ task.time|time:"H:i" }}</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <form method="POST" action="{% url 'agenda_toggle' task.pk %}" class="toggle-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider transition-all 
+                                        {% if task.status == 'in-progress' %}bg-blue-100 text-blue-700 hover:bg-blue-200
+                                        {% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+                                        {{ task.get_status_display }}
+                                    </button>
+                                </form>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div
+                                    class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <a href="{% url 'agenda_edit' task.pk %}"
+                                        class="p-2 text-gray-400 hover:text-emerald-600 transition-colors">
+                                        <i class="fas fa-pen"></i>
+                                    </a>
+                                    <a href="{% url 'agenda_delete' task.pk %}"
+                                        class="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Today's Tasks -->
+    {% if today_tasks %}
+    <div class="mb-8">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="far fa-calendar text-emerald-500"></i>
+            <h3 class="text-lg font-bold text-gray-900">Today ({{ today_tasks.count }})</h3>
+        </div>
+        <div class="bg-white/80 backdrop-blur-sm rounded-2xl border border-emerald-100 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr
+                            class="bg-emerald-50/50 border-b border-emerald-100/50 text-xs uppercase tracking-wider text-gray-400">
+                            <th class="px-6 py-4 font-bold w-12"></th>
+                            <th class="px-6 py-4 font-bold">Task</th>
+                            <th class="px-6 py-4 font-bold">Project</th>
+                            <th class="px-6 py-4 font-bold">Time</th>
+                            <th class="px-6 py-4 font-bold">Status</th>
+                            <th class="px-6 py-4 font-bold w-12"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-emerald-100/50">
+                        {% for task in today_tasks %}
+                        <tr class="group hover:bg-emerald-50/30 transition-colors">
+                            <td class="px-6 py-4">
+                                <div
+                                    class="w-2 h-2 rounded-full {% if task.priority == 'high' %}bg-red-500{% elif task.priority == 'medium' %}bg-amber-500{% else %}bg-emerald-500{% endif %}">
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="font-semibold text-gray-900">{{ task.title }}</div>
+                                {% if task.description %}
+                                <div class="text-xs text-gray-500 truncate max-w-xs">{{ task.description }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if task.project %}
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-{{ task.project.color }}-50 text-{{ task.project.color }}-700">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-{{ task.project.color }}-500"></span>
+                                    {{ task.project.name }}
+                                </span>
+                                {% else %}
+                                <span class="text-xs text-gray-400">Inbox</span>
+                                {% endif %}
+
+                                <!-- Resources -->
+                                <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                                    {% if task.external_link %}
+                                    <a href="{{ task.external_link }}" target="_blank"
+                                        class="text-indigo-400 hover:text-indigo-600" title="Link"><i
+                                            class="fas fa-link text-xs"></i></a>
+                                    {% endif %}
+                                    {% if task.attachment %}
+                                    <a href="{{ task.attachment.url }}" target="_blank"
+                                        class="text-gray-400 hover:text-gray-600" title="Attachment"><i
+                                            class="fas fa-paperclip text-xs"></i></a>
+                                    {% endif %}
+                                    {% if task.collaborators.all %}
+                                    <div class="flex items-center -space-x-1.5 ml-1">
+                                        {% for collaborator in task.collaborators.all %}
+                                        {% if collaborator.image %}
+                                        <img src="{{ collaborator.image.url }}"
+                                            class="w-5 h-5 rounded-full object-cover border border-white ring-1 ring-gray-100"
+                                            title="{{ collaborator.name }}">
+                                        {% else %}
+                                        <div class="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center border border-white ring-1 ring-gray-100"
+                                            title="{{ collaborator.name }}">
+                                            <span class="text-[8px] font-bold text-emerald-700">{{
+                                                collaborator.name|slice:":1" }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if task.time %}
+                                <span class="text-sm font-medium text-gray-700">{{ task.time|time:"H:i" }}</span>
+                                {% else %}
+                                <span class="text-xs text-gray-400">All day</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                <form method="POST" action="{% url 'agenda_toggle' task.pk %}" class="toggle-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider transition-all 
+                                        {% if task.status == 'in-progress' %}bg-blue-100 text-blue-700 hover:bg-blue-200
+                                        {% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+                                        {{ task.get_status_display }}
+                                    </button>
+                                </form>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div
+                                    class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <a href="{% url 'agenda_edit' task.pk %}"
+                                        class="p-2 text-gray-400 hover:text-emerald-600 transition-colors">
+                                        <i class="fas fa-pen"></i>
+                                    </a>
+                                    <a href="{% url 'agenda_delete' task.pk %}"
+                                        class="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Upcoming Tasks -->
+    {% if upcoming %}
+    <div class="mb-8">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="fas fa-arrow-right text-blue-500"></i>
+            <h3 class="text-lg font-bold text-gray-900">Upcoming ({{ upcoming.count }})</h3>
+        </div>
+        <div class="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr
+                            class="bg-gray-50/50 border-b border-gray-100/50 text-xs uppercase tracking-wider text-gray-400">
+                            <th class="px-6 py-4 font-bold w-12"></th>
+                            <th class="px-6 py-4 font-bold">Task</th>
+                            <th class="px-6 py-4 font-bold">Project</th>
+                            <th class="px-6 py-4 font-bold">Due Date</th>
+                            <th class="px-6 py-4 font-bold">Status</th>
+                            <th class="px-6 py-4 font-bold w-12"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100/50">
+                        {% for task in upcoming %}
+                        <tr class="group hover:bg-gray-50/30 transition-colors">
+                            <td class="px-6 py-4">
+                                <div
+                                    class="w-2 h-2 rounded-full {% if task.priority == 'high' %}bg-red-500{% elif task.priority == 'medium' %}bg-amber-500{% else %}bg-emerald-500{% endif %}">
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="font-semibold text-gray-900">{{ task.title }}</div>
+                                {% if task.description %}
+                                <div class="text-xs text-gray-500 truncate max-w-xs">{{ task.description }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if task.project %}
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-{{ task.project.color }}-50 text-{{ task.project.color }}-700">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-{{ task.project.color }}-500"></span>
+                                    {{ task.project.name }}
+                                </span>
+                                {% else %}
+                                <span class="text-xs text-gray-400">Inbox</span>
+                                {% endif %}
+
+                                <!-- Resources -->
+                                <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                                    {% if task.external_link %}
+                                    <a href="{{ task.external_link }}" target="_blank"
+                                        class="text-indigo-400 hover:text-indigo-600" title="Link"><i
+                                            class="fas fa-link text-xs"></i></a>
+                                    {% endif %}
+                                    {% if task.attachment %}
+                                    <a href="{{ task.attachment.url }}" target="_blank"
+                                        class="text-gray-400 hover:text-gray-600" title="Attachment"><i
+                                            class="fas fa-paperclip text-xs"></i></a>
+                                    {% endif %}
+                                    {% if task.collaborators.all %}
+                                    <div class="flex items-center -space-x-1.5 ml-1">
+                                        {% for collaborator in task.collaborators.all %}
+                                        {% if collaborator.image %}
+                                        <img src="{{ collaborator.image.url }}"
+                                            class="w-5 h-5 rounded-full object-cover border border-white ring-1 ring-gray-100"
+                                            title="{{ collaborator.name }}">
+                                        {% else %}
+                                        <div class="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center border border-white ring-1 ring-gray-100"
+                                            title="{{ collaborator.name }}">
+                                            <span class="text-[8px] font-bold text-emerald-700">{{
+                                                collaborator.name|slice:":1" }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-medium text-gray-700">{{ task.date|date:"M d, Y" }}</span>
+                                    {% if task.time %}
+                                    <span class="text-xs text-gray-400">{{ task.time|time:"H:i" }}</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <form method="POST" action="{% url 'agenda_toggle' task.pk %}" class="toggle-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider transition-all 
+                                        {% if task.status == 'in-progress' %}bg-blue-100 text-blue-700 hover:bg-blue-200
+                                        {% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+                                        {{ task.get_status_display }}
+                                    </button>
+                                </form>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div
+                                    class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <a href="{% url 'agenda_edit' task.pk %}"
+                                        class="p-2 text-gray-400 hover:text-emerald-600 transition-colors">
+                                        <i class="fas fa-pen"></i>
+                                    </a>
+                                    <a href="{% url 'agenda_delete' task.pk %}"
+                                        class="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+
+{% block extra_js %}
+<script>
+    // Toggle form submission
+    document.querySelectorAll('.toggle-form').forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            fetch(this.action, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value }
+            }).then(() => window.location.reload());
+        });
+    });
+</script>
+{% endblock %}
+
+{% endblock %}

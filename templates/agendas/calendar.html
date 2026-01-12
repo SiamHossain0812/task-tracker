@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Calendar{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+    <!-- Header -->
+    <div class="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight mb-1">
+                <i class="far fa-calendar-alt text-emerald-600 mr-2"></i>Calendar View
+            </h2>
+            <p class="text-gray-500 font-medium">View your tasks organized by date</p>
+        </div>
+        <a href="{% url 'agenda_create_global' %}"
+            class="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:to-emerald-600 text-white font-semibold rounded-xl shadow-lg shadow-emerald-200 transition-all hover:-translate-y-0.5 transform">
+            <i class="fas fa-plus mr-2"></i>New Task
+        </a>
+    </div>
+
+    <!-- Calendar Card -->
+    <div class="bg-white/90 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-lg overflow-hidden">
+        <!-- Calendar Header with Navigation -->
+        <div class="bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-5">
+            <div class="flex items-center justify-between">
+                <a href="?month={{ prev_month }}&year={{ prev_year }}"
+                    class="p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+
+                <div class="text-center">
+                    <h3 class="text-2xl font-bold text-white">{{ month_name }} {{ year }}</h3>
+                    <a href="{% url 'calendar_view' %}"
+                        class="text-sm text-emerald-100 hover:text-white transition-colors">
+                        <i class="fas fa-calendar-day mr-1"></i>Today
+                    </a>
+                </div>
+
+                <a href="?month={{ next_month }}&year={{ next_year }}"
+                    class="p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Calendar Grid -->
+        <div class="p-4 sm:p-6">
+            <!-- Day Headers -->
+            <div class="grid grid-cols-7 gap-2 mb-2">
+                {% for day in "SMTWTFS" %}
+                <div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider py-2">
+                    <span class="hidden sm:inline">
+                        {% if day == 'S' and forloop.first %}Sunday
+                        {% elif day == 'M' %}Monday
+                        {% elif day == 'T' and forloop.counter == 3 %}Tuesday
+                        {% elif day == 'W' %}Wednesday
+                        {% elif day == 'T' and forloop.counter == 5 %}Thursday
+                        {% elif day == 'F' %}Friday
+                        {% elif day == 'S' and forloop.last %}Saturday
+                        {% endif %}
+                    </span>
+                    <span class="sm:hidden">{{ day }}</span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Calendar Weeks -->
+            <div class="grid grid-cols-7 gap-2">
+                {% for week in calendar_weeks %}
+                    {% for day_data in week %}
+                        {% if day_data.day %}
+                            <div class="min-h-24 sm:min-h-32 border rounded-lg p-2 transition-all hover:shadow-md
+                                {% if day_data.is_today %}
+                                    bg-emerald-50 border-emerald-300 ring-2 ring-emerald-200
+                                {% else %}
+                                    bg-gray-50/50 border-gray-200 hover:border-emerald-300
+                                {% endif %}">
+                                
+                                <!-- Day Number -->
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-sm font-bold 
+                                        {% if day_data.is_today %}text-emerald-700{% else %}text-gray-700{% endif %}">
+                                        {{ day_data.day }}
+                                    </span>
+                                    {% if day_data.tasks %}
+                                        <span class="w-5 h-5 rounded-full bg-emerald-600 text-white text-xs flex items-center justify-center font-bold">
+                                            {{ day_data.tasks|length }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Tasks -->
+                                <div class="space-y-1">
+                                    {% for task in day_data.tasks|slice:":3" %}
+                                        <a href="{% url 'agenda_edit' task.pk %}"
+                                            class="block px-2 py-1 rounded text-xs font-medium transition-colors
+                                            {% if task.priority == 'high' %}
+                                                bg-red-100 text-red-700 hover:bg-red-200
+                                            {% elif task.priority == 'medium' %}
+                                                bg-amber-100 text-amber-700 hover:bg-amber-200
+                                            {% else %}
+                                                bg-emerald-100 text-emerald-700 hover:bg-emerald-200
+                                            {% endif %}">
+                                            <div class="truncate">{{ task.title }}</div>
+                                            {% if task.time %}
+                                                <div class="text-xs opacity-75">{{ task.time|time:"H:i" }}</div>
+                                            {% endif %}
+                                        </a>
+                                    {% endfor %}
+                                    
+                                    {% if day_data.tasks|length > 3 %}
+                                        <div class="text-xs text-gray-500 text-center py-1">
+                                            +{{ day_data.tasks|length|add:"-3" }} more
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <!-- Empty cell for days from other months -->
+                            <div class="min-h-24 sm:min-h-32 bg-gray-100/30 rounded-lg"></div>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm">
+        <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded bg-red-100 border border-red-200"></div>
+            <span class="text-gray-600">High Priority</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded bg-amber-100 border border-amber-200"></div>
+            <span class="text-gray-600">Medium Priority</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded bg-emerald-100 border border-emerald-200"></div>
+            <span class="text-gray-600">Low Priority</span>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Add keyboard navigation
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowLeft') {
+            window.location.href = '?month={{ prev_month }}&year={{ prev_year }}';
+        } else if (e.key === 'ArrowRight') {
+            window.location.href = '?month={{ next_month }}&year={{ next_year }}';
+        }
+    });
+</script>
+{% endblock %}
+
+{% endblock %}

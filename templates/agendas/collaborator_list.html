@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Collaborators{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+    <!-- Header -->
+    <div class="mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight mb-1">
+                <i class="fas fa-users text-emerald-600 mr-2"></i>Collaborators
+            </h2>
+            <p class="text-gray-500 font-medium">Manage your team and partners</p>
+        </div>
+        <a href="{% url 'collaborator_create' %}"
+            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-sm transition-colors">
+            <i class="fas fa-plus mr-2"></i>Add Person
+        </a>
+    </div>
+
+    <!-- Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for person in collaborators %}
+        <div
+            class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow group relative">
+
+            <!-- Actions -->
+            <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                <a href="{% url 'collaborator_edit' person.pk %}"
+                    class="w-8 h-8 rounded-full bg-white text-gray-400 hover:text-emerald-600 shadow flex items-center justify-center transition-colors">
+                    <i class="fas fa-pen text-xs"></i>
+                </a>
+                <a href="{% url 'collaborator_delete' person.pk %}"
+                    class="w-8 h-8 rounded-full bg-white text-gray-400 hover:text-red-600 shadow flex items-center justify-center transition-colors">
+                    <i class="fas fa-trash text-xs"></i>
+                </a>
+            </div>
+
+            <div class="p-6 text-center">
+                <div
+                    class="w-24 h-24 mx-auto mb-4 rounded-full border-2 border-emerald-100 overflow-hidden bg-gray-50 flex items-center justify-center">
+                    {% if person.image %}
+                    <img src="{{ person.image.url }}" alt="{{ person.name }}" class="w-full h-full object-cover">
+                    {% else %}
+                    <i class="fas fa-user text-3xl text-gray-300"></i>
+                    {% endif %}
+                </div>
+
+                <h3 class="text-lg font-bold text-gray-900 mb-1">{{ person.name }}</h3>
+                <p class="text-sm text-gray-500 mb-4">{{ person.institute|default:'' }}</p>
+
+                <div class="space-y-2 text-left bg-gray-50 p-4 rounded-lg">
+                    {% if person.email %}
+                    <div class="flex items-start gap-2 text-sm text-gray-600">
+                        <i class="fas fa-envelope text-gray-400 mt-1 w-4"></i>
+                        <span class="truncate">{{ person.email }}</span>
+                    </div>
+                    {% endif %}
+                    {% if person.whatsapp_number %}
+                    <div class="flex items-start gap-2 text-sm text-gray-600">
+                        <i class="fab fa-whatsapp text-emerald-500 mt-1 w-4"></i>
+                        <span>{{ person.whatsapp_number }}</span>
+                    </div>
+                    {% endif %}
+                    {% if person.address %}
+                    <div class="flex items-start gap-2 text-sm text-gray-600">
+                        <i class="fas fa-map-marker-alt text-gray-400 mt-1 w-4"></i>
+                        <span class="line-clamp-2">{{ person.address }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div
+            class="col-span-full py-12 text-center text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            <i class="fas fa-user-friends text-4xl text-gray-300 mb-3"></i>
+            <p>No collaborators yet. Add someone to get started!</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

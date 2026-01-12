@@ -92,3 +92,12 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Media files (Uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Twilio Settings (WhatsApp)
+TWILIO_ACCOUNT_SID = 'ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'  # Replace with your Account SID
+TWILIO_AUTH_TOKEN = 'your_auth_token_here'              # Replace with your Auth Token
+TWILIO_WHATSAPP_NUMBER = 'whatsapp:+14155238886'       # Replace with your Twilio WhatsApp number

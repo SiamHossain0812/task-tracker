@@ -7,161 +7,347 @@
     <div class="flex items-center justify-between mb-4">
         <div>
             <h2 class="text-xl font-bold text-gray-900">{{ title }}</h2>
+
             {% if project %}
             <div class="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
-                <span class="w-2 h-2 rounded-full bg-{{ project.color }}-500"></span>
+                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
                 <span class="font-medium">{{ project.name }}</span>
             </div>
             {% endif %}
         </div>
-        <a href="{% url 'dashboard' %}" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></a>
+
+        <a href="{% url 'dashboard' %}" class="text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times"></i>
+        </a>
     </div>
 
-    <form method="POST" class="space-y-5">
+    <form method="POST" enctype="multipart/form-data" class="space-y-5">
         {% csrf_token %}
 
+        <!-- Title -->
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Task Title <span
-                    class="text-red-500">*</span></label>
-            <input type="text" name="title" required value="{% if agenda %}{{ agenda.title }}{% endif %}"
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                Task Title <span class="text-red-500">*</span>
+            </label>
+            <input type="text" name="title" required value="{{ agenda.title|default_if_none:'' }}"
                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder-gray-400"
                 placeholder="What needs to be done?">
         </div>
 
+        <!-- Description -->
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
-            <textarea name="description" rows="2"
+            <textarea name="description" rows="3"
                 class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder-gray-400"
-                placeholder="Add details...">{% if agenda %}{{ agenda.description }}{% endif %}</textarea>
+                placeholder="Add details...">{{ agenda.description|default_if_none:'' }}</textarea>
         </div>
 
+        <!-- Resources -->
+        <div class="space-y-4 pt-2 border-t border-gray-100">
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                Resources & Collaboration
+            </h3>
+
+            <!-- External Link -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">External Link</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                        <i class="fas fa-link text-xs"></i>
+                    </span>
+                    <input type="url" name="external_link" value="{{ agenda.external_link|default_if_none:'' }}"
+                        class="w-full pl-8 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder-gray-400"
+                        placeholder="https://example.com/doc">
+                </div>
+            </div>
+
+            <!-- Collaborators -->
+            <div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <label class="block text-sm font-medium text-gray-700">Collaborators</label>
+                    <button type="button" id="quick-add-btn"
+                        class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1">
+                        <i class="fas fa-plus"></i> Quick Add
+                    </button>
+                </div>
+
+                <!-- Quick Add Form (Hidden by default) -->
+                <div id="quick-add-form"
+                    class="hidden mb-3 p-3 bg-indigo-50 rounded-lg border border-indigo-100 space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="qa-name" placeholder="Name" class="text-xs px-2 py-1.5 border rounded">
+                        <input type="text" id="qa-whatsapp" placeholder="WhatsApp (e.g. +880...)"
+                            class="text-xs px-2 py-1.5 border rounded">
+                    </div>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" id="qa-cancel" class="text-xs px-2 py-1 text-gray-500">Cancel</button>
+                        <button type="button" id="qa-save"
+                            class="text-xs px-3 py-1 bg-indigo-600 text-white rounded">Add & Select</button>
+                    </div>
+                </div>
+
+                <div id="selected-collaborators" class="flex flex-wrap gap-2 mb-2"></div>
+
+                <div class="relative">
+                    <button type="button" id="collaborator-dropdown-btn"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700 flex justify-between items-center">
+                        <span id="collaborator-placeholder" class="text-gray-400">
+                            Select collaborators...
+                        </span>
+                        <i id="dropdown-arrow"
+                            class="fas fa-chevron-down text-xs text-gray-400 transition-transform"></i>
+                    </button>
+
+                    <div id="collaborator-dropdown"
+                        class="hidden absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        <div id="collaborator-options-container">
+                            {% for collaborator in collaborator_list %}
+                            <label
+                                class="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer border-b last:border-0">
+                                <input type="checkbox" name="collaborators" value="{{ collaborator.pk }}"
+                                    data-name="{{ collaborator.name }}"
+                                    class="collaborator-checkbox w-4 h-4 text-indigo-600 border-gray-300 rounded" {% if
+                                    agenda and collaborator in agenda.collaborators.all %}checked{% endif %}>
+                                <span class="ml-3 text-sm text-gray-700">{{ collaborator.name }}</span>
+                            </label>
+                            {% empty %}
+                            <div class="px-4 py-2 text-sm text-gray-500">No collaborators available</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notification Toggle -->
+            <div class="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                <div class="flex-shrink-0">
+                    <i class="fab fa-whatsapp text-emerald-600 text-lg"></i>
+                </div>
+                <div class="flex-grow">
+                    <label class="block text-sm font-semibold text-emerald-900">WhatsApp Notification</label>
+                    <p class="text-[10px] text-emerald-700">Notify selected collaborators via WhatsApp</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="send_whatsapp" value="true" class="sr-only peer" checked>
+                    <div
+                        class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600">
+                    </div>
+                </label>
+            </div>
+
+            <!-- Attachment -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Attachment</label>
+
+                {% if agenda and agenda.attachment %}
+                <div class="flex items-center gap-2 mb-2 text-sm text-gray-600">
+                    <i class="fas fa-paperclip text-gray-400"></i>
+                    <a href="{{ agenda.attachment.url }}" target="_blank"
+                        class="text-indigo-600 hover:underline truncate">
+                        {{ agenda.attachment.name }}
+                    </a>
+                </div>
+                {% endif %}
+
+                <input type="file" name="attachment" class="block w-full text-sm text-gray-500 border border-gray-300 rounded-lg
+                           file:mr-4 file:py-2 file:px-4 file:rounded-full
+                           file:border-0 file:text-sm file:font-semibold
+                           file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+            </div>
+        </div>
+
+        <!-- Project -->
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Project</label>
-            <select name="project"
-                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all bg-white text-gray-700">
-                <option value="" {% if not project %}selected{% endif %}>No Project (Inbox)</option>
-                {% for p in projects %}
-                <option value="{{ p.pk }}" {% if project and project.pk == p.pk %}selected{% endif %}>{{ p.name }}
+            <select name="project" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700">
+                <option value="">No Project (Inbox)</option>
+                {% for p in project_list %}
+                <option value="{{ p.pk }}" {% if project and project.pk==p.pk %}selected{% endif %}>
+                    {{ p.name }}
                 </option>
                 {% endfor %}
             </select>
         </div>
 
+        <!-- Schedule -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <!-- Start Schedule -->
-            <div class="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Start
-                    Schedule</label>
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Date</label>
-                        <input type="date" name="date" required
-                            value="{% if agenda %}{{ agenda.date|date:'Y-m-d' }}{% else %}{{ today }}{% endif %}"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-gray-700">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Time</label>
-                        <input type="time" name="time" id="id_time"
-                            value="{% if agenda.time %}{{ agenda.time|time:'H:i' }}{% endif %}"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-gray-700">
-                    </div>
-                </div>
+            <div class="bg-gray-50 p-4 rounded-xl border">
+                <label class="text-xs font-bold text-gray-400 uppercase mb-3 block">Start</label>
+
+                <input type="date" name="date" required value="{{ agenda.date|date:'Y-m-d'|default:today }}"
+                    class="w-full mb-3 px-4 py-2.5 border rounded-lg">
+
+                <input type="time" name="time" id="id_time" value="{{ agenda.time|time:'H:i' }}"
+                    class="w-full px-4 py-2.5 border rounded-lg">
             </div>
 
-            <!-- Expected End Schedule -->
-            <div class="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Expected
-                    Finish</label>
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Date</label>
-                        <input type="date" name="expected_finish_date"
-                            value="{% if agenda.expected_finish_date %}{{ agenda.expected_finish_date|date:'Y-m-d' }}{% endif %}"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-gray-700 placeholder-gray-400">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Time</label>
-                        <input type="time" name="expected_finish_time" id="id_expected_finish_time"
-                            value="{% if agenda.expected_finish_time %}{{ agenda.expected_finish_time|time:'H:i' }}{% endif %}"
-                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-gray-700">
-                    </div>
-                </div>
+            <div class="bg-gray-50 p-4 rounded-xl border">
+                <label class="text-xs font-bold text-gray-400 uppercase mb-3 block">Expected Finish</label>
+
+                <input type="date" name="expected_finish_date" value="{{ agenda.expected_finish_date|date:'Y-m-d' }}"
+                    class="w-full mb-3 px-4 py-2.5 border rounded-lg">
+
+                <input type="time" name="expected_finish_time" id="id_expected_finish_time"
+                    value="{{ agenda.expected_finish_time|time:'H:i' }}" class="w-full px-4 py-2.5 border rounded-lg">
             </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-5">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Priority</label>
-                <select name="priority"
-                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all bg-white text-gray-700">
-                    <option value="low" {% if agenda.priority == 'low' %}selected{% endif %}>Low</option>
-                    <option value="medium" {% if agenda.priority == 'medium' or not agenda %}selected{% endif %}>Medium
-                    </option>
-                    <option value="high" {% if agenda.priority == 'high' %}selected{% endif %}>High</option>
-                </select>
-            </div>
+        <!-- Priority -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Priority</label>
+            <select name="priority" class="w-full px-4 py-2.5 border rounded-lg bg-white">
+                <option value="low" {% if agenda.priority=='low' %}selected{% endif %}>Low</option>
+                <option value="medium" {% if not agenda or agenda.priority=='medium' %}selected{% endif %}>Medium
+                </option>
+                <option value="high" {% if agenda.priority=='high' %}selected{% endif %}>High</option>
+            </select>
         </div>
 
+        <!-- Actions -->
         <div class="pt-2 flex gap-3">
-            <a href="{% url 'dashboard' %}"
-                class="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 text-center transition-colors">Cancel</a>
-            <button type="submit"
-                class="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-colors">{% if agenda %}Save Task{% else %}Add Task{% endif %}</button>
+            <a href="{% url 'dashboard' %}" class="flex-1 px-4 py-2.5 border rounded-lg text-center">
+                Cancel
+            </a>
+            <button type="submit" class="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg">
+                {% if agenda %}Save Task{% else %}Add Task{% endif %}
+            </button>
         </div>
     </form>
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const dateInput = document.querySelector('input[name="date"]');
-        const timeInput = document.getElementById('id_time');
-        const finishDateInput = document.querySelector('input[name="expected_finish_date"]');
-        const finishTimeInput = document.getElementById('id_expected_finish_time');
+    document.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('collaborator-dropdown-btn');
+        const dropdown = document.getElementById('collaborator-dropdown');
+        const arrow = document.getElementById('dropdown-arrow');
+        const container = document.getElementById('selected-collaborators');
+        const placeholder = document.getElementById('collaborator-placeholder');
+        const checkboxes = document.querySelectorAll('.collaborator-checkbox');
 
-        function updateStatus() {
-            const dateVal = dateInput.value;
-            const timeVal = timeInput.value;
+        btn.addEventListener('click', () => {
+            dropdown.classList.toggle('hidden');
+            arrow.classList.toggle('rotate-180');
+        });
 
-            // If no start date/time, we can't determine much, but usually default to pending
-            if (!dateVal) return;
-
-            const now = new Date();
-
-            // Parse Start Date/Time
-            const startDate = new Date(dateVal);
-            if (timeVal) {
-                const [h, m] = timeVal.split(':');
-                startDate.setHours(h, m, 0, 0);
-            } else {
-                startDate.setHours(0, 0, 0, 0);
+        document.addEventListener('click', e => {
+            if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.add('hidden');
+                arrow.classList.remove('rotate-180');
             }
+        });
 
-            // Parse Finish Date/Time
-            let finishDate = null;
-            const finishDateVal = finishDateInput.value;
-            const finishTimeVal = finishTimeInput.value;
+        function refreshTags() {
+            container.innerHTML = '';
+            let selected = false;
 
-            if (finishDateVal) {
-                finishDate = new Date(finishDateVal);
-                if (finishTimeVal) {
-                    const [h, m] = finishTimeVal.split(':');
-                    finishDate.setHours(h, m, 0, 0);
-                } else {
-                    // Default to end of day if only date is given
-                    finishDate.setHours(23, 59, 59, 999);
+            const allCheckboxes = document.querySelectorAll('.collaborator-checkbox');
+            allCheckboxes.forEach(cb => {
+                if (cb.checked) {
+                    selected = true;
+                    const tag = document.createElement('span');
+                    tag.className = 'inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 text-sm rounded-full';
+                    tag.innerHTML = `
+                    ${cb.dataset.name}
+                    <button type="button" data-id="${cb.value}" class="remove-tag">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                `;
+                    container.appendChild(tag);
                 }
-            }
+            });
 
-            // Logic
-            // Status auto-update removed (status selection removed from form)
+            placeholder.textContent = selected ? 'Add more...' : 'Select collaborators...';
+            placeholder.classList.toggle('text-gray-400', !selected);
         }
 
-        dateInput.addEventListener('change', updateStatus);
-        timeInput.addEventListener('change', updateStatus);
-        finishDateInput.addEventListener('change', updateStatus);
-        finishTimeInput.addEventListener('change', updateStatus);
+        // Bind change event to existing and future checkboxes
+        dropdown.addEventListener('change', e => {
+            if (e.target.classList.contains('collaborator-checkbox')) {
+                refreshTags();
+            }
+        });
 
-        // do not auto run on load to keep user's manual selection if editing
+        // Quick Add Logic
+        const qaBtn = document.getElementById('quick-add-btn');
+        const qaForm = document.getElementById('quick-add-form');
+        const qaCancel = document.getElementById('qa-cancel');
+        const qaSave = document.getElementById('qa-save');
+        const qaName = document.getElementById('qa-name');
+        const qaWhatsapp = document.getElementById('qa-whatsapp');
+        const optionsContainer = document.getElementById('collaborator-options-container');
+
+        qaBtn.addEventListener('click', () => qaForm.classList.toggle('hidden'));
+        qaCancel.addEventListener('click', () => {
+            qaForm.classList.add('hidden');
+            qaName.value = '';
+            qaWhatsapp.value = '';
+        });
+
+        qaSave.addEventListener('click', async () => {
+            const name = qaName.value.trim();
+            const whatsapp = qaWhatsapp.value.trim();
+
+            if (!name) {
+                alert('Name is required');
+                return;
+            }
+
+            try {
+                const response = await fetch('{% url "api_collaborator_create" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, whatsapp_number: whatsapp })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Remove "No collaborators" message if it exists
+                    const emptyMsg = optionsContainer.querySelector('.text-sm.text-gray-500');
+                    if (emptyMsg) emptyMsg.remove();
+
+                    // Add to dropdown
+                    const label = document.createElement('label');
+                    label.className = 'flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer border-b last:border-0';
+                    label.innerHTML = `
+                    <input
+                        type="checkbox"
+                        name="collaborators"
+                        value="${data.id}"
+                        data-name="${data.name}"
+                        class="collaborator-checkbox w-4 h-4 text-indigo-600 border-gray-300 rounded"
+                        checked
+                    >
+                    <span class="ml-3 text-sm text-gray-700">${data.name}</span>
+                `;
+                    optionsContainer.appendChild(label);
+
+                    // Reset form and refresh UI
+                    qaForm.classList.add('hidden');
+                    qaName.value = '';
+                    qaWhatsapp.value = '';
+                    refreshTags();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error adding collaborator:', error);
+                alert('Failed to add collaborator');
+            }
+        });
+
+        container.addEventListener('click', e => {
+            const btn = e.target.closest('.remove-tag');
+            if (!btn) return;
+
+            const checkbox = document.querySelector(`.collaborator-checkbox[value="${btn.dataset.id}"]`);
+            if (checkbox) checkbox.checked = false;
+            refreshTags();
+        });
+
+        refreshTags();
     });
 </script>
 {% endblock %}

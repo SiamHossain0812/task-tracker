@@ -41,6 +41,18 @@ class Project(models.Model):
         return int((self.completed_agendas / total) * 100)
 
 
+class Collaborator(models.Model):
+    name = models.CharField(max_length=200)
+    institute = models.CharField(max_length=200, blank=True)
+    address = models.TextField(blank=True)
+    email = models.EmailField(blank=True)
+    whatsapp_number = models.CharField(max_length=20, blank=True)
+    image = models.ImageField(upload_to='collaborators/', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
 class Agenda(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -63,6 +75,12 @@ class Agenda(models.Model):
     expected_finish_time = models.TimeField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium')
+    
+    # Resourceful Fields
+    external_link = models.URLField(blank=True, help_text="Link to external resources (e.g., Google Doc, Research Paper)")
+    attachment = models.FileField(upload_to='attachments/', blank=True, help_text="Upload relevant files")
+    collaborators = models.ManyToManyField(Collaborator, blank=True, related_name='agendas')
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

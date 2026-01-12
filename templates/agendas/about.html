@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}About{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-12">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-3">
+            About Dr. Niaz's Agenda Tracker
+        </h1>
+        <p class="text-lg text-gray-600">Lightweight task management for professionals</p>
+    </div>
+
+    <!-- Owner Information Card -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden mb-8">
+        <div class="px-8 py-6 border-b border-gray-100">
+            <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <i class="fas fa-user-circle text-emerald-600"></i>
+                Developer
+            </h2>
+        </div>
+
+        <div class="p-8">
+            <div class="flex flex-col md:flex-row gap-10 items-center">
+                <!-- Profile Icon -->
+                <div class="flex-shrink-0 mx-auto md:mx-0">
+                    <div class="w-48 h-48 rounded-full border border-gray-200 shadow-lg overflow-hidden relative group">
+                        {% load static %}
+                        <img src="{% static 'image.jpg' %}" alt="Dr. Niaz Md. Farhat Rahman"
+                            class="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110">
+                    </div>
+                </div>
+
+                <!-- Information -->
+                <div class="flex-1 text-center md:text-left">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">Dr. Niaz Md. Farhat Rahman</h3>
+
+                    <div class="space-y-3 mb-6">
+                        <div class="flex items-center gap-3 justify-center md:justify-start">
+                            <i class="fas fa-briefcase text-emerald-600 w-5"></i>
+                            <span class="text-gray-700 font-medium">Principal Scientist</span>
+                        </div>
+
+                        <div class="flex items-center gap-3 justify-center md:justify-start">
+                            <i class="fas fa-building text-emerald-600 w-5"></i>
+                            <span class="text-gray-700">Bangladesh Rice Research Institute (BRRI)</span>
+                        </div>
+
+                        <div class="flex items-center gap-3 justify-center md:justify-start">
+                            <i class="fas fa-map-marker-alt text-emerald-600 w-5"></i>
+                            <span class="text-gray-700">Dhaka, Bangladesh</span>
+                        </div>
+                    </div>
+
+                    <!-- LinkedIn Button -->
+                    <a href="https://www.linkedin.com/in/niaz-md-farhat-rahman-72407834" target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-md">
+                        <i class="fab fa-linkedin text-xl"></i>
+                        View LinkedIn Profile
+                    </a>
+                </div>
+            </div>
+
+            <!-- Experience Highlights -->
+            <div class="mt-8 pt-8 border-t border-gray-200">
+                <h4 class="text-lg font-bold text-gray-900 mb-4">Professional Highlights</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-check-circle text-emerald-600 mt-1"></i>
+                        <div>
+                            <p class="font-semibold text-gray-900">Principal Scientist at BRRI</p>
+                            <p class="text-sm text-gray-600">December 2022 - Present (3+ years)</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-check-circle text-emerald-600 mt-1"></i>
+                        <div>
+                            <p class="font-semibold text-gray-900">Senior Scientist at BRRI</p>
+                            <p class="text-sm text-gray-600">September 2014 - October 2023 (9+ years)</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-check-circle text-emerald-600 mt-1"></i>
+                        <div>
+                            <p class="font-semibold text-gray-900">Research Focus</p>
+                            <p class="text-sm text-gray-600">Rice Research & Agricultural Science</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-check-circle text-emerald-600 mt-1"></i>
+                        <div>
+                            <p class="font-semibold text-gray-900">Skills</p>
+                            <p class="text-sm text-gray-600">Teaching, Research, Science</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About the App -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+        <div class="px-8 py-6 border-b border-gray-100">
+            <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <i class="fas fa-info-circle text-emerald-600"></i>
+                About the Application
+            </h2>
+        </div>
+
+        <div class="p-8">
+            <p class="text-gray-700 mb-4">
+                <strong>Dr. Niaz's Agenda Tracker</strong> is a lightweight task management application designed to help
+                professionals
+                organize their work efficiently. Built with Django and modern web technologies, it provides a clean,
+                intuitive interface for managing tasks, projects, and deadlines.
+            </p>
+
+            <h4 class="font-bold text-gray-900 mb-3 mt-6">Key Features:</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-check text-emerald-600"></i>
+                    <span class="text-gray-700">Task & Project Management</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-check text-emerald-600"></i>
+                    <span class="text-gray-700">Calendar View</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-check text-emerald-600"></i>
+                    <span class="text-gray-700">Priority & Status Tracking</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-check text-emerald-600"></i>
+                    <span class="text-gray-700">Global Search</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-check text-emerald-600"></i>
+                    <span class="text-gray-700">Responsive Design</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-check text-emerald-600"></i>
+                    <span class="text-gray-700">Progress Monitoring</span>
+                </div>
+            </div>
+
+            <div class="mt-8 p-4 bg-emerald-50 rounded-lg border border-emerald-100">
+                <p class="text-sm text-gray-700">
+                    <i class="fas fa-lightbulb text-emerald-600 mr-2"></i>
+                    <strong>Version:</strong> 1.0 |
+                    <strong>Technology:</strong> Django, Tailwind CSS, SQLite
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Back Button -->
+    <div class="text-center mt-8">
+        <a href="{% url 'dashboard' %}"
+            class="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition-colors">
+            <i class="fas fa-arrow-left"></i>
+            Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

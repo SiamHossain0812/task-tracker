@@ -1,9 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.db.models import Q, Count
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
-from django.db.models import Count, Q
-from datetime import datetime, date
-from .models import Project, Agenda
+from django.views.decorators.csrf import csrf_exempt
+import json
+from datetime import date, datetime, timedelta
+from .models import Agenda, Project, Collaborator
+from .utils import calculate_status
 
 
 def dashboard(request):
@@ -115,86 +118,52 @@ def project_delete(request, pk):
     })
 
 
-def calculate_status(date_str, time_str, end_date_str, end_time_str):
-    """Calculate status based on date/time."""
-    if not date_str:
-        return 'pending'
 
-    try:
-        now = datetime.now()
-        
-        # Start Datetime
-        start_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        if time_str:
-            start_time = datetime.strptime(time_str, '%H:%M').time()
-        else:
-            start_time = datetime.min.time()
-        start_dt = datetime.combine(start_date, start_time)
-        
-        # End Datetime
-        end_dt = None
-        if end_date_str:
-            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-            if end_time_str:
-                end_time = datetime.strptime(end_time_str, '%H:%M').time()
-            else:
-                end_time = datetime.max.time().replace(microsecond=0) # End of day
-            end_dt = datetime.combine(end_date, end_time)
-        
-        if start_dt > now:
-            return 'pending'
-        
-        # Start is in past or now
-        if end_dt:
-            if end_dt > now:
-                return 'in-progress'
-            else:
-                return 'completed'
-        else:
-            # No end date, assume in-progress if started
-            return 'in-progress'
-            
-    except ValueError:
-        return 'pending'
 
 
 def agenda_create(request, project_pk=None):
     """Create a new agenda. project_pk is optional."""
+    initial_data = {}
     project = None
     if project_pk:
         project = get_object_or_404(Project, pk=project_pk)
+        initial_data['project'] = project
     
     if request.method == 'POST':
-        # If project_pk was passed, use it. Otherwise try to get from POST (if we add dropdown)
-        post_project_id = request.POST.get('project')
-        if not project and post_project_id:
-            project = get_object_or_404(Project, pk=post_project_id)
+        form = AgendaForm(request.POST, request.FILES)
+        if form.is_valid():
+            agenda = form.save(commit=False)
+            
+            # Calculate status
+            status = calculate_status(
+                request.POST.get('date'),
+                request.POST.get('time'),
+                request.POST.get('expected_finish_date'),
+                request.POST.get('expected_finish_time')
+            )
+            agenda.status = status
+            agenda.save()
+            form.save_m2m() # Important for collaborators
+            
+            # Send WhatsApp Notification
+            if request.POST.get('send_whatsapp') == 'true':
+                from .utils import send_whatsapp_notification
+                send_whatsapp_notification(agenda.collaborators.all(), agenda)
+            
+            return redirect('dashboard')
+    else:
+        initial_data['date'] = date.today()
+        form = AgendaForm(initial=initial_data)
+        if project:
+            form.fields['project'].initial = project
 
-        date_val = request.POST.get('date')
-        time_val = request.POST.get('time')
-        end_date_val = request.POST.get('expected_finish_date')
-        end_time_val = request.POST.get('expected_finish_time')
-        
-        status = calculate_status(date_val, time_val, end_date_val, end_time_val)
-
-        Agenda.objects.create(
-            project=project,
-            title=request.POST.get('title'),
-            description=request.POST.get('description', ''),
-            date=date_val,
-            time=time_val or None,
-            expected_finish_date=end_date_val or None,
-            expected_finish_time=end_time_val or None,
-            status=status,
-            priority=request.POST.get('priority', 'medium')
-        )
-        return redirect('dashboard')
-    
     return render(request, 'agendas/agenda_form_fixed.html', {
         'title': 'Add New Task',
-        'project': project, # Might be None
-        'projects': Project.objects.all(), # Pass all projects for dropdown
+        'form': form,
         'today': date.today().isoformat(),
+        'project': project,
+        'project_list': Project.objects.all(),
+        'collaborator_list': Collaborator.objects.all(),
     })
 
 
@@ -203,38 +172,38 @@ def agenda_edit(request, pk):
     agenda = get_object_or_404(Agenda, pk=pk)
     
     if request.method == 'POST':
-        # Handle project change if needed
-        project_id = request.POST.get('project')
-        if project_id:
-            agenda.project = get_object_or_404(Project, pk=project_id)
-        elif 'project' in request.POST: # If empty string sent, clear project
-            agenda.project = None
+        form = AgendaForm(request.POST, request.FILES, instance=agenda)
+        if form.is_valid():
+            agenda = form.save(commit=False)
+            
+            # Recalculate status
+            status = calculate_status(
+                request.POST.get('date'),
+                request.POST.get('time'),
+                request.POST.get('expected_finish_date'),
+                request.POST.get('expected_finish_time')
+            )
+            agenda.status = status
+            agenda.save()
+            form.save_m2m()
+            
+            # Send WhatsApp Notification
+            if request.POST.get('send_whatsapp') == 'true':
+                from .utils import send_whatsapp_notification
+                send_whatsapp_notification(agenda.collaborators.all(), agenda)
+            
+            return redirect('dashboard')
+    else:
+        form = AgendaForm(instance=agenda)
 
-        agenda.title = request.POST.get('title')
-        agenda.description = request.POST.get('description', '')
-        
-        date_val = request.POST.get('date')
-        time_val = request.POST.get('time')
-        end_date_val = request.POST.get('expected_finish_date')
-        end_time_val = request.POST.get('expected_finish_time')
-
-        agenda.date = date_val
-        agenda.time = time_val or None
-        agenda.expected_finish_date = end_date_val or None
-        agenda.expected_finish_time = end_time_val or None
-        
-        agenda.status = calculate_status(date_val, time_val, end_date_val, end_time_val)
-        
-        agenda.priority = request.POST.get('priority', 'medium')
-        agenda.save()
-        return redirect('dashboard')
-    
     return render(request, 'agendas/agenda_form_fixed.html', {
         'title': 'Edit Task',
         'agenda': agenda,
-        'projects': Project.objects.all(),
+        'form': form,
+        'today': date.today().isoformat(),
         'project': agenda.project,
-        'today': date.today().isoformat(), # Just for fallback if date is missing
+        'project_list': Project.objects.all(),
+        'collaborator_list': Collaborator.objects.all(),
     })
 
 
@@ -266,3 +235,224 @@ def agenda_toggle_status(request, pk):
         'status': new_status,
         'success': True
     })
+
+
+def calendar_view(request):
+    """Calendar view showing tasks by date."""
+    import calendar
+    from collections import defaultdict
+    
+    # Get month and year from query params, default to current
+    today = date.today()
+    try:
+        year = int(request.GET.get('year', today.year))
+        month = int(request.GET.get('month', today.month))
+    except (ValueError, TypeError):
+        year = today.year
+        month = today.month
+    
+    # Ensure valid month/year
+    if month < 1:
+        month = 12
+        year -= 1
+    elif month > 12:
+        month = 1
+        year += 1
+    
+    # Calculate previous and next month
+    prev_month = month - 1 if month > 1 else 12
+    prev_year = year if month > 1 else year - 1
+    next_month = month + 1 if month < 12 else 1
+    next_year = year if month < 12 else year + 1
+    
+    # Get calendar for the month
+    cal = calendar.monthcalendar(year, month)
+    month_name = calendar.month_name[month]
+    
+    # Get all agendas for this month
+    first_day = date(year, month, 1)
+    if month == 12:
+        last_day = date(year + 1, 1, 1)
+    else:
+        last_day = date(year, month + 1, 1)
+    
+    agendas = Agenda.objects.filter(
+        date__gte=first_day,
+        date__lt=last_day
+    ).select_related('project').order_by('date', 'time')
+    
+    # Group agendas by date
+    agendas_by_date = defaultdict(list)
+    for agenda in agendas:
+        agendas_by_date[agenda.date.day].append(agenda)
+    
+    # Build calendar weeks with task data
+    calendar_weeks = []
+    for week in cal:
+        week_data = []
+        for day in week:
+            if day == 0:
+                week_data.append({'day': None, 'tasks': []})
+            else:
+                week_data.append({
+                    'day': day,
+                    'tasks': agendas_by_date.get(day, []),
+                    'is_today': (year == today.year and month == today.month and day == today.day)
+                })
+        calendar_weeks.append(week_data)
+    
+    context = {
+        'calendar_weeks': calendar_weeks,
+        'month': month,
+        'year': year,
+        'month_name': month_name,
+        'prev_month': prev_month,
+        'prev_year': prev_year,
+        'next_month': next_month,
+        'next_year': next_year,
+        'today': today,
+    }
+    
+    return render(request, 'agendas/calendar.html', context)
+
+
+def undone_tasks(request):
+    """View showing all undone tasks (pending and in-progress)."""
+    today = date.today()
+    
+    # Get all undone tasks (not completed)
+    all_undone = Agenda.objects.exclude(status='completed').select_related('project').order_by('date', 'time')
+    
+    # Categorize undone tasks
+    overdue = all_undone.filter(date__lt=today)
+    today_tasks = all_undone.filter(date=today)
+    upcoming = all_undone.filter(date__gt=today)
+    
+    # Calculate stats
+    total_undone = all_undone.count()
+    pending_count = all_undone.filter(status='pending').count()
+    in_progress_count = all_undone.filter(status='in-progress').count()
+    high_priority_count = all_undone.filter(priority='high').count()
+    
+    context = {
+        'all_undone': all_undone,
+        'overdue': overdue,
+        'today_tasks': today_tasks,
+        'upcoming': upcoming,
+        'total_undone': total_undone,
+        'pending_count': pending_count,
+        'in_progress_count': in_progress_count,
+        'high_priority_count': high_priority_count,
+        'today': today,
+    }
+    
+    return render(request, 'agendas/undone_tasks.html', context)
+
+
+def search(request):
+    """Global search across projects and tasks."""
+    query = request.GET.get('q', '').strip()
+    
+    projects = []
+    agendas = []
+    total_results = 0
+    
+    if query:
+        # Search in projects
+        projects = Project.objects.filter(
+            Q(name__icontains=query) | 
+            Q(description__icontains=query)
+        ).annotate(
+            task_count=Count('agendas')
+        )
+        
+        # Search in agendas/tasks
+        agendas = Agenda.objects.filter(
+            Q(title__icontains=query) |
+            Q(description__icontains=query) |
+            Q(project__name__icontains=query) |
+            Q(status__icontains=query) |
+            Q(priority__icontains=query) |
+            Q(date__icontains=query)
+        ).select_related('project').order_by('-created_at')
+        
+        total_results = projects.count() + agendas.count()
+    
+    context = {
+        'query': query,
+        'projects': projects,
+        'agendas': agendas,
+        'total_results': total_results,
+        'project_count': projects.count() if query else 0,
+        'agenda_count': agendas.count() if query else 0,
+    }
+    
+    return render(request, 'agendas/search.html', context)
+
+
+def about(request):
+    """About page with owner information."""
+    return render(request, 'agendas/about.html')
+
+
+
+
+# Collaborator Views
+from .forms import CollaboratorForm, AgendaForm
+
+def collaborator_list(request):
+    collaborators = Collaborator.objects.all().order_by('-created_at')
+    return render(request, 'agendas/collaborator_list.html', {'collaborators': collaborators})
+
+def collaborator_create(request):
+    if request.method == 'POST':
+        form = CollaboratorForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return redirect('collaborator_list')
+    else:
+        form = CollaboratorForm()
+    return render(request, 'agendas/collaborator_form.html', {'form': form, 'title': 'Add New Collaborator'})
+
+def collaborator_edit(request, pk):
+    collaborator = get_object_or_404(Collaborator, pk=pk)
+    if request.method == 'POST':
+        form = CollaboratorForm(request.POST, request.FILES, instance=collaborator)
+        if form.is_valid():
+            form.save()
+            return redirect('collaborator_list')
+    else:
+        form = CollaboratorForm(instance=collaborator)
+    return render(request, 'agendas/collaborator_form.html', {'form': form, 'title': 'Edit Collaborator'})
+
+def collaborator_delete(request, pk):
+    collaborator = get_object_or_404(Collaborator, pk=pk)
+    if request.method == 'POST':
+        collaborator.delete()
+        return redirect('collaborator_list')
+    return render(request, 'agendas/confirm_delete.html', {'object': collaborator, 'title': 'Delete Collaborator'}) 
+@csrf_exempt
+@require_POST
+def api_collaborator_create(request):
+    """AJAX endpoint to create a collaborator."""
+    try:
+        data = json.loads(request.body)
+        name = data.get('name')
+        whatsapp_number = data.get('whatsapp_number')
+        
+        if not name:
+            return JsonResponse({'success': False, 'error': 'Name is required'}, status=400)
+            
+        collaborator = Collaborator.objects.create(
+            name=name,
+            whatsapp_number=whatsapp_number
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'id': collaborator.id,
+            'name': collaborator.name,
+            'whatsapp_number': collaborator.whatsapp_number
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
