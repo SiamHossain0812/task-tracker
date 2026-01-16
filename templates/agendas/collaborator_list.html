@@ -1,81 +1,94 @@
 {% extends "base.html" %}
 
-{% block title %}Collaborators{% endblock %}
+{% block title %}Team & Approvals{% endblock %}
 
 {% block content %}
-<div class="animate-fade-in">
+<div class="space-y-8 animate-fade-in">
     <!-- Header -->
-    <div class="mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div class="flex items-center justify-between">
         <div>
-            <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight mb-1">
-                <i class="fas fa-users text-emerald-600 mr-2"></i>Collaborators
-            </h2>
-            <p class="text-gray-500 font-medium">Manage your team and partners</p>
+            <h1 class="text-2xl font-bold text-gray-800">Team Members</h1>
+            <p class="text-gray-500 mt-1">Manage collaborators and approvals</p>
         </div>
+        {% if user.is_superuser %} <!-- Only Admin sees Add Check -->
         <a href="{% url 'collaborator_create' %}"
-            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-sm transition-colors">
-            <i class="fas fa-plus mr-2"></i>Add Person
+            class="px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all flex items-center gap-2">
+            <i class="fas fa-plus"></i> Add Member
         </a>
+        {% endif %}
     </div>
 
-    <!-- Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {% for person in collaborators %}
-        <div
-            class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow group relative">
+    <!-- Pending Approvals (Admin Only) -->
+    {% if user.is_superuser and pending_users %}
+    <div class="bg-amber-50 rounded-3xl p-6 border border-amber-100">
+        <h2 class="text-lg font-bold text-amber-800 mb-4 flex items-center gap-2">
+            <i class="fas fa-user-clock"></i> Pending Approvals
+        </h2>
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {% for pending in pending_users %}
+            <div class="bg-white p-4 rounded-xl border border-amber-100 shadow-sm flex items-center justify-between">
+                <div>
+                    <div class="font-bold text-gray-800">{{ pending.first_name }}</div>
+                    <div class="text-xs text-gray-500">{{ pending.username }}</div>
+                </div>
+                <form method="POST" action="{% url 'approve_user' pending.pk %}">
+                    {% csrf_token %}
+                    <button type="submit"
+                        class="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors">
+                        Approve
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Collaborators List -->
+    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {% for collaborator in collaborators %}
+        <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+            <div class="flex items-center gap-4 mb-4">
+                <div
+                    class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-lg">
+                    {% if collaborator.image %}
+                    <img src="{{ collaborator.image.url }}" class="w-full h-full rounded-full object-cover">
+                    {% else %}
+                    {{ collaborator.name|make_list|first }}
+                    {% endif %}
+                </div>
+                <div>
+                    <h3 class="font-bold text-gray-800">{{ collaborator.name }}</h3>
+                    <div class="text-xs text-gray-400">{{ collaborator.institute|default:"Collaborator" }}</div>
+                </div>
+            </div>
+
+            <div class="space-y-2 text-sm text-gray-500">
+                {% if collaborator.whatsapp_number %}
+                <div class="flex items-center gap-2">
+                    <i class="fab fa-whatsapp text-emerald-500"></i> {{ collaborator.whatsapp_number }}
+                </div>
+                {% endif %}
+                {% if collaborator.email %}
+                <div class="flex items-center gap-2">
+                    <i class="far fa-envelope text-gray-400"></i> {{ collaborator.email }}
+                </div>
+                {% endif %}
+            </div>
 
             <!-- Actions -->
-            <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                <a href="{% url 'collaborator_edit' person.pk %}"
-                    class="w-8 h-8 rounded-full bg-white text-gray-400 hover:text-emerald-600 shadow flex items-center justify-center transition-colors">
-                    <i class="fas fa-pen text-xs"></i>
-                </a>
-                <a href="{% url 'collaborator_delete' person.pk %}"
-                    class="w-8 h-8 rounded-full bg-white text-gray-400 hover:text-red-600 shadow flex items-center justify-center transition-colors">
-                    <i class="fas fa-trash text-xs"></i>
-                </a>
+            {% if user.is_superuser %}
+            <div class="mt-6 pt-4 border-t border-gray-50 flex justify-end gap-2">
+                <a href="{% url 'collaborator_edit' collaborator.pk %}"
+                    class="text-gray-400 hover:text-emerald-600 p-2"><i class="fas fa-pen"></i></a>
+                <a href="{% url 'collaborator_delete' collaborator.pk %}"
+                    class="text-gray-400 hover:text-red-500 p-2"><i class="fas fa-trash"></i></a>
             </div>
-
-            <div class="p-6 text-center">
-                <div
-                    class="w-24 h-24 mx-auto mb-4 rounded-full border-2 border-emerald-100 overflow-hidden bg-gray-50 flex items-center justify-center">
-                    {% if person.image %}
-                    <img src="{{ person.image.url }}" alt="{{ person.name }}" class="w-full h-full object-cover">
-                    {% else %}
-                    <i class="fas fa-user text-3xl text-gray-300"></i>
-                    {% endif %}
-                </div>
-
-                <h3 class="text-lg font-bold text-gray-900 mb-1">{{ person.name }}</h3>
-                <p class="text-sm text-gray-500 mb-4">{{ person.institute|default:'' }}</p>
-
-                <div class="space-y-2 text-left bg-gray-50 p-4 rounded-lg">
-                    {% if person.email %}
-                    <div class="flex items-start gap-2 text-sm text-gray-600">
-                        <i class="fas fa-envelope text-gray-400 mt-1 w-4"></i>
-                        <span class="truncate">{{ person.email }}</span>
-                    </div>
-                    {% endif %}
-                    {% if person.whatsapp_number %}
-                    <div class="flex items-start gap-2 text-sm text-gray-600">
-                        <i class="fab fa-whatsapp text-emerald-500 mt-1 w-4"></i>
-                        <span>{{ person.whatsapp_number }}</span>
-                    </div>
-                    {% endif %}
-                    {% if person.address %}
-                    <div class="flex items-start gap-2 text-sm text-gray-600">
-                        <i class="fas fa-map-marker-alt text-gray-400 mt-1 w-4"></i>
-                        <span class="line-clamp-2">{{ person.address }}</span>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
+            {% endif %}
         </div>
         {% empty %}
-        <div
-            class="col-span-full py-12 text-center text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-            <i class="fas fa-user-friends text-4xl text-gray-300 mb-3"></i>
-            <p>No collaborators yet. Add someone to get started!</p>
+        <div class="col-span-full py-12 text-center text-gray-400">
+            No collaborators found.
         </div>
         {% endfor %}
     </div>

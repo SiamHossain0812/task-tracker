@@ -3,288 +3,269 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="lg:flex lg:gap-8 animate-fade-in">
-    <!-- Sidebar -->
-    <aside class="hidden lg:block w-72 shrink-0 animate-slide-up delay-100">
-        <div class="card p-6 border border-gray-100 bg-white sticky top-24 rounded-lg shadow-sm">
-            <div class="mb-6">
-                <h2 class="text-xl font-bold text-emerald-700 flex items-center gap-3 tracking-tight">
-                    <span class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center"><i
-                            class="fas fa-check-double text-emerald-600"></i></span>
-                    Dr. Niaz's Agenda Tracker
-                </h2>
-            </div>
+<div class="h-full flex flex-col">
 
+    <!-- Header -->
+    <div class="flex items-end justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-1">Dashboard</h1>
+            <p class="text-gray-400 font-medium">
+                Plan, prioritize, and accomplish your tasks with ease.
+            </p>
+        </div>
+
+        <div class="flex gap-3">
             <a href="{% url 'agenda_create_global' %}"
-                class="block mb-6 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg text-center transition-colors">
-                <i class="fas fa-plus mr-2 text-emerald-100"></i> New Task
+               class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition-all flex items-center gap-2">
+                <i class="fas fa-plus"></i>
+                <span>Add Task</span>
             </a>
 
-            <div class="space-y-3 mb-8">
-                <div class="text-xs font-bold text-gray-400 uppercase tracking-wider px-3">Filters</div>
-                <a href="{% url 'dashboard' %}"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 font-medium transition-colors border border-emerald-100 ring-1 ring-emerald-100"><i
-                        class="fas fa-inbox w-5 text-emerald-600"></i> All Tasks</a>
-                <a href="?filter=today"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-emerald-700 font-medium transition-all group {% if filter_type == 'today' %}bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100{% endif %}">
-                    <span class="w-5 flex justify-center group-hover:scale-110 transition-transform"><i
-                            class="far fa-calendar"></i></span> Today
-                </a>
-                <a href="?filter=important"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-emerald-700 font-medium transition-all group {% if filter_type == 'important' %}bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100{% endif %}">
-                    <span class="w-5 flex justify-center group-hover:scale-110 transition-transform"><i
-                            class="fas fa-star"></i></span> Important
-                </a>
+            <a href="{% url 'project_create' %}"
+               class="px-5 py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-xl font-semibold shadow-sm border border-gray-200 transition-all flex items-center gap-2">
+                <i class="fas fa-folder-plus"></i>
+                <span>Add Project</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+
+        <!-- Total Projects -->
+        <div class="bg-gradient-to-br from-[#104a37] to-[#047857] rounded-3xl p-6 text-white relative overflow-hidden shadow-xl shadow-emerald-100 h-48 flex flex-col justify-between group">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full blur-2xl -mr-10 -mt-10"></div>
+
+            <div class="flex justify-between items-start relative z-10">
+                <span class="font-medium text-emerald-100">Total Projects</span>
+                <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all">
+                    <i class="fas fa-folder text-xs"></i>
+                </div>
             </div>
 
-            <div class="mt-6">
-                <div class="flex items-center justify-between mb-3 px-3">
-                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">Projects</div>
-                    <a href="{% url 'project_create' %}"
-                        class="w-6 h-6 rounded-md flex items-center justify-center text-emerald-600 hover:bg-emerald-50 transition-colors"><i
-                            class="fas fa-plus text-xs"></i></a>
-                </div>
-                <div class="space-y-1">
-                    {% for project in project_list_sidebar|default:projects %}
-                    <a href="#"
-                        class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 text-sm transition-colors group">
-                        <span
-                            class="w-2.5 h-2.5 rounded-full bg-{{ project.color }}-500 ring-2 ring-white shadow-sm group-hover:scale-110 transition-transform"></span>
-                        {{ project.name }}
-                    </a>
-                    {% empty %}
-                    <p class="px-3 text-xs text-gray-400 italic">No projects yet</p>
-                    {% endfor %}
+            <div class="relative z-10">
+                <div class="text-5xl font-bold mb-3">{{ total_projects }}</div>
+                <div class="flex items-center gap-2 text-xs font-medium text-emerald-200/80 bg-emerald-900/30 w-fit px-2 py-1 rounded-lg">
+                    Active Projects
                 </div>
             </div>
         </div>
-    </aside>
 
-    <!-- Main Content -->
-    <section class="flex-1 min-w-0">
-        <!-- Header & Stats -->
-        <div class="mb-8 flex items-center justify-between gap-4 animate-slide-up delay-200">
+        <!-- Completed Tasks -->
+        <div class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-md transition-shadow h-48 flex flex-col justify-between border border-gray-100 group">
+            <div class="flex justify-between items-start">
+                <span class="font-bold text-gray-700">Completed Tasks</span>
+                <div class="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 group-hover:border-emerald-500 group-hover:text-emerald-500 transition-colors">
+                    <i class="fas fa-check text-xs"></i>
+                </div>
+            </div>
+
             <div>
-                <h2 class="text-2xl font-bold text-gray-900 tracking-tight mb-1">Good {{ greeting }}</h2>
-                <p class="text-gray-500 text-sm">Here's your agenda for today.</p>
-            </div>
-            <div class="flex items-center">
-                <div class="inline-flex flex-col items-end bg-white/60 backdrop-blur px-3 py-2 rounded-md shadow-sm">
-                    <div id="live-time"
-                        class="text-2xl sm:text-3xl font-semibold text-emerald-600 tracking-tight leading-none tabular-nums">
-                        --:--</div>
-                    <div id="live-date"
-                        class="text-xs text-emerald-800/70 font-semibold uppercase tracking-widest bg-emerald-50 px-2 py-1 rounded-md mt-1">
-                        --</div>
+                <div class="text-5xl font-bold text-gray-800 mb-3">{{ total_completed }}</div>
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-400 w-fit px-2 py-1 rounded-lg bg-gray-50 border border-gray-100">
+                    <div class="w-4 h-4 rounded bg-emerald-100 flex items-center justify-center text-[10px] text-emerald-600">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    Tasks Finished
                 </div>
             </div>
         </div>
 
-        {% if filter_type %}
-        <!-- Filtered View -->
-        <div class="animate-slide-up delay-300">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    {% if filter_type == 'today' %}
-                    <i class="far fa-calendar text-emerald-500"></i> Today's Tasks
-                    {% elif filter_type == 'important' %}
-                    <i class="fas fa-star text-amber-500"></i> Important Tasks
-                    {% endif %}
-                </h3>
-                <a href="{% url 'dashboard' %}" class="text-sm text-gray-500 hover:text-emerald-600">Clear Filter</a>
+        <!-- In Progress -->
+        <div class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-md transition-shadow h-48 flex flex-col justify-between border border-gray-100 group">
+            <div class="flex justify-between items-start">
+                <span class="font-bold text-gray-700">In Progress</span>
+                <div class="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 group-hover:border-blue-500 group-hover:text-blue-500 transition-colors">
+                    <i class="fas fa-spinner text-xs group-hover:animate-spin"></i>
+                </div>
             </div>
 
-            <div class="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr
-                                class="bg-gray-50/50 border-b border-gray-100/50 text-xs uppercase tracking-wider text-gray-400">
-                                <th class="px-6 py-4 font-bold w-12"></th>
-                                <th class="px-6 py-4 font-bold">Task</th>
-                                <th class="px-6 py-4 font-bold">Project</th>
-                                <th class="px-6 py-4 font-bold">Due</th>
-                                <th class="px-6 py-4 font-bold">Status</th>
-                                <th class="px-6 py-4 font-bold w-12"></th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100/50">
-                            {% for agenda in filtered_agendas %}
-                            <tr class="group hover:bg-emerald-50/30 transition-colors">
-                                <td class="px-6 py-4">
-                                    <div
-                                        class="w-2 h-2 rounded-full {% if agenda.priority == 'high' %}bg-red-500{% elif agenda.priority == 'medium' %}bg-amber-500{% else %}bg-emerald-500{% endif %}">
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <div class="font-semibold text-gray-900">{{ agenda.title }}</div>
-                                    {% if agenda.description %}
-                                    <div class="text-xs text-gray-500 truncate max-w-xs">{{ agenda.description }}</div>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4">
-                                    {% if agenda.project %}
-                                    <span
-                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-{{ agenda.project.color }}-50 text-{{ agenda.project.color }}-700">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-{{ agenda.project.color }}-500"></span>
-                                        {{ agenda.project.name }}
-                                    </span>
-                                    {% else %}
-                                    <span class="text-xs text-gray-400">Inbox</span>
-                                    {% endif %}
-
-                                    <!-- Resources -->
-                                    {% if agenda.external_link or agenda.attachment or agenda.collaborators %}
-                                    <div class="flex items-center gap-1.5 mt-2 flex-wrap">
-                                        {% if agenda.external_link %}
-                                        <a href="{{ agenda.external_link }}" target="_blank"
-                                            class="text-gray-400 hover:text-indigo-600 transition-colors"
-                                            title="Link"><i class="fas fa-link text-xs"></i></a>
-                                        {% endif %}
-                                        {% if agenda.attachment %}
-                                        <a href="{{ agenda.attachment.url }}" target="_blank"
-                                            class="text-gray-400 hover:text-gray-700 transition-colors"
-                                            title="Attachment"><i class="fas fa-paperclip text-xs"></i></a>
-                                        {% endif %}
-                                        {% if agenda.collaborators.all %}
-                                        <div class="flex items-center -space-x-1.5 ml-1">
-                                            {% for collaborator in agenda.collaborators.all %}
-                                            {% if collaborator.image %}
-                                            <img src="{{ collaborator.image.url }}"
-                                                class="w-5 h-5 rounded-full object-cover border border-white ring-1 ring-gray-100"
-                                                title="{{ collaborator.name }}">
-                                            {% else %}
-                                            <div class="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center border border-white ring-1 ring-gray-100"
-                                                title="{{ collaborator.name }}">
-                                                <span class="text-[8px] font-bold text-emerald-700">{{
-                                                    collaborator.name|slice:":1" }}</span>
-                                            </div>
-                                            {% endif %}
-                                            {% endfor %}
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4">
-                                    <div class="flex flex-col">
-                                        <span class="text-sm font-medium text-gray-700">
-                                            {% if agenda.date == today %}
-                                            <span class="text-emerald-600">Today</span>
-                                            {% else %}
-                                            {{ agenda.date|date:"M d" }}
-                                            {% endif %}
-                                        </span>
-                                        {% if agenda.time %}
-                                        <span class="text-xs text-gray-400">{{ agenda.time|time:"H:i" }}</span>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <form method="POST" action="{% url 'agenda_toggle' agenda.pk %}"
-                                        class="toggle-form">
-                                        {% csrf_token %}
-                                        <button type="submit" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider transition-all 
-                                            {% if agenda.status == 'completed' %}bg-emerald-100 text-emerald-700 hover:bg-emerald-200
-                                            {% elif agenda.status == 'in-progress' %}bg-blue-100 text-blue-700 hover:bg-blue-200
-                                            {% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
-                                            {{ agenda.get_status_display }}
-                                        </button>
-                                    </form>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <div
-                                        class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <a href="{% url 'agenda_edit' agenda.pk %}"
-                                            class="p-2 text-gray-400 hover:text-emerald-600 transition-colors"><i
-                                                class="fas fa-pen"></i></a>
-                                        <a href="{% url 'agenda_delete' agenda.pk %}"
-                                            class="p-2 text-gray-400 hover:text-red-500 transition-colors"><i
-                                                class="fas fa-trash"></i></a>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="6" class="px-6 py-12 text-center text-gray-400 italic">
-                                    No tasks found for this filter.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+            <div>
+                <div class="text-5xl font-bold text-gray-800 mb-3">{{ total_progress }}</div>
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-400 w-fit px-2 py-1 rounded-lg bg-gray-50 border border-gray-100">
+                    <div class="w-4 h-4 rounded bg-blue-100 flex items-center justify-center text-[10px] text-blue-600">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    Happening Now
                 </div>
             </div>
         </div>
-        {% else %}
-        <!-- Stats Cards -->
-        <!-- Stats Cards -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                <div class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Total Tasks</div>
-                <div class="flex items-center justify-between">
-                    <span class="text-3xl font-bold text-gray-900">{{ agendas.count }}</span>
-                    <i class="fas fa-tasks text-gray-300 text-lg"></i>
+
+        <!-- Pending Tasks -->
+        <div class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-md transition-shadow h-48 flex flex-col justify-between border border-gray-100 group">
+            <div class="flex justify-between items-start">
+                <span class="font-bold text-gray-700">Pending Tasks</span>
+                <div class="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 group-hover:border-amber-500 group-hover:text-amber-500 transition-colors">
+                    <i class="fas fa-hourglass-start text-xs"></i>
                 </div>
             </div>
-            <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                <div class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Pending</div>
-                <div class="flex items-center justify-between">
-                    <span class="text-3xl font-bold text-emerald-600">{{ total_pending }}</span>
-                    <i class="far fa-clock text-gray-300 text-lg"></i>
+
+            <div>
+                <div class="text-5xl font-bold text-gray-800 mb-3">{{ total_pending }}</div>
+                <div class="flex items-center gap-2 text-xs font-medium text-gray-400 w-fit px-2 py-1 rounded-lg bg-gray-50 border border-gray-100">
+                    <div class="w-4 h-4 rounded bg-amber-100 flex items-center justify-center text-[10px] text-amber-600">
+                        <i class="fas fa-exclamation"></i>
+                    </div>
+                    To Do
                 </div>
             </div>
-            <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                <div class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Completed</div>
-                <div class="flex items-center justify-between">
-                    <span class="text-3xl font-bold text-gray-900">{{ total_completed }}</span>
-                    <i class="fas fa-check-circle text-gray-300 text-lg"></i>
-                </div>
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 h-full">
+
+        <!-- Projects -->
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col h-96 lg:h-auto">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="font-bold text-gray-800">Projects</h3>
+                <a href="{% url 'project_create' %}"
+                   class="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-500 hover:bg-gray-50 transition-colors flex items-center gap-1">
+                    <i class="fas fa-plus"></i> New
+                </a>
             </div>
-            <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                <div class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Progress</div>
-                <div class="flex items-center justify-between">
-                    <span class="text-3xl font-bold text-gray-900">{{ overall_progress }}%</span>
-                    <div class="w-8 h-8 rounded-full border-2 border-emerald-500 flex items-center justify-center">
-                        <span class="block w-2 h-2 rounded-full bg-emerald-500"></span>
+
+            <div class="space-y-4 flex-1 overflow-y-auto pr-1">
+                {% for project in projects %}
+                <div class="flex items-start gap-3 group cursor-pointer hover:bg-gray-50 p-2 rounded-xl transition-colors">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                        <i class="fas fa-folder text-sm"></i>
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-sm font-bold text-gray-800 group-hover:text-emerald-600 transition-colors truncate">
+                            {{ project.name }}
+                        </h4>
+                        {% if project.description %}
+                        <p class="text-[10px] text-gray-400 font-medium truncate">
+                            {{ project.description }}
+                        </p>
+                        {% endif %}
+                    </div>
+
+                    <div class="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-[10px] font-bold text-gray-500">
+                        {{ project.agendas.count }}
                     </div>
                 </div>
+                {% empty %}
+                <p class="text-sm text-gray-400 text-center py-8">
+                    No projects yet.
+                </p>
+                {% endfor %}
             </div>
         </div>
 
-        <!-- Agenda Table View -->
-        {% include "agendas/agenda_table.html" %}
-        {% endif %}
-    </section>
+        <!-- Upcoming + Today -->
+        <div class="flex flex-col gap-6">
+
+            <!-- Upcoming Task -->
+            <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                        <i class="far fa-bell"></i>
+                    </div>
+                    <h3 class="font-bold text-gray-800">Next Up</h3>
+                </div>
+
+                {% if upcoming_tasks.first %}
+                <div class="flex-1 flex flex-col justify-between">
+                    <div>
+                        <h4 class="text-xl font-bold text-gray-800 mb-2 line-clamp-2">
+                            {{ upcoming_tasks.first.title }}
+                        </h4>
+
+                        <p class="text-sm text-gray-500 font-medium mb-1">
+                            <i class="far fa-clock mr-1"></i>
+                            {% if upcoming_tasks.first.time %}
+                                {{ upcoming_tasks.first.time|time:"h:i A" }}
+                            {% else %}
+                                {{ upcoming_tasks.first.date|date:"F j" }}
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <a href="{% url 'agenda_edit' upcoming_tasks.first.pk %}"
+                       class="mt-6 w-full py-3 bg-[#104a37] hover:bg-[#063f2e] text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 group">
+                        View Details
+                        <i class="fas fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
+                    </a>
+                </div>
+                {% else %}
+                <div class="flex-1 flex flex-col items-center justify-center text-center py-8">
+                    <div class="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 mb-3">
+                        <i class="fas fa-coffee text-2xl"></i>
+                    </div>
+                    <p class="text-gray-500 font-medium">No upcoming tasks</p>
+                    <p class="text-xs text-gray-400">You're all caught up!</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Today -->
+            <div class="bg-indigo-600 rounded-3xl p-6 shadow-lg shadow-indigo-200 text-white relative overflow-hidden">
+                <h3 class="font-bold text-indigo-100 mb-2">Today's Focus</h3>
+                <div class="text-4xl font-bold mb-1">{{ today_tasks.count }}</div>
+                <p class="text-sm text-indigo-200">Tasks scheduled for today</p>
+            </div>
+        </div>
+
+        <!-- Progress -->
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col h-full">
+    <h3 class="font-bold text-gray-800 mb-4">Overall Completion</h3>
+
+    <div class="flex-1 flex items-center justify-center">
+        <div class="relative w-72 h-44">
+
+            <!-- Gauge SVG -->
+            <svg viewBox="0 0 200 120" class="w-full h-full">
+                <!-- Background arc -->
+                <path
+                    d="M 20 100 A 80 80 0 0 1 180 100"
+                    fill="none"
+                    stroke="#e5e7eb"
+                    stroke-width="18"
+                    stroke-linecap="round"
+                />
+
+                <!-- Progress arc -->
+                <!-- Total length ≈ 251 -->
+                <path
+                    d="M 20 100 A 80 80 0 0 1 180 100"
+                    fill="none"
+                    stroke="#059669"
+                    stroke-width="18"
+                    stroke-linecap="round"
+                    stroke-dasharray="251"
+                    style="stroke-dashoffset: calc(251 - (251 * {{ overall_progress|default:0 }} / 100));"
+                    class="transition-all duration-1000 ease-out"
+                />
+            </svg>
+
+            <!-- Center Text -->
+            <div class="absolute inset-0 flex flex-col items-center justify-center pt-8 pointer-events-none">
+                <span class="text-4xl font-extrabold text-gray-800 leading-none">
+                    {{ overall_progress|default:0 }}%
+                </span>
+                <span class="text-[11px] font-bold tracking-widest text-gray-400 mt-1">
+                    COMPLETION
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="flex justify-center gap-6 mt-2">
+        <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-emerald-600"></span>
+            <span class="text-xs font-bold text-gray-500">Done</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-gray-200"></span>
+            <span class="text-xs font-bold text-gray-500">Remaining</span>
+        </div>
+    </div>
 </div>
 
-{% block extra_js %}
-<script>
-    // Toggle form submission (mark as complete/pending)
-    document.querySelectorAll('.toggle-form').forEach(form => {
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            fetch(this.action, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value }
-            }).then(() => window.location.reload());
-        });
-    });
-
-    function updateTime() {
-        const now = new Date();
-        const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        const dateString = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-
-        const timeEl = document.getElementById('live-time');
-        const dateEl = document.getElementById('live-date');
-        if (timeEl) timeEl.textContent = timeString;
-        if (dateEl) dateEl.textContent = dateString;
-    }
-
-    updateTime();
-    setInterval(updateTime, 1000);
-</script>
-{% endblock %}
-
+    </div>
+</div>
 {% endblock %}

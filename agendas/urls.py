@@ -10,6 +10,7 @@ urlpatterns = [
     
     # Project URLs
     path('project/create/', views.project_create, name='project_create'),
+    path('project/analytics/', views.project_analytics, name='project_analytics'),
     path('project/<int:pk>/edit/', views.project_edit, name='project_edit'),
     path('project/<int:pk>/delete/', views.project_delete, name='project_delete'),
     
@@ -22,6 +23,7 @@ urlpatterns = [
     
     # Collaborator URLs
     path('collaborators/', views.collaborator_list, name='collaborator_list'),
+    path('user/<int:pk>/approve/', views.approve_user, name='approve_user'),
     path('collaborators/create/', views.collaborator_create, name='collaborator_create'),
     path('collaborators/api/create/', views.api_collaborator_create, name='api_collaborator_create'),
     path('collaborators/<int:pk>/edit/', views.collaborator_edit, name='collaborator_edit'),

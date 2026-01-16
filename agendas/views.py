@@ -1,6 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q, Count
 from django.http import JsonResponse, HttpResponse
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 import json
@@ -9,13 +11,18 @@ from .models import Agenda, Project, Collaborator
 from .utils import calculate_status
 
 
+@login_required
 def dashboard(request):
     """Main dashboard view showing all agendas."""
     today = date.today()
     filter_type = request.GET.get('filter')
     
     # Fetch all agendas/tasks
-    all_agendas = Agenda.objects.select_related('project').all().order_by('date', 'time')
+    if request.user.is_superuser:
+        all_agendas = Agenda.objects.select_related('project').all().order_by('date', 'time')
+    else:
+        # Filter for agendas where the logged-in user is a collaborator
+        all_agendas = Agenda.objects.filter(collaborators__user=request.user).select_related('project').order_by('date', 'time')
     
     # Apply filters
     filtered_agendas = None
@@ -68,6 +75,7 @@ def dashboard(request):
     return render(request, 'agendas/dashboard.html', context)
 
 
+@login_required
 def project_create(request):
     """Create a new project."""
     if request.method == 'POST':
@@ -88,6 +96,7 @@ def project_create(request):
     })
 
 
+@login_required
 def project_edit(request, pk):
     """Edit an existing project."""
     project = get_object_or_404(Project, pk=pk)
@@ -121,8 +130,15 @@ def project_delete(request, pk):
 
 
 
+@login_required
+@login_required
 def agenda_create(request, project_pk=None):
     """Create a new agenda. project_pk is optional."""
+    # Restrict creation to Superusers only
+    if not request.user.is_superuser:
+        messages.error(request, "Permission denied. Only Dr. Niaz can create tasks.")
+        return redirect('undone_tasks')
+
     initial_data = {}
     project = None
     if project_pk:
@@ -167,8 +183,14 @@ def agenda_create(request, project_pk=None):
     })
 
 
+@login_required
 def agenda_edit(request, pk):
     """Edit an existing agenda."""
+    # Restrict to Superusers
+    if not request.user.is_superuser:
+        messages.error(request, "Permission denied.")
+        return redirect('undone_tasks')
+
     agenda = get_object_or_404(Agenda, pk=pk)
     
     if request.method == 'POST':
@@ -207,8 +229,14 @@ def agenda_edit(request, pk):
     })
 
 
+@login_required
 def agenda_delete(request, pk):
     """Delete an agenda."""
+    # Restrict to Superusers
+    if not request.user.is_superuser:
+        messages.error(request, "Permission denied.")
+        return redirect('undone_tasks')
+
     agenda = get_object_or_404(Agenda, pk=pk)
     if request.method == 'POST':
         agenda.delete()
@@ -219,24 +247,41 @@ def agenda_delete(request, pk):
     })
 
 
+@login_required
 @require_POST
 def agenda_toggle_status(request, pk):
     """Toggle agenda status via AJAX."""
+    # Restrict to Superusers
+    if not request.user.is_superuser:
+        return JsonResponse({
+            'success': False,
+            'error': 'Permission denied. Only Dr. Niaz can update status.'
+        }, status=403)
+
     agenda = get_object_or_404(Agenda, pk=pk)
     
     status_order = ['pending', 'in-progress', 'completed']
-    current_index = status_order.index(agenda.status)
-    new_status = status_order[(current_index + 1) % len(status_order)]
     
-    agenda.status = new_status
-    agenda.save()
-    
-    return JsonResponse({
-        'status': new_status,
-        'success': True
-    })
+    try:
+        current_index = status_order.index(agenda.status)
+        new_status = status_order[(current_index + 1) % len(status_order)]
+        
+        agenda.status = new_status
+        agenda.save()
+        
+        return JsonResponse({
+            'status': new_status,
+            'status_display': agenda.get_status_display(),
+            'success': True
+        })
+    except ValueError:
+        return JsonResponse({
+            'success': False,
+            'error': f'Invalid status: {agenda.status}'
+        }, status=400)
 
 
+@login_required
 def calendar_view(request):
     """Calendar view showing tasks by date."""
     import calendar
@@ -316,6 +361,7 @@ def calendar_view(request):
     return render(request, 'agendas/calendar.html', context)
 
 
+@login_required
 def undone_tasks(request):
     """View showing all undone tasks (pending and in-progress)."""
     today = date.today()
@@ -400,10 +446,40 @@ def about(request):
 # Collaborator Views
 from .forms import CollaboratorForm, AgendaForm
 
+@login_required
 def collaborator_list(request):
     collaborators = Collaborator.objects.all().order_by('-created_at')
-    return render(request, 'agendas/collaborator_list.html', {'collaborators': collaborators})
+    
+    # Check for pending users (active=False) that linked to a collaborator profile?
+    # Actually, we just need users where is_active=False.
+    # But for display, maybe we want to see if they are linked. 
+    # Let's just list all inactive users for approval.
+    from django.contrib.auth.models import User
+    
+    pending_users = []
+    if request.user.is_superuser:
+        pending_users = User.objects.filter(is_active=False).order_by('-date_joined')
+        
+    return render(request, 'agendas/collaborator_list.html', {
+        'collaborators': collaborators,
+        'pending_users': pending_users
+    })
 
+@login_required
+def approve_user(request, pk):
+    """Approve a pending user."""
+    if not request.user.is_superuser:
+        messages.error(request, "Permission denied.")
+        return redirect('dashboard')
+        
+    from django.contrib.auth.models import User
+    user = get_object_or_404(User, pk=pk)
+    user.is_active = True
+    user.save()
+    messages.success(request, f"Approved access for {user.first_name}")
+    return redirect('collaborator_list')
+
+@login_required
 def collaborator_create(request):
     if request.method == 'POST':
         form = CollaboratorForm(request.POST, request.FILES)
@@ -414,6 +490,7 @@ def collaborator_create(request):
         form = CollaboratorForm()
     return render(request, 'agendas/collaborator_form.html', {'form': form, 'title': 'Add New Collaborator'})
 
+@login_required
 def collaborator_edit(request, pk):
     collaborator = get_object_or_404(Collaborator, pk=pk)
     if request.method == 'POST':
@@ -425,6 +502,7 @@ def collaborator_edit(request, pk):
         form = CollaboratorForm(instance=collaborator)
     return render(request, 'agendas/collaborator_form.html', {'form': form, 'title': 'Edit Collaborator'})
 
+@login_required
 def collaborator_delete(request, pk):
     collaborator = get_object_or_404(Collaborator, pk=pk)
     if request.method == 'POST':
@@ -456,3 +534,49 @@ def api_collaborator_create(request):
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+def project_analytics(request):
+    """View for detailed project analytics."""
+    projects = Project.objects.all().prefetch_related('agendas', 'agendas__collaborators')
+    projects_data = []
+    today = date.today()
+    
+    for project in projects:
+        # Calculate stats
+        total_tasks = project.agendas.count()
+        completed_count = project.agendas.filter(status='completed').count()
+        pending_count = project.agendas.filter(status='pending').count()
+        overdue_count = project.agendas.filter(date__lt=today).exclude(status='completed').count()
+        
+        # Get unique collaborators
+        collaborators = set()
+        for agenda in project.agendas.all():
+            for collaborator in agenda.collaborators.all():
+                collaborators.add(collaborator)
+                
+        # Determine performance label
+        if total_tasks > 0:
+            overdue_ratio = overdue_count / total_tasks
+            if overdue_ratio > 0.3:
+                performance = 'Low'
+            elif overdue_ratio > 0.1:
+                performance = 'Medium'
+            else:
+                performance = 'High'
+        else:
+            performance = 'High'  # Default for new projects
+
+        projects_data.append({
+            'project': project,
+            'total_tasks': total_tasks,
+            'completed_count': completed_count,
+            'pending_count': pending_count,
+            'overdue_count': overdue_count,
+            'collaborators': list(collaborators),
+            'performance': performance
+        })
+    
+    return render(request, 'agendas/project_analytics.html', {
+        'projects_data': projects_data
+    })

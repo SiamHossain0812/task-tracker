@@ -101,3 +101,6 @@ MEDIA_ROOT = BASE_DIR / 'media'
 TWILIO_ACCOUNT_SID = 'ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'  # Replace with your Account SID
 TWILIO_AUTH_TOKEN = 'your_auth_token_here'              # Replace with your Auth Token
 TWILIO_WHATSAPP_NUMBER = 'whatsapp:+14155238886'       # Replace with your Twilio WhatsApp number
+
+AUTH_USER_MODEL = 'auth.User'
+LOGIN_URL = 'login'
