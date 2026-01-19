@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Test Rendering{% endblock %}
+{% block content %}
+<div class="p-10">
+    <h1 class="text-2xl font-bold">Rendering Test</h1>
+    <p>Pending: {{ pending_count }}</p>
+    <p>Completed Today: {{ completed_today_count }}</p>
+    <ul>
+        {% for task in completed_today %}
+        <li>{{ task.title }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

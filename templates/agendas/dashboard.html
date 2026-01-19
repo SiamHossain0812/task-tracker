@@ -6,266 +6,306 @@
 <div class="h-full flex flex-col">
 
     <!-- Header -->
-    <div class="flex items-end justify-between mb-8">
+    <div class="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-8">
         <div>
-            <h1 class="text-3xl font-bold text-gray-800 mb-1">Dashboard</h1>
-            <p class="text-gray-400 font-medium">
-                Plan, prioritize, and accomplish your tasks with ease.
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">Dashboard</h1>
+            <p class="text-sm sm:text-base text-gray-400 font-medium">
+                Plan, prioritize, and accomplish your tasks.
             </p>
         </div>
 
-        <div class="flex gap-3">
+        <div class="flex gap-2 w-full sm:w-auto">
             <a href="{% url 'agenda_create_global' %}"
-               class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition-all flex items-center gap-2">
+                class="flex-1 sm:flex-none px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2 text-sm">
                 <i class="fas fa-plus"></i>
-                <span>Add Task</span>
+                <span>Task</span>
             </a>
 
             <a href="{% url 'project_create' %}"
-               class="px-5 py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-xl font-semibold shadow-sm border border-gray-200 transition-all flex items-center gap-2">
+                class="flex-1 sm:flex-none px-4 py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-xl font-bold shadow-sm border border-gray-200 transition-all flex items-center justify-center gap-2 text-sm">
                 <i class="fas fa-folder-plus"></i>
-                <span>Add Project</span>
+                <span>Project</span>
             </a>
         </div>
     </div>
 
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
 
         <!-- Total Projects -->
-        <div class="bg-gradient-to-br from-[#104a37] to-[#047857] rounded-3xl p-6 text-white relative overflow-hidden shadow-xl shadow-emerald-100 h-48 flex flex-col justify-between group">
-            <div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full blur-2xl -mr-10 -mt-10"></div>
-
+        <div
+            class="bg-gradient-to-br from-[#104a37] to-[#047857] rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-white relative overflow-hidden shadow-xl shadow-emerald-100 h-32 sm:h-48 flex flex-col justify-between group">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-white opacity-5 rounded-full blur-2xl -mr-8 -mt-8"></div>
             <div class="flex justify-between items-start relative z-10">
-                <span class="font-medium text-emerald-100">Total Projects</span>
-                <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all">
-                    <i class="fas fa-folder text-xs"></i>
+                <span class="text-xs sm:text-sm font-medium text-emerald-100">Projects</span>
+                <div
+                    class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                    <i class="fas fa-folder text-[10px] sm:text-xs"></i>
                 </div>
             </div>
-
             <div class="relative z-10">
-                <div class="text-5xl font-bold mb-3">{{ total_projects }}</div>
-                <div class="flex items-center gap-2 text-xs font-medium text-emerald-200/80 bg-emerald-900/30 w-fit px-2 py-1 rounded-lg">
-                    Active Projects
-                </div>
+                <div class="text-3xl sm:text-5xl font-bold mb-1 sm:mb-3">{{ total_projects }}</div>
+                <div class="text-[10px] font-medium text-emerald-200/80">Active</div>
             </div>
         </div>
 
         <!-- Completed Tasks -->
-        <div class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-md transition-shadow h-48 flex flex-col justify-between border border-gray-100 group">
+        <div
+            class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-gray-100 h-32 sm:h-48 flex flex-col justify-between group">
             <div class="flex justify-between items-start">
-                <span class="font-bold text-gray-700">Completed Tasks</span>
-                <div class="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 group-hover:border-emerald-500 group-hover:text-emerald-500 transition-colors">
-                    <i class="fas fa-check text-xs"></i>
+                <span class="text-xs sm:text-sm font-bold text-gray-700">Done</span>
+                <div
+                    class="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-gray-100 flex items-center justify-center text-emerald-500">
+                    <i class="fas fa-check text-[10px] sm:text-xs"></i>
                 </div>
             </div>
-
             <div>
-                <div class="text-5xl font-bold text-gray-800 mb-3">{{ total_completed }}</div>
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-400 w-fit px-2 py-1 rounded-lg bg-gray-50 border border-gray-100">
-                    <div class="w-4 h-4 rounded bg-emerald-100 flex items-center justify-center text-[10px] text-emerald-600">
-                        <i class="fas fa-check"></i>
-                    </div>
-                    Tasks Finished
-                </div>
+                <div class="text-3xl sm:text-5xl font-bold text-gray-800 mb-1 sm:mb-3">{{ total_completed }}</div>
+                <div class="text-[10px] font-medium text-gray-400">Tasks</div>
             </div>
         </div>
 
         <!-- In Progress -->
-        <div class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-md transition-shadow h-48 flex flex-col justify-between border border-gray-100 group">
+        <div
+            class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-gray-100 h-32 sm:h-48 flex flex-col justify-between group">
             <div class="flex justify-between items-start">
-                <span class="font-bold text-gray-700">In Progress</span>
-                <div class="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 group-hover:border-blue-500 group-hover:text-blue-500 transition-colors">
-                    <i class="fas fa-spinner text-xs group-hover:animate-spin"></i>
+                <span class="text-xs sm:text-sm font-bold text-gray-700">Active</span>
+                <div
+                    class="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-gray-100 flex items-center justify-center text-blue-500">
+                    <i class="fas fa-spinner text-[10px] sm:text-xs animate-spin-slow"></i>
                 </div>
             </div>
-
             <div>
-                <div class="text-5xl font-bold text-gray-800 mb-3">{{ total_progress }}</div>
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-400 w-fit px-2 py-1 rounded-lg bg-gray-50 border border-gray-100">
-                    <div class="w-4 h-4 rounded bg-blue-100 flex items-center justify-center text-[10px] text-blue-600">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                    Happening Now
-                </div>
+                <div class="text-3xl sm:text-5xl font-bold text-gray-800 mb-1 sm:mb-3">{{ total_progress }}</div>
+                <div class="text-[10px] font-medium text-gray-400">Current</div>
             </div>
         </div>
 
         <!-- Pending Tasks -->
-        <div class="bg-white rounded-3xl p-6 shadow-sm hover:shadow-md transition-shadow h-48 flex flex-col justify-between border border-gray-100 group">
+        <div
+            class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-gray-100 h-32 sm:h-48 flex flex-col justify-between group">
             <div class="flex justify-between items-start">
-                <span class="font-bold text-gray-700">Pending Tasks</span>
-                <div class="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 group-hover:border-amber-500 group-hover:text-amber-500 transition-colors">
-                    <i class="fas fa-hourglass-start text-xs"></i>
+                <span class="text-xs sm:text-sm font-bold text-gray-700">To Do</span>
+                <div
+                    class="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-gray-100 flex items-center justify-center text-amber-500">
+                    <i class="fas fa-hourglass-start text-[10px] sm:text-xs"></i>
                 </div>
             </div>
-
             <div>
-                <div class="text-5xl font-bold text-gray-800 mb-3">{{ total_pending }}</div>
-                <div class="flex items-center gap-2 text-xs font-medium text-gray-400 w-fit px-2 py-1 rounded-lg bg-gray-50 border border-gray-100">
-                    <div class="w-4 h-4 rounded bg-amber-100 flex items-center justify-center text-[10px] text-amber-600">
-                        <i class="fas fa-exclamation"></i>
-                    </div>
-                    To Do
-                </div>
+                <div class="text-3xl sm:text-5xl font-bold text-gray-800 mb-1 sm:mb-3">{{ total_pending }}</div>
+                <div class="text-[10px] font-medium text-gray-400">Waiting</div>
             </div>
         </div>
     </div>
 
-    <!-- Main Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 h-full">
-
-        <!-- Projects -->
-        <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col h-96 lg:h-auto">
-            <div class="flex justify-between items-center mb-5">
-                <h3 class="font-bold text-gray-800">Projects</h3>
-                <a href="{% url 'project_create' %}"
-                   class="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-500 hover:bg-gray-50 transition-colors flex items-center gap-1">
-                    <i class="fas fa-plus"></i> New
-                </a>
-            </div>
-
-            <div class="space-y-4 flex-1 overflow-y-auto pr-1">
-                {% for project in projects %}
-                <div class="flex items-start gap-3 group cursor-pointer hover:bg-gray-50 p-2 rounded-xl transition-colors">
-                    <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
-                        <i class="fas fa-folder text-sm"></i>
-                    </div>
-
-                    <div class="flex-1 min-w-0">
-                        <h4 class="text-sm font-bold text-gray-800 group-hover:text-emerald-600 transition-colors truncate">
-                            {{ project.name }}
-                        </h4>
-                        {% if project.description %}
-                        <p class="text-[10px] text-gray-400 font-medium truncate">
-                            {{ project.description }}
-                        </p>
-                        {% endif %}
-                    </div>
-
-                    <div class="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-[10px] font-bold text-gray-500">
-                        {{ project.agendas.count }}
-                    </div>
+    <!-- Overdue Alert -->
+    {% if overdue_tasks %}
+    <div class="mb-8 animate-bounce-subtle">
+        <div class="bg-red-50 border border-red-100 rounded-3xl p-4 flex items-center justify-between gap-4 shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-red-100 flex items-center justify-center text-red-600 shadow-sm">
+                    <i class="fas fa-triangle-exclamation"></i>
                 </div>
-                {% empty %}
-                <p class="text-sm text-gray-400 text-center py-8">
-                    No projects yet.
-                </p>
-                {% endfor %}
+                <div>
+                    <h4 class="text-sm font-black text-red-800 uppercase tracking-tighter">Overdue Action Required</h4>
+                    <p class="text-xs text-red-600 font-medium">You have {{ overdue_tasks.count }} tasks that need
+                        immediate attention.</p>
+                </div>
+            </div>
+            <a href="{% url 'undone_tasks' %}"
+                class="px-4 py-2 bg-red-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest hover:bg-red-700 transition-colors">
+                View All
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-2 lg:grid-cols-3 gap-6 mb-8 lg:min-h-[500px]">
+
+        <!-- Today (Order 1) -->
+        <div class="order-1 col-span-1 lg:col-start-2 lg:row-start-2">
+            <div
+                class="bg-indigo-600 rounded-3xl p-6 shadow-lg shadow-indigo-200 text-white h-full relative overflow-hidden flex flex-col justify-center">
+                <h3 class="font-bold text-indigo-100 mb-1 text-xs sm:text-base">Today's Focus</h3>
+                <div class="text-3xl sm:text-4xl font-bold mb-1">{{ today_tasks.count }}</div>
+                <p class="text-[10px] sm:text-sm text-indigo-200">Scheduled for today</p>
             </div>
         </div>
 
-        <!-- Upcoming + Today -->
-        <div class="flex flex-col gap-6">
-
-            <!-- Upcoming Task -->
-            <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
-                        <i class="far fa-bell"></i>
+        <!-- Next Up (Order 2) -->
+        <div class="order-2 col-span-1 lg:col-start-2 lg:row-start-1">
+            <div
+                class="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-gray-100 flex flex-col h-full justify-between">
+                <div class="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-4">
+                    <div
+                        class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                        <i class="far fa-bell text-xs sm:text-base"></i>
                     </div>
-                    <h3 class="font-bold text-gray-800">Next Up</h3>
+                    <h3 class="font-bold text-gray-800 text-xs sm:text-base">Next Up</h3>
                 </div>
 
                 {% if upcoming_tasks.first %}
-                <div class="flex-1 flex flex-col justify-between">
-                    <div>
-                        <h4 class="text-xl font-bold text-gray-800 mb-2 line-clamp-2">
-                            {{ upcoming_tasks.first.title }}
-                        </h4>
-
-                        <p class="text-sm text-gray-500 font-medium mb-1">
-                            <i class="far fa-clock mr-1"></i>
-                            {% if upcoming_tasks.first.time %}
-                                {{ upcoming_tasks.first.time|time:"h:i A" }}
-                            {% else %}
-                                {{ upcoming_tasks.first.date|date:"F j" }}
-                            {% endif %}
-                        </p>
-                    </div>
-
+                <div class="flex flex-col gap-2">
+                    <h4 class="text-sm sm:text-xl font-bold text-gray-800 line-clamp-1 sm:line-clamp-2">
+                        {{ upcoming_tasks.first.title }}
+                    </h4>
+                    <p class="text-[10px] sm:text-sm text-gray-500 font-medium flex flex-col gap-0.5">
+                        <span>
+                            <i class="far fa-calendar mr-1"></i>
+                            {{ upcoming_tasks.first.date|date:"M d" }}
+                            {% if upcoming_tasks.first.time %} at {{ upcoming_tasks.first.time|time:"h:i A" }}{% endif %}
+                        </span>
+                        {% if upcoming_tasks.first.expected_finish_date or upcoming_tasks.first.expected_finish_time %}
+                        <span class="text-emerald-600 font-bold">
+                            <i class="fas fa-flag-checkered mr-1"></i>
+                            Finish: {{ upcoming_tasks.first.expected_finish_date|date:"M d"|default:upcoming_tasks.first.date|date:"M d" }}
+                            {% if upcoming_tasks.first.expected_finish_time %} at {{ upcoming_tasks.first.expected_finish_time|time:"h:i A" }}{% endif %}
+                        </span>
+                        {% endif %}
+                    </p>
                     <a href="{% url 'agenda_edit' upcoming_tasks.first.pk %}"
-                       class="mt-6 w-full py-3 bg-[#104a37] hover:bg-[#063f2e] text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 group">
-                        View Details
-                        <i class="fas fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
+                        class="mt-2 w-full py-2 sm:py-3 bg-[#104a37] hover:bg-[#063f2e] text-white rounded-xl font-bold text-[10px] sm:text-sm flex items-center justify-center gap-1 group">
+                        View
+                        <i class="fas fa-arrow-right text-[8px] group-hover:translate-x-1 transition-transform"></i>
                     </a>
                 </div>
                 {% else %}
-                <div class="flex-1 flex flex-col items-center justify-center text-center py-8">
-                    <div class="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 mb-3">
-                        <i class="fas fa-coffee text-2xl"></i>
-                    </div>
-                    <p class="text-gray-500 font-medium">No upcoming tasks</p>
-                    <p class="text-xs text-gray-400">You're all caught up!</p>
+                <div class="flex-1 flex flex-col items-center justify-center text-center">
+                    <p class="text-[10px] sm:text-sm text-gray-500 font-medium">Done!</p>
                 </div>
                 {% endif %}
             </div>
+        </div>
 
-            <!-- Today -->
-            <div class="bg-indigo-600 rounded-3xl p-6 shadow-lg shadow-indigo-200 text-white relative overflow-hidden">
-                <h3 class="font-bold text-indigo-100 mb-2">Today's Focus</h3>
-                <div class="text-4xl font-bold mb-1">{{ today_tasks.count }}</div>
-                <p class="text-sm text-indigo-200">Tasks scheduled for today</p>
+        <!-- Progress (Order 3) -->
+        <div class="order-3 col-span-2 lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:row-span-2">
+            <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col h-full">
+                <h3 class="font-bold text-gray-800 mb-4 text-center lg:text-left">Overall Completion</h3>
+                <div class="flex-1 flex items-center justify-center">
+                    <div class="relative w-full max-w-[240px] aspect-[1.6]">
+                        <svg viewBox="0 0 200 120" class="w-full h-full">
+                            <!-- Background arc -->
+                            <path d="M 20 100 A 80 80 0 0 1 180 100" 
+                                  fill="none" 
+                                  stroke="#e5e7eb" 
+                                  stroke-width="18"
+                                  stroke-linecap="round" />
+                            <!-- Progress arc -->
+                            <path d="M 20 100 A 80 80 0 0 1 180 100" 
+                                  fill="none" 
+                                  stroke="#059669" 
+                                  stroke-width="18"
+                                  stroke-linecap="round" 
+                                  stroke-dasharray="251"
+                                  style="stroke-dashoffset: calc(251 - (251 * {{ overall_progress|default:0 }} / 100));"
+                                  class="transition-all duration-1000 ease-out" />
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pt-6 pointer-events-none">
+                            <span class="text-3xl sm:text-4xl font-extrabold text-gray-800 leading-none">{{ overall_progress|default:0 }}%</span>
+                            <span class="text-[10px] font-bold tracking-widest text-gray-400 mt-1 uppercase">Rate</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-center gap-4 mt-2">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+                        <span class="text-[10px] font-bold text-gray-500">Done</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-gray-200"></span>
+                        <span class="text-[10px] font-bold text-gray-500">Left</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Progress -->
-        <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col h-full">
-    <h3 class="font-bold text-gray-800 mb-4">Overall Completion</h3>
-
-    <div class="flex-1 flex items-center justify-center">
-        <div class="relative w-72 h-44">
-
-            <!-- Gauge SVG -->
-            <svg viewBox="0 0 200 120" class="w-full h-full">
-                <!-- Background arc -->
-                <path
-                    d="M 20 100 A 80 80 0 0 1 180 100"
-                    fill="none"
-                    stroke="#e5e7eb"
-                    stroke-width="18"
-                    stroke-linecap="round"
-                />
-
-                <!-- Progress arc -->
-                <!-- Total length ≈ 251 -->
-                <path
-                    d="M 20 100 A 80 80 0 0 1 180 100"
-                    fill="none"
-                    stroke="#059669"
-                    stroke-width="18"
-                    stroke-linecap="round"
-                    stroke-dasharray="251"
-                    style="stroke-dashoffset: calc(251 - (251 * {{ overall_progress|default:0 }} / 100));"
-                    class="transition-all duration-1000 ease-out"
-                />
-            </svg>
-
-            <!-- Center Text -->
-            <div class="absolute inset-0 flex flex-col items-center justify-center pt-8 pointer-events-none">
-                <span class="text-4xl font-extrabold text-gray-800 leading-none">
-                    {{ overall_progress|default:0 }}%
-                </span>
-                <span class="text-[11px] font-bold tracking-widest text-gray-400 mt-1">
-                    COMPLETION
-                </span>
+        <!-- Projects (Order 4) -->
+        <div class="order-4 col-span-2 lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:row-span-2">
+            <div
+                class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col h-full lg:min-h-[400px]">
+                <div class="flex justify-between items-center mb-5">
+                    <h3 class="font-bold text-gray-800">Projects</h3>
+                    <a href="{% url 'project_create' %}"
+                        class="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-500 hover:bg-gray-50 transition-colors flex items-center gap-1">
+                        <i class="fas fa-plus"></i> New
+                    </a>
+                </div>
+                <div class="space-y-4 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                    {% for project in projects %}
+                    <div
+                        class="flex items-start gap-3 group cursor-pointer hover:bg-gray-50 p-2 rounded-xl transition-colors">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                            <i class="fas fa-folder text-sm"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4
+                                class="text-sm font-bold text-gray-800 group-hover:text-emerald-600 transition-colors truncate">
+                                {{ project.name }}
+                            </h4>
+                            {% if project.description %}
+                            <p class="text-[10px] text-gray-400 font-medium truncate">{{ project.description }}</p>
+                            {% endif %}
+                        </div>
+                        <div
+                            class="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-[10px] font-bold text-gray-500">
+                            {{ project.agendas.count }}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-sm text-gray-400 text-center py-8">No projects yet.</p>
+                    {% endfor %}
+                </div>
             </div>
         </div>
-    </div>
-
-    <!-- Legend -->
-    <div class="flex justify-center gap-6 mt-2">
-        <div class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-full bg-emerald-600"></span>
-            <span class="text-xs font-bold text-gray-500">Done</span>
-        </div>
-        <div class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-full bg-gray-200"></span>
-            <span class="text-xs font-bold text-gray-500">Remaining</span>
-        </div>
-    </div>
-</div>
 
     </div>
 </div>
+
+<style>
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+@keyframes spin-slow {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin-slow {
+    animation: spin-slow 2s linear infinite;
+}
+
+@keyframes bounce-subtle {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+.animate-bounce-subtle {
+    animation: bounce-subtle 2s ease-in-out infinite;
+}
+</style>
 {% endblock %}

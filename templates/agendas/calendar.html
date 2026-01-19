@@ -3,129 +3,145 @@
 {% block title %}Calendar{% endblock %}
 
 {% block content %}
-<div class="animate-fade-in h-full flex flex-col">
+<div class="animate-fade-in flex flex-col">
     <!-- Header -->
-    <div class="mb-8 flex flex-col sm:flex-row items-end justify-between gap-4 shrink-0">
+    <div class="mb-8 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 shrink-0">
         <div>
-            <h2 class="text-3xl font-bold text-gray-800 tracking-tight mb-1">
+            <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight mb-1">
                 Calendar
             </h2>
-            <p class="text-gray-400 font-medium">Your schedule at a glance</p>
+            <p class="text-sm sm:text-base text-gray-400 font-medium">Your schedule at a glance</p>
         </div>
         <a href="{% url 'agenda_create_global' %}"
-            class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition-all flex items-center gap-2">
+            class="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2">
             <i class="fas fa-plus"></i>
             <span>New Task</span>
         </a>
     </div>
 
     <!-- Calendar Card -->
-    <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex-1 flex flex-col">
+    <div class="bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col">
         <!-- Calendar Header with Navigation -->
-        <div class="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+        <div class="px-4 py-4 sm:px-6 sm:py-5 border-b border-gray-100 bg-gray-50/50">
             <div class="flex items-center justify-between">
                 <a href="?month={{ prev_month }}&year={{ prev_year }}"
-                    class="p-2 rounded-xl text-gray-400 hover:text-gray-800 hover:bg-white border border-transparent hover:border-gray-200 hover:shadow-sm transition-all">
-                    <i class="fas fa-chevron-left"></i>
+                    class="p-1.5 sm:p-2 rounded-xl text-gray-400 hover:text-gray-800 hover:bg-white border border-transparent hover:border-gray-200 transition-all">
+                    <i class="fas fa-chevron-left text-sm sm:text-base"></i>
                 </a>
 
-                <div class="text-center flex items-center gap-4">
-                    <h3 class="text-2xl font-bold text-gray-800">{{ month_name }} {{ year }}</h3>
+                <div class="text-center flex items-center gap-2 sm:gap-4">
+                    <h3 class="text-lg sm:text-2xl font-bold text-gray-800">{{ month_name }} {{ year }}</h3>
                     {% now "Y" as current_year %}
                     {% now "F" as current_month %}
                     {% if year|stringformat:"s" != current_year or month_name != current_month %}
                     <a href="{% url 'calendar_view' %}"
-                        class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-bold uppercase tracking-wider hover:bg-emerald-100 transition-colors">
+                        class="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] sm:text-xs font-bold uppercase tracking-wider hover:bg-emerald-100 transition-colors">
                         Today
                     </a>
                     {% endif %}
                 </div>
 
                 <a href="?month={{ next_month }}&year={{ next_year }}"
-                    class="p-2 rounded-xl text-gray-400 hover:text-gray-800 hover:bg-white border border-transparent hover:border-gray-200 hover:shadow-sm transition-all">
-                    <i class="fas fa-chevron-right"></i>
+                    class="p-1.5 sm:p-2 rounded-xl text-gray-400 hover:text-gray-800 hover:bg-white border border-transparent hover:border-gray-200 transition-all">
+                    <i class="fas fa-chevron-right text-sm sm:text-base"></i>
                 </a>
             </div>
         </div>
 
         <!-- Calendar Grid -->
-        <div class="p-6 flex-1 flex flex-col overflow-hidden">
-            <!-- Day Headers -->
-            <div class="grid grid-cols-7 gap-4 mb-4">
-                {% for day in "SMTWTFS" %}
-                <div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider py-1">
-                    <span class="hidden sm:inline">
-                        {% if day == 'S' and forloop.first %}Sunday
-                        {% elif day == 'M' %}Monday
-                        {% elif day == 'T' and forloop.counter == 3 %}Tuesday
-                        {% elif day == 'W' %}Wednesday
-                        {% elif day == 'T' and forloop.counter == 5 %}Thursday
-                        {% elif day == 'F' %}Friday
-                        {% elif day == 'S' and forloop.last %}Saturday
-                        {% endif %}
-                    </span>
-                    <span class="sm:hidden">{{ day }}</span>
-                </div>
-                {% endfor %}
-            </div>
-
-            <!-- Calendar Weeks -->
-            <div class="grid grid-cols-7 gap-4 flex-1">
-                {% for week in calendar_weeks %}
-                {% for day_data in week %}
-                {% if day_data.day %}
-                <div class="min-h-24 relative flex flex-col border border-gray-100 rounded-2xl p-2 transition-all hover:shadow-md hover:border-emerald-200 group
-                                {% if day_data.is_today %}
-                                    bg-emerald-50/30 ring-1 ring-emerald-500/20
-                                {% else %}
-                                    bg-white hover:bg-emerald-50/10
-                                {% endif %}">
-
-                    <!-- Day Number -->
-                    <div class="flex items-center justify-between mb-2">
-                        <span
-                            class="text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full
-                                        {% if day_data.is_today %}bg-emerald-600 text-white shadow-md shadow-emerald-200{% else %}text-gray-700 bg-gray-50{% endif %}">
-                            {{ day_data.day }}
-                        </span>
-                        {% if day_data.tasks %}
-                        <span class="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">
-                            {{ day_data.tasks|length }}
-                        </span>
-                        {% endif %}
-                    </div>
-
-                    <!-- Tasks -->
-                    <div class="space-y-1 overflow-y-auto custom-scrollbar flex-1">
-                        {% for task in day_data.tasks|slice:":3" %}
-                        <a href="{% url 'agenda_edit' task.pk %}" class="block px-2 py-1.5 rounded-lg text-xs font-medium transition-all group-hover:scale-[1.02]
-                                            {% if task.priority == 'high' %}
-                                                bg-red-50 text-red-700 border border-red-100 hover:bg-red-100
-                                            {% elif task.priority == 'medium' %}
-                                                bg-amber-50 text-amber-700 border border-amber-100 hover:bg-amber-100
-                                            {% else %}
-                                                bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-100
-                                            {% endif %}">
-                            <div class="truncate font-semibold">{{ task.title }}</div>
-                            {% if task.time %}
-                            <div class="text-[10px] opacity-75 mt-0.5">{{ task.time|time:"H:i" }}</div>
+        <div class="p-2 sm:p-6 flex flex-col overflow-x-auto">
+            <div class="min-w-[320px]">
+                <!-- Day Headers -->
+                <div class="grid grid-cols-7 gap-1 sm:gap-4 mb-2 sm:mb-4">
+                    {% for day in "SMTWTFS" %}
+                    <div
+                        class="text-center text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider py-1">
+                        <span class="hidden sm:inline">
+                            {% if day == 'S' and forloop.first %}Sunday
+                            {% elif day == 'M' %}Monday
+                            {% elif day == 'T' and forloop.counter == 3 %}Tuesday
+                            {% elif day == 'W' %}Wednesday
+                            {% elif day == 'T' and forloop.counter == 5 %}Thursday
+                            {% elif day == 'F' %}Friday
+                            {% elif day == 'S' and forloop.last %}Saturday
                             {% endif %}
-                        </a>
-                        {% endfor %}
-
-                        {% if day_data.tasks|length > 3 %}
-                        <div class="text-[10px] text-gray-400 text-center font-medium">
-                            +{{ day_data.tasks|length|add:"-3" }} more
-                        </div>
-                        {% endif %}
+                        </span>
+                        <span class="sm:hidden">{{ day }}</span>
                     </div>
+                    {% endfor %}
                 </div>
-                {% else %}
-                <!-- Empty cell for days from other months -->
-                <div class="min-h-24 bg-gray-50/30 rounded-2xl border border-transparent border-dashed"></div>
-                {% endif %}
-                {% endfor %}
-                {% endfor %}
+
+                <!-- Calendar Weeks -->
+                <div class="grid grid-cols-7 gap-1 sm:gap-4">
+                    {% for week in calendar_weeks %}
+                    {% for day_data in week %}
+                    {% if day_data.day %}
+                    <div class="min-h-[60px] sm:min-h-24 relative flex flex-col border border-gray-100 rounded-lg sm:rounded-2xl p-1 sm:p-2 transition-all hover:shadow-md hover:border-emerald-200 group cursor-pointer day-cell
+                                    {% if day_data.is_today %}
+                                        bg-emerald-50/30 ring-1 ring-emerald-500/20
+                                    {% else %}
+                                        bg-white hover:bg-emerald-50/10
+                                    {% endif %}" data-date="{{ day_data.full_date }}"
+                        data-display-date="{{ day_data.day }} {{ month_name }} {{ year }}">
+
+                        <!-- Day Number -->
+                        <div class="flex items-center justify-between mb-1 sm:mb-2 pointer-events-none">
+                            <div class="flex items-center gap-1 sm:gap-2">
+                                <span
+                                    class="text-[10px] sm:text-sm font-bold w-5 h-5 sm:w-7 sm:h-7 flex items-center justify-center rounded-full
+                                                {% if day_data.is_today %}bg-emerald-600 text-white shadow-sm shadow-emerald-200{% else %}text-gray-700 bg-gray-50{% endif %}">
+                                    {{ day_data.day }}
+                                </span>
+                            </div>
+                            {% if day_data.tasks %}
+                            <span
+                                class="text-[8px] sm:text-[10px] font-bold text-emerald-600 bg-emerald-100 px-1 sm:px-1.5 py-0.5 rounded-full">
+                                {{ day_data.tasks|length }}
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Tasks (Visual Preview) -->
+                        <div class="space-y-0.5 sm:space-y-1 overflow-hidden flex-1 pointer-events-none">
+                            {% for task in day_data.tasks|slice:":2" %}
+                            <div class="px-1 py-0.5 rounded-md text-[8px] sm:text-[9px] font-medium truncate
+                                                {% if task.priority == 'high' %}
+                                                    bg-red-50 text-red-700
+                                                {% elif task.priority == 'medium' %}
+                                                    bg-amber-50 text-amber-700
+                                                {% else %}
+                                                    bg-emerald-50 text-emerald-700
+                                                {% endif %}">
+                                {{ task.title }}
+                            </div>
+                            {% endfor %}
+                            {% if day_data.tasks|length > 2 %}
+                            <div class="text-[8px] text-gray-400 font-bold ml-1">+{{ day_data.tasks|length|add:"-2" }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Hidden Task Data for JS -->
+                        <div class="hidden task-data-store">
+                            {% for task in day_data.tasks %}
+                            <div class="task-item" data-id="{{ task.pk }}" data-title="{{ task.title }}"
+                                data-priority="{{ task.priority }}"
+                                data-is-overdue="{% if task.is_overdue %}true{% else %}false{% endif %}"
+                                data-time="{% if task.time %}{{ task.time|time:'H:i' }}{% endif %}"
+                                data-project="{% if task.project %}{{ task.project.name }}{% endif %}">
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- Empty cell for days from other months -->
+                    <div
+                        class="min-h-[60px] sm:min-h-24 bg-gray-50/20 rounded-lg sm:rounded-2xl border border-transparent border-dashed">
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>
@@ -147,14 +163,158 @@
     </div>
 </div>
 
+<!-- Task Details Modal -->
+<div id="calendar-modal" class="fixed inset-0 z-[60] hidden">
+    <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" id="calendar-modal-backdrop"></div>
+    <div class="fixed inset-0 z-[61] flex items-center justify-center p-4 cursor-default" id="calendar-modal-container">
+        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-95 opacity-0 duration-300"
+            id="calendar-modal-panel" onclick="event.stopPropagation()">
+            <!-- Modal Header -->
+            <div class="bg-emerald-600 px-6 py-6 text-white relative">
+                <button type="button" id="close-calendar-modal-btn"
+                    class="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/10 flex items-center justify-center hover:bg-black/20 transition-all z-10">
+                    <i class="fas fa-times text-sm"></i>
+                </button>
+                <div class="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Details for</div>
+                <h3 id="modal-display-date" class="text-2xl font-black leading-tight tracking-tight"></h3>
+            </div>
+
+            <div class="p-6">
+                <!-- Task List Section -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-xs font-black uppercase tracking-wider text-gray-400">Scheduled Tasks</h4>
+                        <span id="modal-task-count"
+                            class="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[10px] font-bold">0</span>
+                    </div>
+                    <div id="modal-task-list" class="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                        <!-- Tasks injected here -->
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                {% if user.is_superuser %}
+                <a id="modal-add-task-btn" href="#"
+                    class="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-xl shadow-gray-200">
+                    <i class="fas fa-plus text-xs"></i>
+                    Add New Task
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
 {% block extra_js %}
 <script>
-    // Add keyboard navigation
+    (function () {
+        const modal = document.getElementById('calendar-modal');
+        const panel = document.getElementById('calendar-modal-panel');
+        const container = document.getElementById('calendar-modal-container');
+        const closeBtn = document.getElementById('close-calendar-modal-btn');
+        const taskList = document.getElementById('modal-task-list');
+        const displayDate = document.getElementById('modal-display-date');
+        const taskCount = document.getElementById('modal-task-count');
+        const addTaskBtn = document.getElementById('modal-add-task-btn');
+
+        function openModal(date, display, tasks) {
+            if (!modal || !panel) return;
+
+            displayDate.innerText = display;
+            if (addTaskBtn) {
+                addTaskBtn.href = "{% url 'agenda_create_global' %}?date=" + date;
+            }
+
+            taskList.innerHTML = '';
+            taskCount.innerText = tasks.length;
+
+            if (tasks.length === 0) {
+                taskList.innerHTML = `<div class="py-12 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    <i class="fas fa-calendar-day text-gray-200 text-3xl mb-3 block"></i>
+                    <p class="text-gray-400 font-medium text-sm">No tasks for this day</p>
+                </div>`;
+            } else {
+                tasks.forEach(task => {
+                    const statusBadge = task.isOverdue === 'true'
+                        ? `<span class="text-[8px] font-black text-red-500 uppercase tracking-widest ml-1 animate-pulse"><i class="fas fa-exclamation-triangle mr-1"></i>Overdue</span>`
+                        : '';
+                    const taskHtml = `
+                        <div class="flex items-center gap-3 p-3 rounded-2xl border border-gray-100 hover:border-emerald-200 transition-all group bg-white shadow-sm sm:shadow-none hover:shadow-md">
+                            <div class="w-1.5 h-10 rounded-full ${task.priority === 'high' ? 'bg-red-500' : (task.priority === 'medium' ? 'bg-amber-500' : 'bg-emerald-500')}"></div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-bold text-gray-800 leading-snug truncate">
+                                    ${task.title}
+                                    ${statusBadge}
+                                </div>
+                                <div class="flex items-center gap-3 mt-1">
+                                    ${task.time ? `<span class="text-[10px] font-bold text-gray-400 flex items-center gap-1"><i class="far fa-clock"></i> ${task.time}</span>` : ''}
+                                    ${task.project ? `<span class="text-[10px] font-extrabold text-emerald-600 uppercase tracking-tighter">${task.project}</span>` : ''}
+                                </div>
+                            </div>
+                            <a href="/agenda/${task.id}/edit/" class="w-9 h-9 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
+                                <i class="fas fa-edit text-xs"></i>
+                            </a>
+                        </div>
+                    `;
+                    taskList.insertAdjacentHTML('beforeend', taskHtml);
+                });
+            }
+
+            modal.classList.remove('hidden');
+            // Force redraw
+            modal.offsetHeight;
+            panel.classList.remove('scale-95', 'opacity-0');
+            panel.classList.add('scale-100', 'opacity-100');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            if (!modal || !panel) return;
+            panel.classList.remove('scale-100', 'opacity-100');
+            panel.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }, 300);
+        }
+
+        // Attach listeners to cells
+        document.querySelectorAll('.day-cell').forEach(cell => {
+            cell.addEventListener('click', () => {
+                const date = cell.getAttribute('data-date');
+                const display = cell.getAttribute('data-display-date');
+                const taskElements = cell.querySelectorAll('.task-item');
+                const tasks = Array.from(taskElements).map(el => ({
+                    id: el.getAttribute('data-id'),
+                    title: el.getAttribute('data-title'),
+                    priority: el.getAttribute('data-priority'),
+                    isOverdue: el.getAttribute('data-is-overdue'),
+                    time: el.getAttribute('data-time'),
+                    project: el.getAttribute('data-project')
+                }));
+                openModal(date, display, tasks);
+            });
+        });
+
+        // Close handlers
+        if (closeBtn) closeBtn.onclick = closeModal;
+        if (container) container.onclick = closeModal;
+
+        // Escape key handler
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+    })();
+
+    // Keyboard Month Navigation (only if modal is hidden)
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'ArrowLeft') {
-            window.location.href = '?month={{ prev_month }}&year={{ prev_year }}';
-        } else if (e.key === 'ArrowRight') {
-            window.location.href = '?month={{ next_month }}&year={{ next_year }}';
+        const modal = document.getElementById('calendar-modal');
+        if (modal && modal.classList.contains('hidden')) {
+            if (e.key === 'ArrowLeft') {
+                window.location.href = '?month={{ prev_month }}&year={{ prev_year }}';
+            } else if (e.key === 'ArrowRight') {
+                window.location.href = '?month={{ next_month }}&year={{ next_year }}';
+            }
         }
     });
 </script>

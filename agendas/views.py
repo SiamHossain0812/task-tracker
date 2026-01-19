@@ -6,9 +6,17 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 import json
+import io
 from datetime import date, datetime, timedelta
+from django.http import FileResponse
 from .models import Agenda, Project, Collaborator
 from .utils import calculate_status
+
+# PDF generation imports
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
 
 @login_required
@@ -32,7 +40,20 @@ def dashboard(request):
         filtered_agendas = all_agendas.filter(priority='high')
     
     # Filter groups (standard dashboard view)
-    overdue_tasks = all_agendas.filter(date__lt=today).exclude(status='completed')
+    from django.utils import timezone
+    now_dt = timezone.now()
+    curr_time = now_dt.time()
+    
+    overdue_cond = (
+        Q(expected_finish_date__lt=today) | 
+        Q(expected_finish_date__isnull=True, date__lt=today) |
+        (
+            (Q(expected_finish_date=today) | Q(expected_finish_date__isnull=True, date=today)) & 
+            (Q(expected_finish_time__lt=curr_time) | Q(expected_finish_time__isnull=True, time__lt=curr_time))
+        )
+    )
+    
+    overdue_tasks = all_agendas.filter(overdue_cond).exclude(status='completed')
     today_tasks = all_agendas.filter(date=today).exclude(status='completed')
     upcoming_tasks = all_agendas.filter(date__gt=today).exclude(status='completed')
     completed_tasks = all_agendas.filter(status='completed')
@@ -168,7 +189,16 @@ def agenda_create(request, project_pk=None):
             
             return redirect('dashboard')
     else:
-        initial_data['date'] = date.today()
+        # Check for date in query parameters
+        date_param = request.GET.get('date')
+        if date_param:
+            try:
+                initial_data['date'] = datetime.strptime(date_param, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                initial_data['date'] = date.today()
+        else:
+            initial_data['date'] = date.today()
+            
         form = AgendaForm(initial=initial_data)
         if project:
             form.fields['project'].initial = project
@@ -180,6 +210,7 @@ def agenda_create(request, project_pk=None):
         'project': project,
         'project_list': Project.objects.all(),
         'collaborator_list': Collaborator.objects.all(),
+        'current_collaborator_ids': [], # New task has no collaborators yet
     })
 
 
@@ -226,6 +257,7 @@ def agenda_edit(request, pk):
         'project': agenda.project,
         'project_list': Project.objects.all(),
         'collaborator_list': Collaborator.objects.all(),
+        'current_collaborator_ids': list(agenda.collaborators.values_list('pk', flat=True)),
     })
 
 
@@ -251,14 +283,18 @@ def agenda_delete(request, pk):
 @require_POST
 def agenda_toggle_status(request, pk):
     """Toggle agenda status via AJAX."""
-    # Restrict to Superusers
-    if not request.user.is_superuser:
+    agenda = get_object_or_404(Agenda, pk=pk)
+    
+    # Restrict to Superusers OR assigned Collaborators
+    is_collaborator = False
+    if hasattr(request.user, 'collaborator_profile'):
+        is_collaborator = agenda.collaborators.filter(pk=request.user.collaborator_profile.pk).exists()
+
+    if not request.user.is_superuser and not is_collaborator:
         return JsonResponse({
             'success': False,
-            'error': 'Permission denied. Only Dr. Niaz can update status.'
+            'error': 'Permission denied. Only Dr. Niaz or assigned collaborators can update status.'
         }, status=403)
-
-    agenda = get_object_or_404(Agenda, pk=pk)
     
     status_order = ['pending', 'in-progress', 'completed']
     
@@ -341,6 +377,7 @@ def calendar_view(request):
             else:
                 week_data.append({
                     'day': day,
+                    'full_date': date(year, month, day).isoformat(),
                     'tasks': agendas_by_date.get(day, []),
                     'is_today': (year == today.year and month == today.month and day == today.day)
                 })
@@ -363,36 +400,32 @@ def calendar_view(request):
 
 @login_required
 def undone_tasks(request):
-    """View showing all undone tasks (pending and in-progress)."""
+    """View showing all undone tasks and tasks completed today."""
     today = date.today()
     
-    # Get all undone tasks (not completed)
+    # Get all undone tasks (not completed) - No time limit
     all_undone = Agenda.objects.exclude(status='completed').select_related('project').order_by('date', 'time')
     
-    # Categorize undone tasks
-    overdue = all_undone.filter(date__lt=today)
-    today_tasks = all_undone.filter(date=today)
-    upcoming = all_undone.filter(date__gt=today)
+    # Get tasks completed today
+    completed_today = Agenda.objects.filter(status='completed', date=today).select_related('project').order_by('-time')
     
     # Calculate stats
-    total_undone = all_undone.count()
     pending_count = all_undone.filter(status='pending').count()
     in_progress_count = all_undone.filter(status='in-progress').count()
     high_priority_count = all_undone.filter(priority='high').count()
+    completed_today_count = completed_today.count()
     
     context = {
         'all_undone': all_undone,
-        'overdue': overdue,
-        'today_tasks': today_tasks,
-        'upcoming': upcoming,
-        'total_undone': total_undone,
+        'completed_today': completed_today,
         'pending_count': pending_count,
         'in_progress_count': in_progress_count,
         'high_priority_count': high_priority_count,
+        'completed_today_count': completed_today_count,
         'today': today,
     }
     
-    return render(request, 'agendas/undone_tasks.html', context)
+    return render(request, 'agendas/undone_tasks_v2.html', context)
 
 
 def search(request):
@@ -547,7 +580,20 @@ def project_analytics(request):
         total_tasks = project.agendas.count()
         completed_count = project.agendas.filter(status='completed').count()
         pending_count = project.agendas.filter(status='pending').count()
-        overdue_count = project.agendas.filter(date__lt=today).exclude(status='completed').count()
+        from django.utils import timezone
+        now_dt = timezone.now()
+        curr_time = now_dt.time()
+        
+        overdue_cond = (
+            Q(expected_finish_date__lt=today) | 
+            Q(expected_finish_date__isnull=True, date__lt=today) |
+            (
+                (Q(expected_finish_date=today) | Q(expected_finish_date__isnull=True, date=today)) & 
+                (Q(expected_finish_time__lt=curr_time) | Q(expected_finish_time__isnull=True, time__lt=curr_time))
+            )
+        )
+        
+        overdue_count = project.agendas.filter(overdue_cond).exclude(status='completed').count()
         
         # Get unique collaborators
         collaborators = set()
@@ -577,6 +623,148 @@ def project_analytics(request):
             'performance': performance
         })
     
+    # Calculate global aggregates
+    global_total_tasks = sum(p['total_tasks'] for p in projects_data)
+    global_completed_tasks = sum(p['completed_count'] for p in projects_data)
+    global_pending_tasks = sum(p['pending_count'] for p in projects_data)
+    global_overdue_tasks = sum(p['overdue_count'] for p in projects_data)
+    
+    overall_progress = int((global_completed_tasks / global_total_tasks * 100)) if global_total_tasks > 0 else 0
+
     return render(request, 'agendas/project_analytics.html', {
-        'projects_data': projects_data
+        'projects_data': projects_data,
+        'global_stats': {
+            'total_projects': projects.count(),
+            'total_tasks': global_total_tasks,
+            'completed_tasks': global_completed_tasks,
+            'pending_tasks': global_pending_tasks,
+            'overdue_tasks': global_overdue_tasks,
+            'progress': overall_progress
+        }
     })
+
+
+@login_required
+def export_past_work_pdf(request):
+    """View to export completed tasks as an enhanced PDF report."""
+    days = int(request.GET.get('days', 7))
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days)
+
+    filters = {'status': 'completed', 'date__range': [start_date, end_date]}
+    if not request.user.is_superuser:
+        filters['collaborators__user'] = request.user
+
+    past_works = Agenda.objects.filter(**filters).select_related('project').order_by('-date', '-time')
+    
+    # Aggregations for "Informational" content
+    project_stats = {}
+    priority_stats = {'high': 0, 'medium': 0, 'low': 0}
+    daily_stats = {}
+    
+    for work in past_works:
+        p_name = work.project.name if work.project else "General"
+        project_stats[p_name] = project_stats.get(p_name, 0) + 1
+        priority_stats[work.priority] = priority_stats.get(work.priority, 0) + 1
+        d_str = work.date.strftime('%b %d')
+        daily_stats[d_str] = daily_stats.get(d_str, 0) + 1
+
+    # Create PDF
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50)
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Custom styles
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=28, textColor=colors.HexColor('#064e3b'), alignment=1, spaceAfter=10)
+    header_accent = ParagraphStyle('HeaderAccent', parent=styles['Normal'], fontSize=10, textColor=colors.HexColor('#059669'), alignment=1, spaceAfter=30, fontName='Helvetica-Bold')
+    section_style = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#1f2937'), spaceBefore=25, spaceAfter=15)
+    info_text = ParagraphStyle('Info', parent=styles['Normal'], fontSize=10, textColor=colors.HexColor('#4b5563'), leading=14)
+    stat_label = ParagraphStyle('StatLabel', parent=styles['Normal'], fontSize=9, textColor=colors.HexColor('#6b7280'), alignment=1)
+    stat_value = ParagraphStyle('StatValue', parent=styles['Normal'], fontSize=16, textColor=colors.HexColor('#111827'), alignment=1, fontName='Helvetica-Bold')
+
+    # 1. Header Area
+    elements.append(Paragraph("WORK PROGRESS REPORT", title_style))
+    elements.append(Paragraph("DR. NIAZ'S PERSONAL AGENDA", header_accent))
+    elements.append(Spacer(1, 12))
+
+    # 2. Executive Summary (Tiles)
+    summary_data = [
+        [Paragraph("Completed Tasks", stat_label), Paragraph("Active Projects", stat_label), Paragraph("High Priority", stat_label)],
+        [Paragraph(str(past_works.count()), stat_value), Paragraph(str(len(project_stats)), stat_value), Paragraph(str(priority_stats['high']), stat_value)]
+    ]
+    summary_table = Table(summary_data, colWidths=[160, 160, 160])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f9fafb')),
+        ('ROUNDEDCORNERS', [10, 10, 10, 10]),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 10),
+    ]))
+    elements.append(summary_table)
+    elements.append(Spacer(1, 20))
+
+    # 3. Informational Insights Section
+    if past_works.exists():
+        elements.append(Paragraph("Distributions & Insights", section_style))
+        
+        # Project distribution table
+        dist_data = [['Project Name', 'Tasks Completed', 'Contribution %']]
+        total = past_works.count()
+        for p_name, count in sorted(project_stats.items(), key=lambda x: x[1], reverse=True):
+            percent = int((count / total) * 100)
+            dist_data.append([p_name, str(count), f"{percent}%"])
+            
+        dist_table = Table(dist_data, colWidths=[200, 150, 130])
+        dist_table.setStyle(TableStyle([
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#064e3b')),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('LINEBELOW', (0, 0), (-1, 0), 1, colors.HexColor('#d1fae5')),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ]))
+        elements.append(dist_table)
+        elements.append(Spacer(1, 25))
+
+        # 4. Detailed Log
+        elements.append(Paragraph("Detailed Activity Log", section_style))
+        log_data = [['Date', 'Task Detail', 'Category', 'Priority']]
+        for work in past_works:
+            color = colors.HexColor('#991b1b') if work.priority == 'high' else colors.HexColor('#92400e') if work.priority == 'medium' else colors.HexColor('#065f46')
+            log_data.append([
+                work.date.strftime('%d %b'),
+                work.title,
+                work.project.name if work.project else "General",
+                Paragraph(f"<font color='{color.hexval()}'>{work.priority.upper()}</font>", info_text)
+            ])
+
+        log_table = Table(log_data, colWidths=[70, 210, 120, 80], repeatRows=1)
+        log_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#111827')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('TOPPADDING', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('GRID', (0, 0), (-1, -1), 0.1, colors.HexColor('#f3f4f6')),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
+        ]))
+        elements.append(log_table)
+    else:
+        elements.append(Paragraph("No activity recorded in the selected timeframe.", styles['Italic']))
+
+    # 5. Professional Footer
+    elements.append(Spacer(1, 50))
+    footer_text = f"Report generated on {datetime.now().strftime('%B %d, %Y at %H:%M')}<br/>Authorized by Dr. Niaz's Personal Agenda Tracker."
+    elements.append(Paragraph(f"<font color='#9ca3af' size='8'>{footer_text}</font>", info_text))
+
+    doc.build(elements)
+    buffer.seek(0)
+    
+    filename = f"work_summary_{end_date.strftime('%Y%m%d')}_{days}d.pdf"
+    return FileResponse(buffer, as_attachment=True, filename=filename)

@@ -1,4 +1,5 @@
 from django.db import models
+from datetime import date
 
 
 class Project(models.Model):
@@ -88,5 +89,28 @@ class Agenda(models.Model):
     class Meta:
         ordering = ['date', 'time']
     
+    @property
+    def is_overdue(self):
+        if self.status == 'completed':
+            return False
+            
+        from django.utils import timezone
+        from datetime import datetime
+        
+        now = timezone.now()
+        
+        # Determine the deadline for being overdue
+        # If expected finish date/time is set, use it. Otherwise fallback to start date/time.
+        deadline_date = self.expected_finish_date or self.date
+        deadline_time = self.expected_finish_time or self.time
+        
+        if deadline_time:
+            # Combine date and time for a full deadline timestamp
+            deadline = timezone.make_aware(datetime.combine(deadline_date, deadline_time))
+            return now > deadline
+        else:
+            # If no time is set, it's overdue after the deadline day ends
+            return now.date() > deadline_date
+
     def __str__(self):
         return self.title

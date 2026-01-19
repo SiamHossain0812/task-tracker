@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Agenda Tracker{% endblock %} - Donezo Style</title>
+    <title>{% block title %}Agenda Tracker{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
@@ -54,15 +54,142 @@
             scrollbar-width: none;
             /* Firefox */
         }
+
+        /* Loading Screen Styles */
+        #loader-wrapper {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease, visibility 0.8s;
+        }
+
+        .loader-icon {
+            font-size: 3rem;
+            color: #10b981;
+            margin-bottom: 1.5rem;
+            filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.4));
+            animation: pulse-science 2s infinite ease-in-out;
+        }
+
+        .loader-title {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            margin-bottom: 0.5rem;
+        }
+
+        .loader-status {
+            color: #6ee7b7;
+            font-size: 0.875rem;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            height: 1.25rem;
+        }
+
+        @keyframes pulse-science {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+        }
+
+        .dna-bar {
+            width: 150px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            margin-top: 2rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .dna-progress {
+            position: absolute;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, #fbbf24, transparent);
+            animation: dna-scan 1.5s infinite linear;
+        }
+
+        @keyframes dna-scan {
+            100% {
+                left: 100%;
+            }
+        }
+
+        /* Simple Spinner Styles */
+        #simple-spinner {
+            position: fixed;
+            inset: 0;
+            z-index: 9998;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.4s ease, visibility 0.4s;
+        }
+
+        .spinner-circle {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #10b981;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 
 <body class="text-gray-800 h-screen overflow-hidden flex selection:bg-emerald-500 selection:text-white">
 
+    <!-- Loading Screen (Welcome - Once Per Session) -->
+    <div id="loader-wrapper" style="display: none;">
+        <div class="loader-icon">
+            <i class="fas fa-seedling"></i>
+        </div>
+        <div class="loader-title">Dr. Niaz's Workspace</div>
+        <div id="loader-status" class="loader-status">Preparing Workspace...</div>
+        <div class="dna-bar">
+            <div class="dna-progress"></div>
+        </div>
+        <div class="mt-6 text-emerald-300/40 text-[10px] font-mono tracking-widest uppercase">Personal Agenda v2.4</div>
+    </div>
+
+    <!-- Simple Spinner (Internal Navigation) -->
+    <div id="simple-spinner" style="display: none;">
+        <div class="spinner-circle"></div>
+    </div>
+
     <!-- Mobile Overlay -->
     <div id="mobile-overlay"
         class="fixed inset-0 bg-gray-900/50 z-40 hidden md:hidden backdrop-blur-sm transition-opacity opacity-0"></div>
 
+    {% if user.is_authenticated %}
     <!-- Sidebar -->
     <aside id="sidebar"
         class="fixed inset-y-0 left-0 z-50 w-64 bg-white h-full flex flex-col shrink-0 border-r border-gray-100 
@@ -148,15 +275,25 @@
 
 
     </aside>
+    {% endif %}
 
     <!-- Main Wrapper -->
     <div class="flex-1 flex flex-col h-full relative transition-[margin] duration-300">
+        {% if user.is_authenticated %}
         <!-- Header -->
         <header class="h-24 bg-transparent flex items-center justify-between px-8 shrink-0 z-20">
-            <!-- Mobile Menu Button -->
-            <button id="mobile-menu-btn" class="md:hidden p-2 text-gray-600 hover:text-emerald-600 transition-colors">
-                <i class="fas fa-bars text-xl"></i>
-            </button>
+            <!-- Mobile Menu Group -->
+            <div class="flex items-center gap-2.5 md:hidden">
+                <button id="mobile-menu-btn" class="p-2 -ml-2 text-gray-700 hover:text-emerald-600 transition-colors">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <div class="flex flex-col justify-center border-l border-gray-100 pl-3">
+                    <span class="text-[13px] font-black text-gray-900 leading-tight uppercase tracking-tight">Dr.
+                        Niaz's</span>
+                    <span class="text-[10px] text-emerald-600 font-bold tracking-widest uppercase -mt-0.5">Personal
+                        Agenda</span>
+                </div>
+            </div>
 
             <!-- Search (Desktop) -->
             <div class="hidden md:flex items-center flex-1 max-w-xl pl-8">
@@ -173,15 +310,6 @@
 
             <!-- Header Right -->
             <div class="flex items-center gap-6">
-                <button
-                    class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:shadow-lg transition-all border border-transparent hover:border-gray-100">
-                    <i class="far fa-envelope"></i>
-                </button>
-                <button
-                    class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:shadow-lg transition-all border border-transparent hover:border-gray-100 relative">
-                    <i class="far fa-bell"></i>
-                    <span class="absolute top-2 right-2.5 w-2 h-2 rounded-full bg-red-500 border border-white"></span>
-                </button>
                 <div class="flex items-center gap-3 pl-2 border-l border-gray-200">
                     {% if user.is_authenticated %}
                     <a href="{% url 'about' %}"
@@ -221,6 +349,7 @@
                 </div>
             </div>
         </header>
+        {% endif %}
 
         <!-- Content Area -->
         <main class="flex-1 overflow-x-hidden overflow-y-auto px-4 md:px-8 pb-8">
@@ -231,6 +360,65 @@
     {% block extra_js %}{% endblock %}
 
     <script>
+        // Loading Screen Management
+        const loader = document.getElementById('loader-wrapper');
+        const simpleSpinner = document.getElementById('simple-spinner');
+        const loaderStatus = document.getElementById('loader-status');
+        const isFirstVisit = !sessionStorage.getItem('welcomeShown');
+
+        // Initial Loader Visibility
+        if (isFirstVisit) {
+            loader.style.display = 'flex';
+        } else {
+            simpleSpinner.style.display = 'flex';
+        }
+
+        const statusMessages = [
+            "Preparing Workspace...",
+            "Organizing Individual Tasks...",
+            "Syncing Dr. Niaz's Library...",
+            "Finalizing Layout...",
+            "Welcome, Scientist."
+        ];
+
+        let messageIndex = 0;
+        let statusInterval;
+
+        if (isFirstVisit) {
+            statusInterval = setInterval(() => {
+                if (messageIndex < statusMessages.length) {
+                    loaderStatus.style.opacity = '0';
+                    setTimeout(() => {
+                        loaderStatus.innerText = statusMessages[messageIndex];
+                        loaderStatus.style.opacity = '1';
+                        messageIndex++;
+                    }, 200);
+                }
+            }, 500);
+        }
+
+        window.addEventListener('load', () => {
+            if (isFirstVisit) {
+                setTimeout(() => {
+                    clearInterval(statusInterval);
+                    loader.style.opacity = '0';
+                    setTimeout(() => {
+                        loader.style.visibility = 'hidden';
+                        loader.style.display = 'none';
+                        sessionStorage.setItem('welcomeShown', 'true');
+                    }, 800);
+                }, 2000);
+            } else {
+                setTimeout(() => {
+                    simpleSpinner.style.opacity = '0';
+                    setTimeout(() => {
+                        simpleSpinner.style.visibility = 'hidden';
+                        simpleSpinner.style.display = 'none';
+                    }, 400);
+                }, 500);
+            }
+        });
+
         // Mobile Sidebar Toggle
         const mobileMenuBtn = document.getElementById('mobile-menu-btn');
         const sidebarCloseBtn = document.getElementById('sidebar-close');

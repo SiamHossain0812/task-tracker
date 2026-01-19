@@ -1,535 +1,212 @@
-{% extends "base.html" %}
-
-{% block title %}Undone Tasks{% endblock %}
-
+{% extends "base.html" %}{% load static %}
+{% block title %}Tasks - Dr. Niaz's Personal Workspace{% endblock %}
 {% block content %}
 <div class="animate-fade-in h-full flex flex-col">
-    <!-- Header -->
     <div class="mb-8 flex flex-col sm:flex-row items-end justify-between gap-4 shrink-0">
         <div>
-            <h2 class="text-3xl font-bold text-gray-800 tracking-tight mb-1">
-                Undone Tasks
-            </h2>
-            <p class="text-gray-400 font-medium">Manage pending work and priorities</p>
+            <h2 class="text-3xl font-bold text-gray-800 tracking-tight mb-1">Tasks Overview</h2>
+            <p class="text-gray-400 font-medium">Manage your progress and research agendas</p>
         </div>
-        {% if user.is_superuser %}
-        <a href="{% url 'agenda_create_global' %}"
-            class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition-all flex items-center gap-2">
-            <i class="fas fa-plus"></i>
-            <span>New Task</span>
-        </a>
-        {% endif %}
+        {% if user.is_superuser %}<a href="{% url 'agenda_create_global' %}"
+            class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-200 transition-all flex items-center gap-2"><i
+                class="fas fa-plus"></i><span>New Task</span></a>{% endif %}
     </div>
-
-    <!-- Stats Grid -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8 shrink-0">
-        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-            <div class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">Total Undone</div>
-            <div class="flex items-end justify-between">
-                <span class="text-4xl font-bold text-gray-800">{{ total_undone }}</span>
-                <div class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
-                    <i class="fas fa-tasks"></i>
-                </div>
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div class="text-gray-400 text-xs font-bold uppercase mb-2">Pending</div>
+            <div class="flex items-end justify-between"><span class="text-4xl font-bold text-gray-800">{{ pending_count
+                    }}</span>
+                <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-500"><i
+                        class="far fa-clock"></i></div>
             </div>
         </div>
-        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-            <div class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">Pending</div>
-            <div class="flex items-end justify-between">
-                <span class="text-4xl font-bold text-gray-800">{{ pending_count }}</span>
-                <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-500">
-                    <i class="far fa-clock"></i>
-                </div>
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div class="text-gray-400 text-xs font-bold uppercase mb-2">In Progress</div>
+            <div class="flex items-end justify-between"><span class="text-4xl font-bold text-blue-600">{{
+                    in_progress_count }}</span>
+                <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500"><i
+                        class="fas fa-spinner"></i></div>
             </div>
         </div>
-        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-            <div class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">In Progress</div>
-            <div class="flex items-end justify-between">
-                <span class="text-4xl font-bold text-blue-600">{{ in_progress_count }}</span>
-                <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                    <i class="fas fa-spinner"></i>
-                </div>
+        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+            <div class="text-gray-400 text-xs font-bold uppercase mb-2">High Priority</div>
+            <div class="flex items-end justify-between"><span class="text-4xl font-bold text-red-600">{{
+                    high_priority_count }}</span>
+                <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500"><i
+                        class="fas fa-exclamation-circle"></i></div>
             </div>
         </div>
-        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-            <div class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">High Priority</div>
-            <div class="flex items-end justify-between">
-                <span class="text-4xl font-bold text-red-600">{{ high_priority_count }}</span>
-                <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500">
-                    <i class="fas fa-exclamation-circle"></i>
-                </div>
+        <div class="bg-white p-6 rounded-3xl border border-emerald-100 shadow-md">
+            <div class="text-emerald-600 text-xs font-bold uppercase mb-2">Completed Today</div>
+            <div class="flex items-end justify-between"><span class="text-4xl font-bold text-emerald-600">{{
+                    completed_today_count }}</span>
+                <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500"><i
+                        class="fas fa-check-double"></i></div>
             </div>
         </div>
     </div>
-
-    <!-- Scrollable Content -->
-    <div class="flex-1 overflow-y-auto pr-2 space-y-8">
-        {% if total_undone == 0 %}
-        <!-- Empty State -->
-        <div
-            class="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center flex flex-col items-center justify-center h-96">
-            <div class="w-24 h-24 mb-6 rounded-full bg-emerald-50 flex items-center justify-center animate-bounce-slow">
-                <i class="fas fa-check-double text-4xl text-emerald-500"></i>
-            </div>
-            <h3 class="text-2xl font-bold text-gray-800 mb-2">All Caught Up! 🎉</h3>
-            <p class="text-gray-400 mb-8 max-w-md mx-auto">You have no undone tasks. Take a break or start planning for
-                the next big thing.</p>
-            {% if user.is_superuser %}
-            <a href="{% url 'agenda_create_global' %}"
-                class="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200">
-                <i class="fas fa-plus mr-2"></i>Create New Task
-            </a>
-            {% endif %}
-        </div>
-        {% else %}
-
-        <!-- Overdue Tasks -->
-        {% if overdue %}
+    <div class="flex-1 overflow-y-auto pr-2 space-y-8 no-scrollbar">
         <div>
             <div class="flex items-center gap-3 mb-4">
-                <div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-600">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <h3 class="text-lg font-bold text-gray-800">Overdue <span
-                        class="text-gray-400 text-sm font-medium ml-2">({{
-                        overdue.count }})</span></h3>
+                <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600"><i
+                        class="fas fa-tasks"></i></div>
+                <h3 class="text-lg font-bold text-gray-800">Undone Tasks <span
+                        class="text-gray-400 text-sm font-medium ml-2">({{ all_undone.count }})</span></h3>
             </div>
+            {% if all_undone %}
             <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr
-                                class="bg-gray-50/50 border-b border-gray-100 text-xs font-bold uppercase tracking-wider text-gray-400">
-                                <th class="px-6 py-4 w-12"></th>
-                                <th class="px-6 py-4">Task</th>
-                                <th class="px-6 py-4">Project</th>
-                                <th class="px-6 py-4">Due Date</th>
-                                <th class="px-6 py-4">Status</th>
-                                <th class="px-6 py-4 w-12"></th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-50">
-                            {% for task in overdue %}
-                            <tr class="group hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4">
-                                    <div
-                                        class="w-2 h-2 rounded-full {% if task.priority == 'high' %}bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]{% elif task.priority == 'medium' %}bg-amber-500{% else %}bg-emerald-500{% endif %}">
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <div class="font-bold text-gray-800">{{ task.title }}</div>
-                                    {% if task.description %}
-                                    <div class="text-xs text-gray-400 truncate max-w-xs mt-0.5">{{ task.description }}
-                                    </div>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4">
-                                    {% if task.project %}
-                                    <span
-                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-{{ task.project.color }}-50 text-{{ task.project.color }}-700 border border-{{ task.project.color }}-100">
-                                        {{ task.project.name }}
-                                    </span>
-                                    {% else %}
-                                    <span
-                                        class="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">Inbox</span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4">
-                                    <div class="flex flex-col">
-                                        <span class="text-sm font-bold text-red-500">{{ task.date|date:"M d, Y"
-                                            }}</span>
-                                        {% if task.time %}
-                                        <span class="text-xs text-red-400 font-medium">{{ task.time|time:"H:i" }}</span>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4">
-                                    {% if user.is_superuser %}
-                                    <form method="POST" action="{% url 'agenda_toggle' task.pk %}" class="toggle-form">
-                                        {% csrf_token %}
-                                        <button type="submit"
-                                            class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all w-28 cursor-pointer hover:scale-105 active:scale-95 shadow-sm hover:shadow-md {% if task.status == 'in-progress' %}bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100{% else %}bg-gray-50 text-gray-500 border border-gray-100 hover:bg-gray-100{% endif %}">
-                                            {{ task.get_status_display }}
-                                        </button>
-                                    </form>
-                                    {% else %}
-                                    <span
-                                        class="inline-block px-3 py-1.5 rounded-lg text-xs font-bold w-28 text-center cursor-default opacity-75 {% if task.status == 'in-progress' %}bg-blue-50 text-blue-600 border border-blue-100{% else %}bg-gray-50 text-gray-500 border border-gray-100{% endif %}">
-                                        {{ task.get_status_display }}
-                                    </span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4">
-                                    {% if user.is_superuser %}
-                                    <div
-                                        class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                        <a href="{% url 'agenda_edit' task.pk %}"
-                                            class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors">
-                                            <i class="fas fa-pen text-xs"></i>
-                                        </a>
-                                        <a href="{% url 'agenda_delete' task.pk %}"
-                                            class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                                            <i class="fas fa-trash text-xs"></i>
-                                        </a>
-                                    </div>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr
+                            class="bg-gray-50/50 border-b border-gray-100 text-xs font-bold uppercase tracking-wider text-gray-400">
+                            <th class="px-6 py-4 w-12"></th>
+                            <th class="px-6 py-4">Task Name</th>
+                            <th class="px-6 py-4">Project</th>
+                            <th class="px-6 py-4">Due Date</th>
+                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4 w-12 text-right pr-8">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50">
+                        {% for task in all_undone %}<tr class="group hover:bg-gray-50">
+                            <td class="px-6 py-4">
+                                <div
+                                    class="w-2 h-2 rounded-full {% if task.priority == 'high' %}bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]{% elif task.priority == 'medium' %}bg-amber-500{% else %}bg-emerald-500{% endif %}">
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-sm font-bold text-gray-800">{{ task.title }}</td>
+                            <td class="px-6 py-4">{% if task.project %}<span
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700">{{
+                                    task.project.name }}</span>{% else %}<span
+                                    class="text-xs text-gray-400">Inbox</span>{% endif %}</td>
+                            <td class="px-6 py-4 text-sm font-bold text-gray-700">{{ task.date|date:"M d, Y" }}</td>
+                            <td class="px-6 py-4">{% if user.is_superuser %}<form method="POST"
+                                    action="{% url 'agenda_toggle' task.pk %}" class="toggle-form"
+                                    data-status="{{ task.status }}">{% csrf_token %}<button type="submit"
+                                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all w-28 {% if task.status == 'in-progress' %}bg-blue-50 text-blue-600{% else %}bg-gray-50 text-gray-500{% endif %}">{{
+                                        task.get_status_display }}</button></form>{% else %}<span
+                                    class="px-3 py-1.5 rounded-lg text-xs font-bold w-28 text-center bg-gray-50 text-gray-400 inline-block">{{
+                                    task.get_status_display }}</span>{% endif %}</td>
+                            <td class="px-6 py-4 text-right pr-8">{% if user.is_superuser %}<div
+                                    class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100"><a
+                                        href="{% url 'agenda_edit' task.pk %}"
+                                        class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50"><i
+                                            class="fas fa-pen text-xs"></i></a><a
+                                        href="{% url 'agenda_delete' task.pk %}"
+                                        class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50"><i
+                                            class="fas fa-trash text-xs"></i></a></div>{% endif %}</td>
+                        </tr>{% endfor %}
+                    </tbody>
+                </table>
             </div>
+            {% else %}<div class="bg-white rounded-3xl border border-dashed border-gray-200 p-8 text-center">
+                <p class="text-gray-400 font-medium">No undone tasks.</p>
+            </div>{% endif %}
         </div>
-        {% endif %}
-
-        <!-- Today's Tasks -->
-        {% if today_tasks %}
         <div>
             <div class="flex items-center gap-3 mb-4">
-                <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
-                    <i class="far fa-calendar"></i>
-                </div>
-                <h3 class="text-lg font-bold text-gray-800">Today <span
-                        class="text-gray-400 text-sm font-medium ml-2">({{
-                        today_tasks.count }})</span></h3>
+                <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600"><i
+                        class="fas fa-check-circle"></i></div>
+                <h3 class="text-lg font-bold text-gray-800">Completed Today <span
+                        class="text-emerald-400 text-sm font-medium ml-2">({{ completed_today_count }})</span></h3>
             </div>
-            <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr
-                                class="bg-gray-50/50 border-b border-gray-100 text-xs font-bold uppercase tracking-wider text-gray-400">
-                                <th class="px-6 py-4 w-12"></th>
-                                <th class="px-6 py-4">Task</th>
-                                <th class="px-6 py-4">Project</th>
-                                <th class="px-6 py-4">Time</th>
-                                <th class="px-6 py-4">Status</th>
-                                <th class="px-6 py-4 w-12"></th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-50">
-                            {% for task in today_tasks %}
-                            <tr class="group hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4">
-                                    <div
-                                        class="w-2 h-2 rounded-full {% if task.priority == 'high' %}bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]{% elif task.priority == 'medium' %}bg-amber-500{% else %}bg-emerald-500{% endif %}">
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <div class="font-bold text-gray-800">{{ task.title }}</div>
-                                    {% if task.description %}
-                                    <div class="text-xs text-gray-400 truncate max-w-xs mt-0.5">{{ task.description }}
-                                    </div>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4">
-                                    {% if task.project %}
-                                    <span
-                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-{{ task.project.color }}-50 text-{{ task.project.color }}-700 border border-{{ task.project.color }}-100">
-                                        {{ task.project.name }}
-                                    </span>
-                                    {% else %}
-                                    <span
-                                        class="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">Inbox</span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4">
-                                    {% if task.time %}
-                                    <span class="text-sm font-bold text-gray-700">{{ task.time|time:"H:i" }}</span>
-                                    {% else %}
-                                    <span
-                                        class="text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">All
-                                        day</span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4">
-                                    {% if user.is_superuser %}
-                                    <form method="POST" action="{% url 'agenda_toggle' task.pk %}" class="toggle-form"
-                                        data-status="{{ task.status }}">
-                                        {% csrf_token %}
-                                        <button type="submit"
-                                            class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all w-28 cursor-pointer hover:scale-105 active:scale-95 shadow-sm hover:shadow-md {% if task.status == 'in-progress' %}bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100{% else %}bg-gray-50 text-gray-500 border border-gray-100 hover:bg-gray-100{% endif %}">
-                                            {{ task.get_status_display }}
-                                        </button>
-                                    </form>
-                                    {% else %}
-                                    <span
-                                        class="inline-block px-3 py-1.5 rounded-lg text-xs font-bold w-28 text-center cursor-default opacity-75 {% if task.status == 'in-progress' %}bg-blue-50 text-blue-600 border border-blue-100{% else %}bg-gray-50 text-gray-500 border border-gray-100{% endif %}">
-                                        {{ task.get_status_display }}
-                                    </span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4">
-                                    {% if user.is_superuser %}
-                                    <div
-                                        class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                        <a href="{% url 'agenda_edit' task.pk %}"
-                                            class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors">
-                                            <i class="fas fa-pen text-xs"></i>
-                                        </a>
-                                        <a href="{% url 'agenda_delete' task.pk %}"
-                                            class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                                            <i class="fas fa-trash text-xs"></i>
-                                        </a>
-                                    </div>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+            {% if completed_today %}
+            <div
+                class="bg-white rounded-3xl border border-emerald-100 shadow-sm overflow-hidden opacity-90 transition-opacity">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr
+                            class="bg-emerald-50/30 border-b border-emerald-50 text-xs font-bold uppercase tracking-wider text-emerald-700">
+                            <th class="px-6 py-4 w-12"></th>
+                            <th class="px-6 py-4">Task Name</th>
+                            <th class="px-6 py-4">Project</th>
+                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4 w-12 text-right pr-8">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-emerald-50/50">
+                        {% for task in completed_today %}<tr class="group hover:bg-emerald-50/20">
+                            <td class="px-6 py-4">
+                                <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                            </td>
+                            <td class="px-6 py-4 text-sm font-bold text-gray-500 line-through decoration-emerald-200">{{
+                                task.title }}</td>
+                            <td class="px-6 py-4">{% if task.project %}<span
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-50 text-gray-400">{{
+                                    task.project.name }}</span>{% endif %}</td>
+                            <td class="px-6 py-4">
+                                <form method="POST" action="{% url 'agenda_toggle' task.pk %}" class="toggle-form"
+                                    data-status="{{ task.status }}">{% csrf_token %}<button type="submit"
+                                        class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 w-28">Completed</button>
+                                </form>
+                            </td>
+                            <td class="px-6 py-4 text-right pr-8">
+                                <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100"><a
+                                        href="{% url 'agenda_delete' task.pk %}"
+                                        class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50"><i
+                                            class="fas fa-trash text-xs"></i></a></div>
+                            </td>
+                        </tr>{% endfor %}
+                    </tbody>
+                </table>
             </div>
+            {% else %}<div class="bg-gray-50 rounded-3xl border border-dashed border-gray-200 p-8 text-center">
+                <p class="text-gray-400 text-sm italic">Finish your first task today!</p>
+            </div>{% endif %}
         </div>
-        {% endif %}
-
-        <!-- Upcoming Tasks -->
-        {% if upcoming %}
-        <div>
-            <div class="flex items-center gap-3 mb-4">
-                <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
-                    <i class="fas fa-arrow-right"></i>
-                </div>
-                <h3 class="text-lg font-bold text-gray-800">Upcoming <span
-                        class="text-gray-400 text-sm font-medium ml-2">({{ upcoming.count }})</span></h3>
-            </div>
-            <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr
-                                class="bg-gray-50/50 border-b border-gray-100 text-xs font-bold uppercase tracking-wider text-gray-400">
-                                <th class="px-6 py-4 w-12"></th>
-                                <th class="px-6 py-4">Task</th>
-                                <th class="px-6 py-4">Project</th>
-                                <th class="px-6 py-4">Due Date</th>
-                                <th class="px-6 py-4">Status</th>
-                                <th class="px-6 py-4 w-12"></th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-50">
-                            {% for task in upcoming %}
-                            <tr class="group hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4">
-                                    <div
-                                        class="w-2 h-2 rounded-full {% if task.priority == 'high' %}bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]{% elif task.priority == 'medium' %}bg-amber-500{% else %}bg-emerald-500{% endif %}">
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <div class="font-bold text-gray-800">{{ task.title }}</div>
-                                    {% if task.description %}
-                                    <div class="text-xs text-gray-400 truncate max-w-xs mt-0.5">{{ task.description }}
-                                    </div>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4">
-                                    {% if task.project %}
-                                    <span
-                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-{{ task.project.color }}-50 text-{{ task.project.color }}-700 border border-{{ task.project.color }}-100">
-                                        {{ task.project.name }}
-                                    </span>
-                                    {% else %}
-                                    <span
-                                        class="text-xs font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">Inbox</span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4">
-                                    <div class="flex flex-col">
-                                        <span class="text-sm font-bold text-gray-700">{{ task.date|date:"M d, Y"
-                                            }}</span>
-                                        {% if task.time %}
-                                        <span class="text-xs text-gray-400 font-medium">{{ task.time|time:"H:i"
-                                            }}</span>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4">
-                                    {% if user.is_superuser %}
-                                    <form method="POST" action="{% url 'agenda_toggle' task.pk %}" class="toggle-form">
-                                        {% csrf_token %}
-                                        <button type="submit"
-                                            class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all w-28 cursor-pointer hover:scale-105 active:scale-95 shadow-sm hover:shadow-md {% if task.status == 'in-progress' %}bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100{% else %}bg-gray-50 text-gray-500 border border-gray-100 hover:bg-gray-100{% endif %}">
-                                            {{ task.get_status_display }}
-                                        </button>
-                                    </form>
-                                    {% else %}
-                                    <span
-                                        class="inline-block px-3 py-1.5 rounded-lg text-xs font-bold w-28 text-center cursor-default opacity-75 {% if task.status == 'in-progress' %}bg-blue-50 text-blue-600 border border-blue-100{% else %}bg-gray-50 text-gray-500 border border-gray-100{% endif %}">
-                                        {{ task.get_status_display }}
-                                    </span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4">
-                                    {% if user.is_superuser %}
-                                    <div
-                                        class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                        <a href="{% url 'agenda_edit' task.pk %}"
-                                            class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors">
-                                            <i class="fas fa-pen text-xs"></i>
-                                        </a>
-                                        <a href="{% url 'agenda_delete' task.pk %}"
-                                            class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                                            <i class="fas fa-trash text-xs"></i>
-                                        </a>
-                                    </div>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-        {% endif %}
     </div>
 </div>
-
-<!-- Confirmation Modal -->
-<div id="confirmation-modal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog"
-    aria-modal="true">
-    <!-- Backdrop -->
-    <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity opacity-0" id="modal-backdrop"></div>
-
+<div id="confirmation-modal" class="fixed inset-0 z-50 hidden">
+    <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" id="modal-backdrop"></div>
     <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
-        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-            <!-- Modal Panel -->
-            <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="relative transform overflow-hidden rounded-2xl bg-white shadow-xl transition-all sm:max-w-sm w-full"
                 id="modal-panel">
-                <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-                    <div class="sm:flex sm:items-start">
+                <div class="p-6">
+                    <div class="flex items-start gap-4">
                         <div
-                            class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 sm:mx-0 sm:h-10 sm:w-10">
-                            <i class="fas fa-exchange-alt text-emerald-600"></i>
-                        </div>
-                        <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
-                            <h3 class="text-lg font-semibold leading-6 text-gray-900" id="modal-title">Update Status
-                            </h3>
-                            <div class="mt-2">
-                                <p class="text-sm text-gray-500" id="modal-message">
-                                    Are you sure you want to update this task?
-                                </p>
-                            </div>
+                            class="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                            <i class="fas fa-exchange-alt"></i></div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Update Status</h3>
+                            <div id="modal-message" class="mt-2 text-sm text-gray-500"></div>
                         </div>
                     </div>
-                </div>
-                <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                    <button type="button" id="confirm-btn"
-                        class="inline-flex w-full justify-center rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 sm:ml-3 sm:w-auto transition-all">
-                        Yes, Update
-                    </button>
-                    <button type="button" id="cancel-btn"
-                        class="mt-3 inline-flex w-full justify-center rounded-xl bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto transition-all">
-                        Cancel
-                    </button>
+                    <div class="mt-6 flex flex-row-reverse gap-3"><button id="confirm-btn"
+                            class="flex-1 bg-emerald-600 text-white rounded-xl py-2 text-sm font-semibold hover:bg-emerald-500 transition-all">Yes,
+                            Update</button><button id="cancel-btn"
+                            class="flex-1 bg-white border border-gray-100 text-gray-900 rounded-xl py-2 text-sm font-semibold hover:bg-gray-50 transition-all">Cancel</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
 {% block extra_js %}
 <script>
     const modal = document.getElementById('confirmation-modal');
-    const backdrop = document.getElementById('modal-backdrop');
-    const panel = document.getElementById('modal-panel');
-    const confirmBtn = document.getElementById('confirm-btn');
-    const cancelBtn = document.getElementById('cancel-btn');
     const modalMessage = document.getElementById('modal-message');
-
     let currentForm = null;
-
-    function showModal() {
-        modal.classList.remove('hidden');
-        // Animate in
-        setTimeout(() => {
-            backdrop.classList.remove('opacity-0');
-            panel.classList.remove('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
-        }, 10);
-    }
-
-    function hideModal() {
-        // Animate out
-        backdrop.classList.add('opacity-0');
-        panel.classList.add('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
-        setTimeout(() => {
-            modal.classList.add('hidden');
-            currentForm = null;
-        }, 300);
-    }
-
+    function showModal() { modal.classList.remove('hidden'); }
+    function hideModal() { modal.classList.add('hidden'); currentForm = null; }
     document.querySelectorAll('.toggle-form').forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
-
             const currentStatus = this.getAttribute('data-status');
-            let nextStatusDisplay = '';
-
-            // Determine next status for display
-            if (currentStatus === 'pending') nextStatusDisplay = 'In Progress';
-            else if (currentStatus === 'in-progress') nextStatusDisplay = 'Completed';
-            else nextStatusDisplay = 'Pending';
-
-            modalMessage.innerHTML = `Change status to <span class="font-bold text-gray-800">${nextStatusDisplay}</span>?`;
-
-            currentForm = this;
-            showModal();
+            let next = currentStatus === 'pending' ? 'In Progress' : (currentStatus === 'in-progress' ? 'Completed' : 'Pending');
+            modalMessage.innerHTML = 'Change status to <span class="font-bold text-gray-800">' + next + '</span>?';
+            currentForm = this; showModal();
         });
     });
-
-    confirmBtn.addEventListener('click', function () {
+    document.getElementById('confirm-btn').addEventListener('click', function () {
         if (!currentForm) return;
-
         const btn = currentForm.querySelector('button');
-        const originalText = btn.innerHTML;
-
-        // Visual feedback on button
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        btn.disabled = true;
-
         hideModal();
-
-        fetch(currentForm.action, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': currentForm.querySelector('[name=csrfmiddlewaretoken]').value,
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-            .then(response => {
-                if (!response.ok) throw new Error('Network response was not ok');
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    window.location.reload();
-                } else {
-                    alert('Failed to update status: ' + (data.error || 'Unknown error'));
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Something went wrong. Please try again.');
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            });
+        fetch(currentForm.action, { method: 'POST', headers: { 'X-CSRFToken': currentForm.querySelector('[name=csrfmiddlewaretoken]').value, 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json()).then(d => { if (d.success) window.location.reload(); else alert('Error: ' + d.error); })
+            .catch(() => alert('Error!'));
     });
-
-    cancelBtn.addEventListener('click', hideModal);
-
-    // Close on click outside
-    modal.addEventListener('click', function (e) {
-        if (e.target === backdrop || e.target.closest('#modal-panel') === null) {
-            // Check if click was indeed on the backdrop wrapper (which covers screen) but not inside panel
-            if (e.target.id === 'modal-backdrop' || e.target.id === 'confirmation-modal') {
-                hideModal();
-            }
-        }
-    });
+    document.getElementById('cancel-btn').addEventListener('click', hideModal);
 </script>
-{% endblock %}
-
-{% endblock %}
+{% endblock %}{% endblock %}

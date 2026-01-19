@@ -25,3 +25,29 @@ class AgendaForm(forms.ModelForm):
             'expected_finish_time': forms.TimeInput(attrs={'type': 'time'}),
             'collaborators': forms.CheckboxSelectMultiple(), # Use checkboxes for multiple selection
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('date')
+        start_time = cleaned_data.get('time')
+        end_date = cleaned_data.get('expected_finish_date')
+        end_time = cleaned_data.get('expected_finish_time')
+
+        if start_date and end_date:
+            from datetime import datetime
+            
+            # Create full datetime objects for comparison
+            # If time is missing, assume start of day for start and end of day for end
+            s_time = start_time or datetime.min.time()
+            e_time = end_time or datetime.max.time()
+            
+            start_dt = datetime.combine(start_date, s_time)
+            end_dt = datetime.combine(end_date, e_time)
+            
+            if end_dt < start_dt:
+                if start_date == end_date:
+                    self.add_error('expected_finish_time', "Expected finish time cannot be before start time on the same day.")
+                else:
+                    self.add_error('expected_finish_date', "Expected finish date cannot be before the start date.")
+        
+        return cleaned_data

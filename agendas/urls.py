@@ -28,4 +28,7 @@ urlpatterns = [
     path('collaborators/api/create/', views.api_collaborator_create, name='api_collaborator_create'),
     path('collaborators/<int:pk>/edit/', views.collaborator_edit, name='collaborator_edit'),
     path('collaborators/<int:pk>/delete/', views.collaborator_delete, name='collaborator_delete'),
+    
+    # Export URLs
+    path('export/pdf/', views.export_past_work_pdf, name='export_past_work_pdf'),
 ]
