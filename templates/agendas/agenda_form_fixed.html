@@ -222,7 +222,7 @@
                             class="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-700 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all">
                             <option value="">No Project (Inbox)</option>
                             {% for p in project_list %}
-                            <option value="{{ p.pk }}" {% if project and project.pk==p.pk %}selected{% endif %}>
+                            <option value="{{ p.pk }}" {% if project and project.pk == p.pk %}selected{% endif %}>
                                 {{ p.name }}
                             </option>
                             {% endfor %}
@@ -235,11 +235,10 @@
                         <div class="relative">
                             <select name="priority"
                                 class="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-700 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all appearance-none">
-                                <option value="low" {% if agenda.priority=='low' %}selected{% endif %}>Low Priority
+                                <option value="low" {% if agenda.priority == 'low' %}selected{% endif %}>Low Priority
                                 </option>
-                                <option value="medium" {% if not agenda or agenda.priority=='medium' %}selected{% endif
-                                    %}>Medium Priority</option>
-                                <option value="high" {% if agenda.priority=='high' %}selected{% endif %}>High Priority
+                                <option value="medium" {% if not agenda or agenda.priority == 'medium' %}selected{% endif %}>Medium Priority</option>
+                                <option value="high" {% if agenda.priority == 'high' %}selected{% endif %}>High Priority
                                 </option>
                             </select>
                             <div
