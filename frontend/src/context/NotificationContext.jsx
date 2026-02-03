@@ -166,7 +166,6 @@ export const NotificationProvider = ({ children }) => {
         unreadCount,
         markAsRead,
         markAllAsRead,
-        markAllAsRead,
         refresh: fetchNotifications,
         showToast,
         registerPush

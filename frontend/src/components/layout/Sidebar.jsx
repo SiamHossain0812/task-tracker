@@ -32,7 +32,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                         <i className="fas fa-check-double"></i>
                     </div>
                     <span className="text-lg font-bold text-gray-800 tracking-tight leading-tight">
-                        Dr. Niaz's<br />Agenda Tracker
+                        Dr. Niaz's<br />Task Tracker
                     </span>
                 </NavLink>
                 {/* Close Button (Mobile) */}

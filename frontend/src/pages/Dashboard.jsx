@@ -281,7 +281,7 @@ const Dashboard = () => {
                                             )}
                                         </div>
                                         <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-[10px] font-bold text-gray-500">
-                                            {project.agendas?.length || 0}
+                                            {project.total_agendas || 0}
                                         </div>
                                     </NavLink>
                                 ))

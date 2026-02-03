@@ -334,11 +334,19 @@ class DashboardAPIView(APIView):
         today = timezone.now().date()
         today_agendas = all_agendas_qs.filter(date=today)
         
+        # Get upcoming agendas (incomplete tasks from today onwards)
+        upcoming_agendas = all_agendas_qs.exclude(status='completed').filter(date__gte=today).order_by('date', 'time')[:5]
+        
         # Get recent agendas
         recent_agendas = all_agendas_qs.order_by('-created_at')[:10]
         
+        # Calculate overall progress
+        overall_progress = 0
+        if total_agendas > 0:
+            overall_progress = int((completed_agendas / total_agendas) * 100)
+        
         return Response({
-            'projects': ProjectSerializer(projects, many=True).data,
+            'projects': ProjectSerializer(projects, many=True, context={'request': request}).data,
             'stats': {
                 'total_agendas': total_agendas,
                 'completed_agendas': completed_agendas,
@@ -346,7 +354,10 @@ class DashboardAPIView(APIView):
                 'in_progress_agendas': in_progress_agendas,
                 'overdue_count': len(overdue_agendas),
                 'today_count': today_agendas.count(),
+                'overall_progress': overall_progress,
             },
+            'today_tasks': AgendaListSerializer(today_agendas, many=True, context={'request': request}).data,
+            'upcoming_tasks': AgendaListSerializer(upcoming_agendas, many=True, context={'request': request}).data,
             'recent_agendas': AgendaListSerializer(recent_agendas, many=True, context={'request': request}).data,
             'overdue_agendas': AgendaListSerializer(overdue_agendas, many=True, context={'request': request}).data,
         })
