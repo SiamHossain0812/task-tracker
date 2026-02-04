@@ -635,13 +635,8 @@ def register_user(request):
 @authentication_classes([])
 def login_user(request):
     """Login user and return JWT tokens - supports username or phone number"""
-    raw_username = request.data.get('username')
+    username_or_phone = request.data.get('username', '').strip()
     password = request.data.get('password')
-    
-    if not raw_username or not password:
-        return Response({'error': 'Username/Phone and Password are required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    username_or_phone = str(raw_username).strip()
     
     # Try to authenticate with username first
     user = authenticate(username=username_or_phone, password=password)
@@ -650,64 +645,63 @@ def login_user(request):
     if user is None:
         try:
             from .models import UserProfile
-            # Check for exact match or maybe with leading zero issues? 
-            # For now, let's stick to exact match as saved in admin
-            user_profile = UserProfile.objects.filter(phone_number=username_or_phone).first()
-            if user_profile:
-                user = authenticate(username=user_profile.user.username, password=password)
+            user_profile = UserProfile.objects.get(phone_number=username_or_phone)
+            user = authenticate(username=user_profile.user.username, password=password)
+        except UserProfile.DoesNotExist:
+            pass
         except Exception as e:
-            # Log error but don't stop
-            print(f"Phone login attempt error: {e}")
+            print(f"Login debug error: {str(e)}")
     
     if user is None:
-        # Check why it failed
+        # Check if user exists but password matches (or if user doesn't exist)
+        # to give specific error messages as requested.
         try:
-            # Check if user exists by username
-            existing_user = User.objects.filter(username=username_or_phone).first()
-            if not existing_user:
-                # Check if user exists by phone
+            existing_user = User.objects.get(username=username_or_phone)
+            if not existing_user.is_active:
+                return Response(
+                    {'error': 'Your account is pending admin approval. Please wait for confirmation.'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            # If user exists and is active, but authenticate failed -> Wrong password
+            return Response(
+                {'error': 'Invalid password. Please try again.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        except User.DoesNotExist:
+            # Check if it's a phone number
+            try:
                 from .models import UserProfile
-                up = UserProfile.objects.filter(phone_number=username_or_phone).first()
-                if up:
-                    existing_user = up.user
-
-            if existing_user:
-                if not existing_user.is_active:
+                user_profile = UserProfile.objects.get(phone_number=username_or_phone)
+                if not user_profile.user.is_active:
                     return Response(
                         {'error': 'Your account is pending admin approval. Please wait for confirmation.'},
                         status=status.HTTP_401_UNAUTHORIZED
                     )
-                # If active but auth failed -> Wrong password
                 return Response(
                     {'error': 'Invalid password. Please try again.'},
                     status=status.HTTP_401_UNAUTHORIZED
                 )
-            else:
+            except UserProfile.DoesNotExist:
                 return Response(
-                    {'error': f'Account not found for "{username_or_phone}". Please request access first.'},
+                    {'error': 'Account not found. Please request access first.'},
                     status=status.HTTP_401_UNAUTHORIZED
                 )
-        except Exception as e:
-            return Response(
-                {'error': f'An error occurred during authentication: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            except Exception as e:
+                return Response(
+                    {'error': f'An unexpected error occurred: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
     
     # Generate JWT tokens
-    try:
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'user': UserSerializer(user).data,
-            'tokens': {
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            }
-        })
-    except Exception as e:
-        return Response(
-            {'error': f'Token generation failed: {str(e)}'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+    refresh = RefreshToken.for_user(user)
+    
+    return Response({
+        'user': UserSerializer(user).data,
+        'tokens': {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
+    })
 
 
 @api_view(['GET'])
