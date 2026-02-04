@@ -81,15 +81,8 @@ ASGI_APPLICATION = 'agenda_project.asgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'agenda_db',      # Initial database name
-        'USER': 'root',           # Default user
-        'PASSWORD': '',           # Default password (empty)
-        'HOST': 'localhost',      # Default host
-        'PORT': '3306',           # Default port
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 

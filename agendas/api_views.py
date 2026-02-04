@@ -635,7 +635,7 @@ def register_user(request):
 @authentication_classes([])
 def login_user(request):
     """Login user and return JWT tokens - supports username or phone number"""
-    username_or_phone = request.data.get('username')
+    username_or_phone = request.data.get('username', '').strip()
     password = request.data.get('password')
     
     # Try to authenticate with username first
@@ -647,8 +647,10 @@ def login_user(request):
             from .models import UserProfile
             user_profile = UserProfile.objects.get(phone_number=username_or_phone)
             user = authenticate(username=user_profile.user.username, password=password)
-        except:
-            pass  # Will handle below
+        except UserProfile.DoesNotExist:
+            pass
+        except Exception as e:
+            print(f"Login debug error: {str(e)}")
     
     if user is None:
         # Check if user exists but password matches (or if user doesn't exist)
@@ -679,10 +681,15 @@ def login_user(request):
                     {'error': 'Invalid password. Please try again.'},
                     status=status.HTTP_401_UNAUTHORIZED
                 )
-            except:
+            except UserProfile.DoesNotExist:
                 return Response(
                     {'error': 'Account not found. Please request access first.'},
                     status=status.HTTP_401_UNAUTHORIZED
+                )
+            except Exception as e:
+                return Response(
+                    {'error': f'An unexpected error occurred: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
     
     # Generate JWT tokens
