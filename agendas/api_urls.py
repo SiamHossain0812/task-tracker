@@ -2,10 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 from . import api_views
-from . import oauth_views
 from . import push_views
 from . import profile_views
-from . import meeting_views
 from .notification_views import NotificationViewSet
 
 # Create router for ViewSets
@@ -41,12 +39,8 @@ urlpatterns = [
     path('auth/user/', api_views.current_user, name='api-current-user'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='api-token-refresh'),
     
-    # Google OAuth Implementation
-    path('oauth/google/init/', oauth_views.init_google_auth, name='google-auth-init'),
-    path('oauth/google/callback/', oauth_views.google_auth_callback, name='google-auth-callback'),
     
-    # Simple Meeting Links (No OAuth/Setup Required!)
-    path('agendas/<int:agenda_id>/create-meeting/', oauth_views.create_meeting, name='create-meeting'),
-    path('agendas/<int:agenda_id>/delete-meeting/', oauth_views.delete_meeting, name='delete-meeting'),
+    # Export
+    path('export/past-work-pdf/', api_views.export_past_work_pdf, name='api-export-pdf'),
 ]
 

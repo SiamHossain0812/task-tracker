@@ -182,11 +182,6 @@ def agenda_create(request, project_pk=None):
             agenda.save()
             form.save_m2m() # Important for collaborators
             
-            # Send WhatsApp Notification
-            if request.POST.get('send_whatsapp') == 'true':
-                from .utils import send_whatsapp_notification
-                send_whatsapp_notification(agenda.collaborators.all(), agenda)
-            
             return redirect('dashboard')
     else:
         # Check for date in query parameters
@@ -239,11 +234,6 @@ def agenda_edit(request, pk):
             agenda.status = status
             agenda.save()
             form.save_m2m()
-            
-            # Send WhatsApp Notification
-            if request.POST.get('send_whatsapp') == 'true':
-                from .utils import send_whatsapp_notification
-                send_whatsapp_notification(agenda.collaborators.all(), agenda)
             
             return redirect('dashboard')
     else:

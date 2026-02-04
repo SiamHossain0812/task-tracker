@@ -14,8 +14,15 @@ from django.db.models import Q, Count
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from datetime import datetime, timedelta
+from rest_framework_simplejwt.tokens import RefreshToken
+from datetime import date, datetime, timedelta
 from django.utils import timezone
+import io
+from django.http import FileResponse
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
 from .models import Project, Agenda, Collaborator
 from .serializers import (
@@ -671,3 +678,130 @@ def login_user(request):
 def current_user(request):
     """Get current authenticated user"""
     return Response(UserSerializer(request.user, context={'request': request}).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def export_past_work_pdf(request):
+    """View to export completed tasks as an enhanced PDF report."""
+    days = int(request.query_params.get('days', 7))
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days)
+
+    filters = {'status': 'completed', 'date__range': [start_date, end_date]}
+    if not request.user.is_superuser:
+        filters['collaborators__user'] = request.user
+
+    past_works = Agenda.objects.filter(**filters).select_related('project').order_by('-date', '-time')
+    
+    # Aggregations for "Informational" content
+    project_stats = {}
+    priority_stats = {'high': 0, 'medium': 0, 'low': 0}
+    daily_stats = {}
+    
+    for work in past_works:
+        p_name = work.project.name if work.project else "General"
+        project_stats[p_name] = project_stats.get(p_name, 0) + 1
+        priority_stats[work.priority] = priority_stats.get(work.priority, 0) + 1
+        d_str = work.date.strftime('%b %d')
+        daily_stats[d_str] = daily_stats.get(d_str, 0) + 1
+
+    # Create PDF
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50)
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Custom styles
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=28, textColor=colors.HexColor('#064e3b'), alignment=1, spaceAfter=10)
+    header_accent = ParagraphStyle('HeaderAccent', parent=styles['Normal'], fontSize=10, textColor=colors.HexColor('#059669'), alignment=1, spaceAfter=30, fontName='Helvetica-Bold')
+    section_style = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#1f2937'), spaceBefore=25, spaceAfter=15)
+    info_text = ParagraphStyle('Info', parent=styles['Normal'], fontSize=10, textColor=colors.HexColor('#4b5563'), leading=14)
+    stat_label = ParagraphStyle('StatLabel', parent=styles['Normal'], fontSize=9, textColor=colors.HexColor('#6b7280'), alignment=1)
+    stat_value = ParagraphStyle('StatValue', parent=styles['Normal'], fontSize=16, textColor=colors.HexColor('#111827'), alignment=1, fontName='Helvetica-Bold')
+
+    # 1. Header Area
+    elements.append(Paragraph("WORK PROGRESS REPORT", title_style))
+    elements.append(Paragraph("DR. NIAZ'S PERSONAL AGENDA", header_accent))
+    elements.append(Spacer(1, 12))
+
+    # 2. Executive Summary (Tiles)
+    summary_data = [
+        [Paragraph("Completed Tasks", stat_label), Paragraph("Active Projects", stat_label), Paragraph("High Priority", stat_label)],
+        [Paragraph(str(past_works.count()), stat_value), Paragraph(str(len(project_stats)), stat_value), Paragraph(str(priority_stats['high']), stat_value)]
+    ]
+    summary_table = Table(summary_data, colWidths=[160, 160, 160])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f9fafb')),
+        ('ROUNDEDCORNERS', [10, 10, 10, 10]),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 10),
+    ]))
+    elements.append(summary_table)
+    elements.append(Spacer(1, 20))
+
+    # 3. Informational Insights Section
+    if past_works.exists():
+        elements.append(Paragraph("Distributions & Insights", section_style))
+        
+        # Project distribution table
+        dist_data = [['Project Name', 'Tasks Completed', 'Contribution %']]
+        total = past_works.count()
+        for p_name, count in sorted(project_stats.items(), key=lambda x: x[1], reverse=True):
+            percent = int((count / total) * 100)
+            dist_data.append([p_name, str(count), f"{percent}%"])
+            
+        dist_table = Table(dist_data, colWidths=[200, 150, 130])
+        dist_table.setStyle(TableStyle([
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#064e3b')),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('LINEBELOW', (0, 0), (-1, 0), 1, colors.HexColor('#d1fae5')),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ]))
+        elements.append(dist_table)
+        elements.append(Spacer(1, 25))
+
+        # 4. Detailed Log
+        elements.append(Paragraph("Detailed Activity Log", section_style))
+        log_data = [['Date', 'Task Detail', 'Category', 'Priority']]
+        for work in past_works:
+            color = colors.HexColor('#991b1b') if work.priority == 'high' else colors.HexColor('#92400e') if work.priority == 'medium' else colors.HexColor('#065f46')
+            log_data.append([
+                work.date.strftime('%d %b'),
+                work.title,
+                work.project.name if work.project else "General",
+                Paragraph(f"<font color='{color.hexval()}'>{work.priority.upper()}</font>", info_text)
+            ])
+
+        log_table = Table(log_data, colWidths=[70, 210, 120, 80], repeatRows=1)
+        log_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#111827')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('TOPPADDING', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('GRID', (0, 0), (-1, -1), 0.1, colors.HexColor('#f3f4f6')),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
+        ]))
+        elements.append(log_table)
+    else:
+        elements.append(Paragraph("No activity recorded in the selected timeframe.", styles['Italic']))
+
+    # 5. Professional Footer
+    elements.append(Spacer(1, 50))
+    footer_text = f"Report generated on {datetime.now().strftime('%B %d, %Y at %H:%M')}<br/>Authorized by Dr. Niaz's Personal Agenda Tracker."
+    elements.append(Paragraph(f"<font color='#9ca3af' size='8'>{footer_text}</font>", info_text))
+
+    doc.build(elements)
+    buffer.seek(0)
+    
+    filename = f"work_summary_{end_date.strftime('%Y%m%d')}_{days}d.pdf"
+    return FileResponse(buffer, as_attachment=True, filename=filename)

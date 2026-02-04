@@ -4,6 +4,11 @@ Django settings for agenda_project project.
 
 from pathlib import Path
 import os
+import pymysql
+
+pymysql.version_info = (2, 2, 2, "final", 0)
+pymysql.install_as_MySQLdb()
+
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -73,13 +78,18 @@ WSGI_APPLICATION = 'agenda_project.wsgi.application'
 ASGI_APPLICATION = 'agenda_project.asgi.application'
 
 # Database
+# Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'agenda_db',      # Initial database name
+        'USER': 'root',           # Default user
+        'PASSWORD': '',           # Default password (empty)
+        'HOST': 'localhost',      # Default host
+        'PORT': '3306',           # Default port
         'OPTIONS': {
-            'timeout': 20,  # Increase timeout to prevent "database is locked" errors
-        }
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
 
@@ -116,10 +126,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Twilio Settings (WhatsApp)
-TWILIO_ACCOUNT_SID = 'ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'  # Replace with your Account SID
-TWILIO_AUTH_TOKEN = 'your_auth_token_here'              # Replace with your Auth Token
-TWILIO_WHATSAPP_NUMBER = 'whatsapp:+14155238886'       # Replace with your Twilio WhatsApp number
 
 AUTH_USER_MODEL = 'auth.User'
 LOGIN_URL = 'login'
@@ -218,7 +224,3 @@ VAPID_PUBLIC_KEY = 'BPatCliCZSYI7aZuvBB29XJ43S4Y6_fT3mYpI6r9F0Jm6XzpLvc94QDqLQht
 VAPID_PRIVATE_KEY = '-OSgp6p_DwDyQGcXOdQsMI-JR-kSOfq8vJ5L_8fH-4E'
 VAPID_ADMIN_EMAIL = 'admin@example.com'
 
-# Google OAuth Settings (for Google Meet integration)
-GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '')
-GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
-GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:8000/api/v1/oauth/google/callback/')

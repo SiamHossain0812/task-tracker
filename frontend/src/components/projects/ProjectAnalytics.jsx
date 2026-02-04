@@ -183,15 +183,30 @@ const ProjectAnalytics = () => {
                             </div>
 
                             {/* Generate Button */}
-                            <a
-                                href={`${apiClient.defaults.baseURL}export/past-work-pdf/?days=${reportDays}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const response = await apiClient.get(`export/past-work-pdf/?days=${reportDays}`, {
+                                            responseType: 'blob'
+                                        });
+                                        const url = window.URL.createObjectURL(new Blob([response.data]));
+                                        const link = document.createElement('a');
+                                        link.href = url;
+                                        link.setAttribute('download', `work_summary_${reportDays}days.pdf`);
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        link.remove();
+                                        window.URL.revokeObjectURL(url);
+                                    } catch (error) {
+                                        console.error('Error downloading report:', error);
+                                        alert('Failed to download report. Please try again.');
+                                    }
+                                }}
                                 className="w-full sm:w-auto px-8 py-3.5 bg-gray-900 hover:bg-black text-white font-black rounded-2xl shadow-xl shadow-gray-100 transition-all flex items-center justify-center gap-2 tracking-tight uppercase text-xs"
                             >
                                 <i className="fas fa-download text-[10px]"></i>
                                 <span>Generate PDF</span>
-                            </a>
+                            </button>
                         </div>
                     </div>
                 </div>
