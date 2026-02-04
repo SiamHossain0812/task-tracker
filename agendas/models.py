@@ -189,6 +189,17 @@ class PushSubscription(models.Model):
         return f"Push Sub for {self.user.username}"
 
 
+
+
+class UserProfile(models.Model):
+    """Extended user profile with phone number"""
+    user = models.OneToOneField('auth.User', on_delete=models.CASCADE, related_name='profile')
+    phone_number = models.CharField(max_length=20, unique=True, blank=True, null=True, help_text="Phone number for login")
+    
+    def __str__(self):
+        return f"Profile for {self.user.username}"
+
+
 class GoogleToken(models.Model):
     """Stores Google OAuth tokens for a user"""
     user = models.OneToOneField('auth.User', on_delete=models.CASCADE, related_name='google_token')

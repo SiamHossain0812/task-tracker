@@ -634,17 +634,27 @@ def register_user(request):
 @permission_classes([AllowAny])
 @authentication_classes([])
 def login_user(request):
-    """Login user and return JWT tokens"""
-    username = request.data.get('username')
+    """Login user and return JWT tokens - supports username or phone number"""
+    username_or_phone = request.data.get('username')
     password = request.data.get('password')
     
-    user = authenticate(username=username, password=password)
+    # Try to authenticate with username first
+    user = authenticate(username=username_or_phone, password=password)
+    
+    # If that fails, try to find user by phone number
+    if user is None:
+        try:
+            from .models import UserProfile
+            user_profile = UserProfile.objects.get(phone_number=username_or_phone)
+            user = authenticate(username=user_profile.user.username, password=password)
+        except:
+            pass  # Will handle below
     
     if user is None:
         # Check if user exists but password matches (or if user doesn't exist)
         # to give specific error messages as requested.
         try:
-            existing_user = User.objects.get(username=username)
+            existing_user = User.objects.get(username=username_or_phone)
             if not existing_user.is_active:
                 return Response(
                     {'error': 'Your account is pending admin approval. Please wait for confirmation.'},
@@ -656,10 +666,24 @@ def login_user(request):
                 status=status.HTTP_401_UNAUTHORIZED
             )
         except User.DoesNotExist:
-            return Response(
-                {'error': 'Account not found. Please request access first.'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
+            # Check if it's a phone number
+            try:
+                from .models import UserProfile
+                user_profile = UserProfile.objects.get(phone_number=username_or_phone)
+                if not user_profile.user.is_active:
+                    return Response(
+                        {'error': 'Your account is pending admin approval. Please wait for confirmation.'},
+                        status=status.HTTP_401_UNAUTHORIZED
+                    )
+                return Response(
+                    {'error': 'Invalid password. Please try again.'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            except:
+                return Response(
+                    {'error': 'Account not found. Please request access first.'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
     
     # Generate JWT tokens
     refresh = RefreshToken.for_user(user)
