@@ -1,84 +1,346 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Sign Up - Dr. Niaz's Agenda Tracker{% endblock %}
+{% block title %}Sign Up - Agromet Lab Task Tracker{% endblock %}
+
+{% block extra_head %}
+<style>
+    body {
+        background-color: #f0fff4;
+        font-family: 'Outfit', sans-serif;
+    }
+
+    .signup-container {
+        min-height: 100vh;
+        display: flex;
+    }
+
+    /* Left Illustration Panel */
+    .illustration-panel {
+        flex: 1;
+        background-color: #f0fff4;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem;
+        position: relative;
+    }
+
+    @media (min-width: 1024px) {
+        .illustration-panel {
+            display: flex;
+        }
+    }
+
+    .illustration-img {
+        width: 100%;
+        max-width: 250px;
+        height: auto;
+        object-fit: contain;
+    }
+
+    /* Right Form Panel */
+    .form-panel {
+        flex: 1;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        min-height: 100vh;
+    }
+
+    .form-wrapper {
+        width: 100%;
+        max-width: 440px;
+    }
+
+    /* Header */
+    .form-header {
+        margin-bottom: 2rem;
+    }
+
+    .action-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: #f0fdf4;
+        color: #059669;
+        padding: 0.375rem 0.875rem;
+        border-radius: 9999px;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 1rem;
+    }
+
+    .form-header h1 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: #1f2937;
+        margin: 0 0 0.5rem 0;
+        letter-spacing: -0.025em;
+    }
+
+    .form-header p {
+        color: #6b7280;
+        font-size: 0.875rem;
+        line-height: 1.4;
+        margin: 0;
+    }
+
+    /* Input Groups */
+    .input-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .input-label {
+        display: block;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        margin-left: 0.25rem;
+    }
+
+    .input-wrapper {
+        position: relative;
+    }
+
+    .input-icon {
+        position: absolute;
+        left: 1.125rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+        transition: color 0.2s;
+        font-size: 0.9375rem;
+    }
+
+    .input-field {
+        width: 100%;
+        padding: 0.875rem 1rem 0.875rem 3rem;
+        background: #f9fafb;
+        border: 2px solid #f3f4f6;
+        border-radius: 1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #1f2937;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        outline: none;
+    }
+
+    .input-field:focus {
+        background: white;
+        border-color: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+    }
+
+    .input-field:focus~.input-icon {
+        color: #10b981;
+    }
+
+    /* Signup Button */
+    .signup-btn {
+        width: 100%;
+        padding: 1rem;
+        background: linear-gradient(135deg, #059669, #047857);
+        color: white;
+        border: none;
+        border-radius: 1rem;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px -4px rgba(5, 150, 105, 0.4);
+        margin-top: 1rem;
+    }
+
+    .signup-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 20px -5px rgba(5, 150, 105, 0.5);
+    }
+
+    .signup-btn:active {
+        transform: translateY(0);
+    }
+
+    /* Alert Messages */
+    .alert-error {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #dc2626;
+        padding: 0.875rem 1rem;
+        border-radius: 0.75rem;
+        margin-bottom: 1.5rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+    }
+
+    /* Footer */
+    .form-footer {
+        margin-top: 1.75rem;
+        padding-top: 1.75rem;
+        border-top: 1px solid #f3f4f6;
+        text-align: center;
+    }
+
+    .signin-text {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+
+    .signin-link {
+        color: #059669;
+        font-weight: 700;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+
+    .signin-link:hover {
+        color: #047857;
+        text-decoration: underline;
+    }
+
+    /* Branding Footer */
+    .branding-footer {
+        margin-top: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.875rem;
+        background: #f9fafb;
+        border-radius: 1rem;
+    }
+
+    .brand-logo-small {
+        width: 1.75rem;
+        height: 1.75rem;
+        object-fit: contain;
+    }
+
+    .brand-info {
+        flex: 1;
+    }
+
+    .brand-title {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #1f2937;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .brand-subtitle {
+        font-size: 0.625rem;
+        font-weight: 600;
+        color: #9ca3af;
+        margin: 0;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="min-h-[80vh] flex items-center justify-center">
-    <div class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-gray-100 p-8 md:p-10 animate-fade-in mx-4">
-        <!-- Header -->
-        <div class="text-center mb-10">
-            <div
-                class="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-sm">
-                <i class="fas fa-user-plus"></i>
-            </div>
-            <h1 class="text-2xl font-bold text-gray-800">Create Account</h1>
-            <p class="text-gray-500 mt-2">Join to collaborate on research projects</p>
-        </div>
+<div class="signup-container">
+    <!-- Left Illustration Panel (Visible on Desktop) -->
+    <div class="illustration-panel">
+        <img src="{% static 'images/brri-logo.png' %}" alt="Agromet Lab" class="illustration-img">
+    </div>
 
-        <!-- Messages -->
-        {% if messages %}
-        <div class="mb-6 space-y-2">
+    <!-- Right Form Panel -->
+    <div class="form-panel">
+        <div class="form-wrapper">
+            <!-- Brand Identity Section -->
+            <a href="/" class="flex items-center gap-4 mb-10 group no-underline">
+                <img src="{% static 'images/brri-logo.png' %}" alt="BRRI Logo"
+                    class="w-14 h-14 object-contain transition-transform duration-500 group-hover:scale-110">
+                <div class="flex flex-col">
+                    <h2 class="text-xl font-black text-gray-900 leading-none tracking-tight uppercase m-0">
+                        Agromet Lab
+                    </h2>
+                    <p class="text-xs text-emerald-600 font-bold tracking-[0.2em] uppercase mt-1 mb-0">
+                        Task Tracker
+                    </p>
+                </div>
+            </a>
+
+            <!-- Header -->
+            <div class="form-header">
+                <span class="action-badge">
+                    <i class="fas fa-user-plus"></i>
+                    Request Access
+                </span>
+                <h1>Create Account</h1>
+                <p>Join the team to collaborate on agricultural research projects and task management.</p>
+            </div>
+
+            <!-- Error Messages -->
+            {% if messages %}
             {% for message in messages %}
-            <div
-                class="p-3 rounded-xl bg-red-50 text-red-600 text-sm font-medium border border-red-100 flex items-center gap-2">
-                <i class="fas fa-exclamation-circle"></i>
+            <div class="alert-error">
+                <i class="fas fa-exclamation-circle text-red-400"></i>
                 {{ message }}
             </div>
             {% endfor %}
-        </div>
-        {% endif %}
+            {% endif %}
 
-        <!-- Form -->
-        <form method="POST" class="space-y-5">
-            {% csrf_token %}
+            <!-- Signup Form -->
+            <form method="POST">
+                {% csrf_token %}
 
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2 ml-1">Full Name</label>
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
-                        <i class="fas fa-user"></i>
+                <div class="input-group">
+                    <label class="input-label">Full Name</label>
+                    <div class="input-wrapper">
+                        <input type="text" name="name" class="input-field" placeholder="John Doe" required>
+                        <i class="fas fa-user input-icon"></i>
                     </div>
-                    <input type="text" name="name" required
-                        class="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium text-gray-800 placeholder-gray-400"
-                        placeholder="John Doe">
                 </div>
+
+                <div class="input-group">
+                    <label class="input-label">Phone Number</label>
+                    <div class="input-wrapper">
+                        <input type="tel" name="phone" class="input-field" placeholder="017xxxxxxxx" required
+                            autocomplete="tel">
+                        <i class="fas fa-phone input-icon"></i>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-1.5 ml-1 font-medium">Use this number to sign in later</p>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="password" class="input-field"
+                            placeholder="Create a strong password" required>
+                        <i class="fas fa-key input-icon"></i>
+                    </div>
+                </div>
+
+                <button type="submit" class="signup-btn">
+                    Register Account
+                </button>
+            </form>
+
+            <!-- Footer -->
+            <div class="form-footer">
+                <p class="signin-text">
+                    Already have an account? <a href="{% url 'login' %}" class="signin-link">Sign In</a>
+                </p>
             </div>
 
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2 ml-1">Phone Number</label>
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
-                        <i class="fas fa-phone"></i>
-                    </div>
-                    <input type="tel" name="phone" required
-                        class="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium text-gray-800 placeholder-gray-400"
-                        placeholder="e.g., +88017..." autocomplete="tel">
-                </div>
-                <p class="text-xs text-gray-400 mt-1 ml-1">This will be used as your login ID</p>
-            </div>
-
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2 ml-1">Password</label>
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
-                        <i class="fas fa-key"></i>
-                    </div>
-                    <input type="password" name="password" required
-                        class="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-medium text-gray-800 placeholder-gray-400"
-                        placeholder="Create a strong password">
+            <!-- Branding Summary -->
+            <div class="branding-footer">
+                <img src="{% static 'images/brri-logo.png' %}" alt="BRRI" class="brand-logo-small">
+                <div class="brand-info">
+                    <p class="brand-title">Agromet Lab Task Tracker</p>
+                    <p class="brand-subtitle">Bangladesh Rice Research Institute</p>
                 </div>
             </div>
-
-            <button type="submit"
-                class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-transform active:scale-[0.98] mt-4">
-                Create Account
-            </button>
-        </form>
-
-        <!-- Footer -->
-        <div class="mt-8 text-center text-sm text-gray-500">
-            Already have an account?
-            <a href="{% url 'login' %}" class="font-bold text-blue-600 hover:text-blue-700 hover:underline">Sign In</a>
         </div>
     </div>
 </div>

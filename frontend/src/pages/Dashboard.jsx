@@ -88,7 +88,7 @@ const Dashboard = () => {
                 {/* Completed Tasks */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-gray-100 h-32 sm:h-48 flex flex-col justify-between group">
                     <div className="flex justify-between items-start">
-                        <span className="text-xs sm:text-sm font-bold text-gray-700">Done</span>
+                        <span className="text-xs sm:text-sm font-bold text-gray-700">Completed</span>
                         <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-gray-100 flex items-center justify-center text-emerald-500">
                             <i className="fas fa-check text-[10px] sm:text-xs"></i>
                         </div>
@@ -102,7 +102,7 @@ const Dashboard = () => {
                 {/* In Progress */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-gray-100 h-32 sm:h-48 flex flex-col justify-between group">
                     <div className="flex justify-between items-start">
-                        <span className="text-xs sm:text-sm font-bold text-gray-700">Active</span>
+                        <span className="text-xs sm:text-sm font-bold text-gray-700">In Progress</span>
                         <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-gray-100 flex items-center justify-center text-blue-500">
                             <i className="fas fa-spinner text-[10px] sm:text-xs animate-spin-slow"></i>
                         </div>
@@ -236,7 +236,7 @@ const Dashboard = () => {
                         <div className="flex justify-center gap-4 mt-2">
                             <div className="flex items-center gap-1.5">
                                 <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
-                                <span className="text-[10px] font-bold text-gray-500">Done</span>
+                                <span className="text-[10px] font-bold text-gray-500">Completed</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <span className="w-2 h-2 rounded-full bg-gray-200"></span>

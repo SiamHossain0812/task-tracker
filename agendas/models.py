@@ -99,6 +99,7 @@ class Agenda(models.Model):
     meeting_link = models.URLField(blank=True, help_text="Google Meet link for this task")
     google_event_id = models.CharField(max_length=255, blank=True, help_text="Google Calendar event ID")
     
+    created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='created_agendas')
     collaborators = models.ManyToManyField(Collaborator, blank=True, related_name='agendas')
     
     created_at = models.DateTimeField(auto_now_add=True)

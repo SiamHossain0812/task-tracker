@@ -103,13 +103,15 @@ class AgendaListSerializer(serializers.ModelSerializer):
     calculated_category = serializers.CharField(read_only=True)
     collaborator_count = serializers.SerializerMethodField()
     project_info = serializers.SerializerMethodField()
+    creator_name = serializers.CharField(source='created_by.get_full_name', read_only=True, default='Administrator')
     
     class Meta:
         model = Agenda
         fields = [
             'id', 'title', 'type', 'date', 'time', 'status', 'priority', 'category',
             'project', 'project_name', 'project_color', 'project_info',
-            'is_overdue', 'calculated_category', 'collaborator_count', 'meeting_link', 'created_at'
+            'is_overdue', 'calculated_category', 'collaborator_count', 'meeting_link', 
+            'created_by', 'creator_name', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
     
@@ -155,7 +157,7 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
             'date', 'time', 'expected_finish_date', 'expected_finish_time',
             'status', 'priority', 'category', 'external_link', 'attachment', 'attachment_url',
             'collaborators', 'collaborator_ids', 'is_overdue', 'calculated_category',
-            'meeting_link', 'google_event_id',
+            'meeting_link', 'google_event_id', 'created_by',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

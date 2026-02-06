@@ -488,15 +488,16 @@ const AgendaForm = () => {
 
 
                             {isMeeting && (
-                                <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100 shadow-sm">
-                                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0">
+                                <div className="p-5 bg-gradient-to-br from-emerald-50/50 to-indigo-50/30 rounded-[2rem] border border-emerald-100 shadow-sm relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16"></div>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 relative z-10">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-200 shrink-0">
                                                 <i className="fas fa-video"></i>
                                             </div>
                                             <div className="flex-grow">
-                                                <label className="block text-sm font-bold text-gray-800">Google Meet Link</label>
-                                                <p className="text-xs text-gray-600 font-medium">Create and paste link</p>
+                                                <label className="block text-sm font-bold text-gray-800">Connection Link</label>
+                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Google Meet Integration</p>
                                             </div>
                                         </div>
                                         {!isReadOnly && (
@@ -504,24 +505,24 @@ const AgendaForm = () => {
                                                 href="https://meet.google.com/"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="w-full sm:w-auto px-3 py-1.5 bg-white text-blue-600 border border-blue-200 rounded-lg text-xs font-bold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+                                                className="w-full sm:w-auto px-4 py-2 bg-white text-emerald-600 border border-emerald-100 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 shadow-sm"
                                             >
                                                 <i className="fas fa-external-link-alt"></i>
-                                                Generate New
+                                                Generate Link
                                             </a>
                                         )}
                                     </div>
 
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 relative z-10">
                                         <div className="relative flex-grow">
-                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <i className="fas fa-link text-gray-400"></i>
+                                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                <i className="fas fa-link text-emerald-400"></i>
                                             </div>
                                             <input
                                                 type="text"
                                                 name="meeting_link"
                                                 disabled={isReadOnly}
-                                                placeholder="Paste Google Meet link (e.g. meet.google.com/abc-xyz)"
+                                                placeholder="Paste Meet link (e.g. meet.google.com/abc-xyz)"
                                                 value={formData.meeting_link}
                                                 onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })}
                                                 onBlur={(e) => {
@@ -531,7 +532,7 @@ const AgendaForm = () => {
                                                         setFormData({ ...formData, meeting_link: newVal });
                                                     }
                                                 }}
-                                                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm disabled:bg-gray-50"
+                                                className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium disabled:bg-gray-50"
                                             />
                                         </div>
                                         {formData.meeting_link && (
@@ -539,16 +540,16 @@ const AgendaForm = () => {
                                                 href={formData.meeting_link}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors flex items-center justify-center shadow-sm"
-                                                title="Test Link"
+                                                className="px-5 py-3 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all flex items-center justify-center shadow-lg shadow-emerald-100"
+                                                title="Check Connection"
                                             >
-                                                <i className="fas fa-video"></i>
+                                                <i className="fas fa-external-link-alt text-sm"></i>
                                             </a>
                                         )}
                                     </div>
-                                    <p className="mt-2 text-xs text-blue-800/60 font-medium ml-1">
-                                        <i className="fas fa-info-circle mr-1"></i>
-                                        Click "Generate New", select <b>"Create a meeting for later"</b>, then paste the link.
+                                    <p className="mt-3 text-[10px] text-emerald-700/60 font-bold flex items-center gap-1.5 ml-1">
+                                        <i className="fas fa-info-circle"></i>
+                                        Paste the link generated from Google Meet here.
                                     </p>
                                 </div>
                             )}

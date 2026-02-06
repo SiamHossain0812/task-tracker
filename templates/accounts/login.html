@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Login - Dr. Niaz's Agenda Tracker{% endblock %}
+{% block title %}Login - Agromet Lab Task Tracker{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -291,15 +291,35 @@
 {% endblock %}
 
 {% block content %}
-<div class="login-container">
+<div class="login-container relative">
     <!-- Left Illustration Panel -->
     <div class="illustration-panel">
-        <img src="{% static 'images/dr_niaz_flat_green.png' %}" alt="Dr. Niaz's Workspace" class="illustration-img">
+        <img src="{% static 'images/brri-logo.png' %}" alt="Agromet Lab Workspace" class="illustration-img"
+            style="max-width: 200px;">
     </div>
 
     <!-- Right Form Panel -->
     <div class="form-panel">
         <div class="form-wrapper">
+            <!-- Brand Identity Section -->
+            <a href="/" class="flex flex-col items-center md:items-start mb-10 group no-underline">
+                <div class="flex items-center gap-4 mb-4">
+                    <img src="{% static 'images/brri-logo.png' %}" alt="BRRI Logo"
+                        class="w-16 h-16 object-contain transition-transform duration-500 group-hover:scale-110">
+                    <div class="flex flex-col">
+                        <h2 class="text-xl font-black text-gray-900 leading-none tracking-tight uppercase m-0">
+                            Agromet Lab
+                        </h2>
+                        <p class="text-sm text-emerald-600 font-bold tracking-[0.2em] uppercase mt-1 mb-0">
+                            Task Tracker
+                        </p>
+                    </div>
+                </div>
+                <div
+                    class="w-20 h-1 bg-emerald-500 rounded-full opacity-20 transition-all duration-700 group-hover:w-full">
+                </div>
+            </a>
+
             <!-- Header -->
             <div class="form-header">
                 <span class="welcome-badge">
@@ -307,7 +327,7 @@
                     Secure Login
                 </span>
                 <h1>Welcome Back</h1>
-                <p>Sign in to access your personal agenda tracker</p>
+                <p>Sign in to access the Agromet Lab task tracker</p>
             </div>
 
             <!-- Error Messages -->
@@ -365,11 +385,12 @@
             <!-- Branding -->
             <div class="branding-footer">
                 <div class="brand-icon">
-                    <i class="fas fa-check-double"></i>
+                    <img src="{% static 'images/brri-logo.png' %}" alt="BRRI"
+                        style="width: 1.25rem; height: 1.25rem; object-fit: contain;">
                 </div>
                 <div class="brand-text">
-                    <p class="brand-title">Dr. Niaz's Agenda Tracker</p>
-                    <p class="brand-subtitle">Personal Workspace</p>
+                    <p class="brand-title">Agromet Lab Task Tracker</p>
+                    <p class="brand-subtitle">Scientific Workspace</p>
                 </div>
             </div>
         </div>

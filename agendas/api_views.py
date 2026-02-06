@@ -137,6 +137,10 @@ class AgendaViewSet(viewsets.ModelViewSet):
             return AgendaListSerializer
         return AgendaDetailSerializer
     
+    def perform_create(self, serializer):
+        """Set created_by to current user"""
+        serializer.save(created_by=self.request.user)
+    
     @action(detail=True, methods=['post'], url_path='toggle')
     def toggle_status(self, request, pk=None):
         """Toggle agenda status between pending, in-progress, and completed"""
@@ -753,7 +757,7 @@ def export_past_work_pdf(request):
 
     # 1. Header Area
     elements.append(Paragraph("WORK PROGRESS REPORT", title_style))
-    elements.append(Paragraph("DR. NIAZ'S PERSONAL AGENDA", header_accent))
+    elements.append(Paragraph("AGROMET LAB TASK TRACKER", header_accent))
     elements.append(Spacer(1, 12))
 
     # 2. Executive Summary (Tiles)
@@ -828,7 +832,7 @@ def export_past_work_pdf(request):
 
     # 5. Professional Footer
     elements.append(Spacer(1, 50))
-    footer_text = f"Report generated on {datetime.now().strftime('%B %d, %Y at %H:%M')}<br/>Authorized by Dr. Niaz's Personal Agenda Tracker."
+    footer_text = f"Report generated on {datetime.now().strftime('%B %d, %Y at %H:%M')}<br/>Authorized by Agromet Lab Task Tracker."
     elements.append(Paragraph(f"<font color='#9ca3af' size='8'>{footer_text}</font>", info_text))
 
     doc.build(elements)

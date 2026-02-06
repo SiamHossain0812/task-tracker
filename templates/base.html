@@ -5,12 +5,13 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Agenda Tracker{% endblock %}</title>
+    <title>{% block title %}Agromet Lab Task Tracker{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+    <link rel="icon" type="image/png" href="{% static 'images/brri-logo.png' %}">
     {% block extra_head %}{% endblock %}
     <style>
         body {
@@ -172,12 +173,12 @@
         <div class="loader-icon">
             <i class="fas fa-seedling"></i>
         </div>
-        <div class="loader-title">Dr. Niaz's Workspace</div>
+        <div class="loader-title">Agromet Lab Workspace</div>
         <div id="loader-status" class="loader-status">Preparing Workspace...</div>
         <div class="dna-bar">
             <div class="dna-progress"></div>
         </div>
-        <div class="mt-6 text-emerald-300/40 text-[10px] font-mono tracking-widest uppercase">Personal Agenda v2.4</div>
+        <div class="mt-6 text-emerald-300/40 text-[10px] font-mono tracking-widest uppercase">Task Tracker v2.4</div>
     </div>
 
     <!-- Simple Spinner (Internal Navigation) -->
@@ -197,11 +198,10 @@
         <!-- Logo -->
         <div class="h-24 flex items-center px-8 relative">
             <a href="{% url 'dashboard' %}" class="flex items-center gap-3">
-                <div
-                    class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white text-xl shadow-lg shadow-emerald-200">
-                    <i class="fas fa-check-double"></i>
+                <div class="w-12 h-12 flex items-center justify-center shrink-0">
+                    <img src="{% static 'images/brri-logo.png' %}" alt="BRRI Logo" class="w-full h-full object-contain">
                 </div>
-                <span class="text-lg font-bold text-gray-800 tracking-tight leading-tight">Dr. Niaz's<br>Agenda
+                <span class="text-lg font-bold text-gray-800 tracking-tight leading-tight">Agromet Lab<br>Task
                     Tracker</span>
             </a>
             <!-- Close Button (Mobile) -->
@@ -287,11 +287,15 @@
                 <button id="mobile-menu-btn" class="p-2 -ml-2 text-gray-700 hover:text-emerald-600 transition-colors">
                     <i class="fas fa-bars text-xl"></i>
                 </button>
-                <div class="flex flex-col justify-center border-l border-gray-100 pl-3">
-                    <span class="text-[13px] font-black text-gray-900 leading-tight uppercase tracking-tight">Dr.
-                        Niaz's</span>
-                    <span class="text-[10px] text-emerald-600 font-bold tracking-widest uppercase -mt-0.5">Personal
-                        Agenda</span>
+                <div class="flex items-center gap-2 border-l border-gray-100 pl-3">
+                    <img src="{% static 'images/brri-logo.png' %}" alt="BRRI Logo" class="w-8 h-8 object-contain">
+                    <div class="flex flex-col justify-center">
+                        <span
+                            class="text-[13px] font-black text-gray-900 leading-tight uppercase tracking-tight">Agromet
+                            Lab</span>
+                        <span class="text-[10px] text-emerald-600 font-bold tracking-widest uppercase -mt-0.5">Task
+                            Tracker</span>
+                    </div>
                 </div>
             </div>
 
@@ -375,10 +379,10 @@
 
         const statusMessages = [
             "Preparing Workspace...",
-            "Organizing Individual Tasks...",
-            "Syncing Dr. Niaz's Library...",
+            "Organizing Research Tasks...",
+            "Syncing Laboratory Library...",
             "Finalizing Layout...",
-            "Welcome, Scientist."
+            "Welcome, Researcher."
         ];
 
         let messageIndex = 0;

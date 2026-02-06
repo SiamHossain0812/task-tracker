@@ -53,7 +53,7 @@
         <div
             class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-gray-100 h-32 sm:h-48 flex flex-col justify-between group">
             <div class="flex justify-between items-start">
-                <span class="text-xs sm:text-sm font-bold text-gray-700">Done</span>
+                <span class="text-xs sm:text-sm font-bold text-gray-700">Completed</span>
                 <div
                     class="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-gray-100 flex items-center justify-center text-emerald-500">
                     <i class="fas fa-check text-[10px] sm:text-xs"></i>
@@ -69,15 +69,15 @@
         <div
             class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-gray-100 h-32 sm:h-48 flex flex-col justify-between group">
             <div class="flex justify-between items-start">
-                <span class="text-xs sm:text-sm font-bold text-gray-700">Active</span>
+                <span class="text-xs sm:text-sm font-bold text-gray-700">In Progress</span>
                 <div
-                    class="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-gray-100 flex items-center justify-center text-blue-500">
+                    class="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-gray-100 flex items-center justify-center text-indigo-500">
                     <i class="fas fa-spinner text-[10px] sm:text-xs animate-spin-slow"></i>
                 </div>
             </div>
             <div>
                 <div class="text-3xl sm:text-5xl font-bold text-gray-800 mb-1 sm:mb-3">{{ total_progress }}</div>
-                <div class="text-[10px] font-medium text-gray-400">Current</div>
+                <div class="text-[10px] font-medium text-gray-400">Current Tasks</div>
             </div>
         </div>
 
@@ -154,13 +154,16 @@
                         <span>
                             <i class="far fa-calendar mr-1"></i>
                             {{ upcoming_tasks.first.date|date:"M d" }}
-                            {% if upcoming_tasks.first.time %} at {{ upcoming_tasks.first.time|time:"h:i A" }}{% endif %}
+                            {% if upcoming_tasks.first.time %} at {{ upcoming_tasks.first.time|time:"h:i A" }}{% endif
+                            %}
                         </span>
                         {% if upcoming_tasks.first.expected_finish_date or upcoming_tasks.first.expected_finish_time %}
                         <span class="text-emerald-600 font-bold">
                             <i class="fas fa-flag-checkered mr-1"></i>
-                            Finish: {{ upcoming_tasks.first.expected_finish_date|date:"M d"|default:upcoming_tasks.first.date|date:"M d" }}
-                            {% if upcoming_tasks.first.expected_finish_time %} at {{ upcoming_tasks.first.expected_finish_time|time:"h:i A" }}{% endif %}
+                            Finish: {{ upcoming_tasks.first.expected_finish_date|date:"M
+                            d"|default:upcoming_tasks.first.date|date:"M d" }}
+                            {% if upcoming_tasks.first.expected_finish_time %} at {{
+                            upcoming_tasks.first.expected_finish_time|time:"h:i A" }}{% endif %}
                         </span>
                         {% endif %}
                     </p>
@@ -186,23 +189,18 @@
                     <div class="relative w-full max-w-[240px] aspect-[1.6]">
                         <svg viewBox="0 0 200 120" class="w-full h-full">
                             <!-- Background arc -->
-                            <path d="M 20 100 A 80 80 0 0 1 180 100" 
-                                  fill="none" 
-                                  stroke="#e5e7eb" 
-                                  stroke-width="18"
-                                  stroke-linecap="round" />
+                            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#e5e7eb" stroke-width="18"
+                                stroke-linecap="round" />
                             <!-- Progress arc -->
-                            <path d="M 20 100 A 80 80 0 0 1 180 100" 
-                                  fill="none" 
-                                  stroke="#059669" 
-                                  stroke-width="18"
-                                  stroke-linecap="round" 
-                                  stroke-dasharray="251"
-                                  style="stroke-dashoffset: calc(251 - (251 * {{ overall_progress|default:0 }} / 100));"
-                                  class="transition-all duration-1000 ease-out" />
+                            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#059669" stroke-width="18"
+                                stroke-linecap="round" stroke-dasharray="251"
+                                style="stroke-dashoffset: calc(251 - (251 * {{ overall_progress|default:0 }} / 100));"
+                                class="transition-all duration-1000 ease-out" />
                         </svg>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center pt-6 pointer-events-none">
-                            <span class="text-3xl sm:text-4xl font-extrabold text-gray-800 leading-none">{{ overall_progress|default:0 }}%</span>
+                        <div
+                            class="absolute inset-0 flex flex-col items-center justify-center pt-6 pointer-events-none">
+                            <span class="text-3xl sm:text-4xl font-extrabold text-gray-800 leading-none">{{
+                                overall_progress|default:0 }}%</span>
                             <span class="text-[10px] font-bold tracking-widest text-gray-400 mt-1 uppercase">Rate</span>
                         </div>
                     </div>
@@ -210,7 +208,7 @@
                 <div class="flex justify-center gap-4 mt-2">
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
-                        <span class="text-[10px] font-bold text-gray-500">Done</span>
+                        <span class="text-[10px] font-bold text-gray-500">Completed</span>
                     </div>
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full bg-gray-200"></span>
@@ -264,48 +262,52 @@
 </div>
 
 <style>
-.custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-}
-
-@keyframes spin-slow {
-    from {
-        transform: rotate(0deg);
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
     }
-    to {
-        transform: rotate(360deg);
-    }
-}
 
-.animate-spin-slow {
-    animation: spin-slow 2s linear infinite;
-}
-
-@keyframes bounce-subtle {
-    0%, 100% {
-        transform: translateY(0);
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
     }
-    50% {
-        transform: translateY(-5px);
-    }
-}
 
-.animate-bounce-subtle {
-    animation: bounce-subtle 2s ease-in-out infinite;
-}
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    @keyframes spin-slow {
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .animate-spin-slow {
+        animation: spin-slow 2s linear infinite;
+    }
+
+    @keyframes bounce-subtle {
+
+        0%,
+        100% {
+            transform: translateY(0);
+        }
+
+        50% {
+            transform: translateY(-5px);
+        }
+    }
+
+    .animate-bounce-subtle {
+        animation: bounce-subtle 2s ease-in-out infinite;
+    }
 </style>
 {% endblock %}

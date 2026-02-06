@@ -157,7 +157,7 @@ def agenda_create(request, project_pk=None):
     """Create a new agenda. project_pk is optional."""
     # Restrict creation to Superusers only
     if not request.user.is_superuser:
-        messages.error(request, "Permission denied. Only Dr. Niaz can create tasks.")
+        messages.error(request, "Permission denied. Only authorized administrators can create tasks.")
         return redirect('undone_tasks')
 
     initial_data = {}
@@ -283,7 +283,7 @@ def agenda_toggle_status(request, pk):
     if not request.user.is_superuser and not is_collaborator:
         return JsonResponse({
             'success': False,
-            'error': 'Permission denied. Only Dr. Niaz or assigned collaborators can update status.'
+            'error': 'Permission denied. Only administrators or assigned collaborators can update status.'
         }, status=403)
     
     status_order = ['pending', 'in-progress', 'completed']
@@ -675,7 +675,7 @@ def export_past_work_pdf(request):
 
     # 1. Header Area
     elements.append(Paragraph("WORK PROGRESS REPORT", title_style))
-    elements.append(Paragraph("DR. NIAZ'S PERSONAL AGENDA", header_accent))
+    elements.append(Paragraph("AGROMET LAB TASK TRACKER", header_accent))
     elements.append(Spacer(1, 12))
 
     # 2. Executive Summary (Tiles)
@@ -750,7 +750,7 @@ def export_past_work_pdf(request):
 
     # 5. Professional Footer
     elements.append(Spacer(1, 50))
-    footer_text = f"Report generated on {datetime.now().strftime('%B %d, %Y at %H:%M')}<br/>Authorized by Dr. Niaz's Personal Agenda Tracker."
+    footer_text = f"Report generated on {datetime.now().strftime('%B %d, %Y at %H:%M')}<br/>Authorized by Agromet Lab Task Tracker."
     elements.append(Paragraph(f"<font color='#9ca3af' size='8'>{footer_text}</font>", info_text))
 
     doc.build(elements)

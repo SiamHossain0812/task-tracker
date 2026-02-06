@@ -175,7 +175,7 @@ const About = () => {
 
                     {!isSuper && (
                         <div className="bg-emerald-50 rounded-3xl p-8 border border-emerald-100 text-center">
-                            <p className="text-emerald-800 font-medium mb-4">Want to customize your profile details?</p>
+                            <p className="text-emerald-800 font-medium mb-4">Want to customize your lab profile details?</p>
                             <a href="/settings" className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100">
                                 <i className="fas fa-user-edit"></i>
                                 <span>Go to Settings</span>

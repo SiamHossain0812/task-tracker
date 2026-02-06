@@ -113,9 +113,9 @@ const TasksPage = () => {
                 <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
                     <div className="text-gray-400 text-xs font-bold uppercase mb-2">In Progress</div>
                     <div className="flex items-end justify-between">
-                        <span className="text-4xl font-bold text-blue-600">{data.in_progress_count}</span>
-                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                            <i className="fas fa-spinner"></i>
+                        <span className="text-4xl font-bold text-indigo-600">{data.in_progress_count}</span>
+                        <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500">
+                            <i className="fas fa-spinner animate-spin-slow"></i>
                         </div>
                     </div>
                 </div>
@@ -189,9 +189,9 @@ const TasksPage = () => {
                                                 <td className="px-6 py-4">
                                                     <button
                                                         onClick={() => handleToggleClick(task)}
-                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all w-28 ${task.status === 'in-progress' ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all w-28 ${task.status === 'in-progress' ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
                                                     >
-                                                        {task.status_display || task.status}
+                                                        {task.status_display || (task.status === 'in-progress' ? 'In Progress' : task.status)}
                                                     </button>
                                                 </td>
                                                 <td className="px-6 py-4 text-right pr-8">

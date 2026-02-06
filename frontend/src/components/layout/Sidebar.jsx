@@ -28,11 +28,11 @@ const Sidebar = ({ isOpen, onClose }) => {
             {/* Logo */}
             <div className="h-24 flex items-center px-8 relative">
                 <NavLink to="/" className="flex items-center gap-3" onClick={onClose}>
-                    <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white text-xl shadow-lg shadow-emerald-200">
-                        <i className="fas fa-check-double"></i>
+                    <div className="w-12 h-12 flex items-center justify-center shrink-0">
+                        <img src="/images/brri-logo.png" alt="BRRI Logo" className="w-full h-full object-contain" />
                     </div>
                     <span className="text-lg font-bold text-gray-800 tracking-tight leading-tight">
-                        Dr. Niaz's<br />Task Tracker
+                        Agromet Lab<br />Task Tracker
                     </span>
                 </NavLink>
                 {/* Close Button (Mobile) */}

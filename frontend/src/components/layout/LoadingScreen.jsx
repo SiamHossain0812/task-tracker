@@ -6,10 +6,10 @@ const LoadingScreen = () => {
 
     const statusMessages = [
         "Preparing Workspace...",
-        "Organizing Individual Tasks...",
-        "Syncing Dr. Niaz's Library...",
+        "Organizing Research Tasks...",
+        "Syncing Laboratory Library...",
         "Finalizing Layout...",
-        "Welcome, Scientist."
+        "Welcome, Researcher."
     ];
 
     useEffect(() => {
@@ -52,7 +52,7 @@ const LoadingScreen = () => {
                 <i className="fas fa-seedling"></i>
             </div>
             <div className="loader-title text-white text-2xl font-extrabold tracking-tight mb-2">
-                Dr. Niaz's Workspace
+                Agromet Lab Workspace
             </div>
             <div className="loader-status text-[#6ee7b7] text-sm font-medium uppercase tracking-widest h-5 transition-opacity duration-300">
                 {status}
@@ -61,7 +61,7 @@ const LoadingScreen = () => {
                 <div className="dna-progress absolute -left-full w-full h-full bg-gradient-to-r from-transparent via-amber-400 to-transparent animate-dna-scan"></div>
             </div>
             <div className="mt-6 text-emerald-300/40 text-[10px] font-mono tracking-widest uppercase">
-                Personal Agenda v2.4
+                Agromet Lab Task Tracker v2.4
             </div>
 
             <style>{`

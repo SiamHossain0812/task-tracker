@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Tasks - Dr. Niaz's Personal Workspace{% endblock %}
+{% block title %}Tasks - Agromet Lab Workspace{% endblock %}
 
 {% block content %}
 <div class="animate-fade-in flex flex-col">
@@ -110,24 +110,30 @@
                                 <div class="flex flex-col gap-1">
                                     <div class="flex items-center gap-2">
                                         <div class="flex flex-col">
-                                            <span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Start</span>
-                                            <span class="text-sm font-bold text-gray-700">{{ task.date|date:"M d, Y" }}</span>
+                                            <span
+                                                class="text-[10px] font-black uppercase tracking-widest text-gray-400">Start</span>
+                                            <span class="text-sm font-bold text-gray-700">{{ task.date|date:"M d, Y"
+                                                }}</span>
                                             {% if task.time %}
-                                            <span class="text-[10px] font-bold text-emerald-600">{{ task.time|time:"h:i A" }}</span>
+                                            <span class="text-[10px] font-bold text-emerald-600">{{ task.time|time:"h:i
+                                                A" }}</span>
                                             {% endif %}
                                         </div>
                                         <i class="fas fa-arrow-right text-[10px] text-gray-300 mt-3"></i>
                                         <div class="flex flex-col">
-                                            <span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Finish</span>
-                                            <span class="text-sm font-bold {% if task.is_overdue %}text-red-500{% else %}text-gray-700{% endif %}">
+                                            <span
+                                                class="text-[10px] font-black uppercase tracking-widest text-gray-400">Finish</span>
+                                            <span
+                                                class="text-sm font-bold {% if task.is_overdue %}text-red-500{% else %}text-gray-700{% endif %}">
                                                 {% if task.expected_finish_date %}
-                                                    {{ task.expected_finish_date|date:"M d, Y" }}
+                                                {{ task.expected_finish_date|date:"M d, Y" }}
                                                 {% else %}
-                                                    {{ task.date|date:"M d, Y" }}
+                                                {{ task.date|date:"M d, Y" }}
                                                 {% endif %}
                                             </span>
                                             {% if task.expected_finish_time %}
-                                            <span class="text-[10px] font-bold text-emerald-600">{{ task.expected_finish_time|time:"h:i A" }}</span>
+                                            <span class="text-[10px] font-bold text-emerald-600">{{
+                                                task.expected_finish_time|time:"h:i A" }}</span>
                                             {% endif %}
                                         </div>
                                     </div>

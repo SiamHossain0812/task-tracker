@@ -27,12 +27,12 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex flex-col lg:flex-row font-outfit bg-white overflow-hidden">
+        <div className="min-h-screen flex flex-col lg:flex-row font-outfit bg-white overflow-hidden relative">
             {/* Left Panel - Full Image */}
             <div className="hidden lg:flex flex-1 relative overflow-hidden bg-emerald-50">
                 <img
                     src="/dr_niaz_flat_green.png"
-                    alt="Dr. Niaz Workspace"
+                    alt="Agromet Lab Workspace"
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-[20s] ease-in-out hover:scale-110"
                 />
             </div>
@@ -45,6 +45,22 @@ const Login = () => {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-white/40 backdrop-blur-[1px] -z-10"></div>
 
                 <div className="w-full max-w-[380px] z-10 space-y-6">
+                    {/* Brand Identity Section */}
+                    <div className="flex flex-col items-center lg:items-start mb-10 group cursor-pointer" onClick={() => navigate('/')}>
+                        <div className="flex items-center gap-4 mb-4">
+                            <img src="/images/brri-logo.png" alt="BRRI Logo" className="w-16 h-16 object-contain drop-shadow-sm group-hover:scale-110 transition-transform duration-500" />
+                            <div className="flex flex-col">
+                                <h2 className="text-xl font-black text-gray-900 leading-none tracking-tight uppercase">
+                                    Agromet Lab
+                                </h2>
+                                <p className="text-sm text-emerald-600 font-bold tracking-[0.2em] uppercase mt-1">
+                                    Task Tracker
+                                </p>
+                            </div>
+                        </div>
+                        <div className="w-20 h-1 bg-emerald-500 rounded-full opacity-20 group-hover:w-full transition-all duration-700"></div>
+                    </div>
+
                     {/* Header */}
                     <div className="mb-8 text-center lg:text-left">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100/50 mb-4 shadow-sm hover:scale-105 transition-transform duration-300 cursor-default">

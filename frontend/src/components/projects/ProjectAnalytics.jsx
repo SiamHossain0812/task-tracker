@@ -113,7 +113,7 @@ const ProjectAnalytics = () => {
                 </div>
 
                 <div className="bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col items-center text-center">
-                    <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-3">
                         <i className="fas fa-list-check"></i>
                     </div>
                     <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Tasks</div>
@@ -272,9 +272,9 @@ const ProjectAnalytics = () => {
                                     </td>
                                     <td className="px-6 py-5 text-xs font-bold">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-emerald-600">{p.completed_count} Done</span>
+                                            <span className="text-emerald-600">{p.completed_count} Completed</span>
                                             <span className="text-gray-300">/</span>
-                                            <span className="text-amber-600">{p.pending_count} Wait</span>
+                                            <span className="text-amber-600">{p.pending_count} Pending</span>
                                             {p.overdue_count > 0 && (
                                                 <>
                                                     <span className="text-gray-300">/</span>
@@ -375,11 +375,11 @@ const ProjectAnalytics = () => {
 
                         <div className="grid grid-cols-3 gap-2 mb-5">
                             <div className="bg-emerald-50/50 border border-emerald-50 rounded-2xl p-2.5 text-center">
-                                <div className="text-[10px] font-black text-emerald-600/70 uppercase mb-0.5 tracking-widest">Done</div>
+                                <div className="text-[10px] font-black text-emerald-600/70 uppercase mb-0.5 tracking-widest">Completed</div>
                                 <div className="text-sm font-black text-emerald-700">{p.completed_count}</div>
                             </div>
                             <div className="bg-amber-50/50 border border-amber-50 rounded-2xl p-2.5 text-center">
-                                <div className="text-[10px] font-black text-amber-600/70 uppercase mb-0.5 tracking-widest">Wait</div>
+                                <div className="text-[10px] font-black text-amber-600/70 uppercase mb-0.5 tracking-widest">Pending</div>
                                 <div className="text-sm font-black text-amber-700">{p.pending_count}</div>
                             </div>
                             <div className="bg-red-50/50 border border-red-50 rounded-2xl p-2.5 text-center">

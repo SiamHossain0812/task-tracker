@@ -80,14 +80,14 @@ const RequestAccess = () => {
                         <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-100/20 rounded-full blur-3xl -mr-32 -mt-32"></div>
 
                         <div className="w-24 h-24 rounded-3xl bg-emerald-600 flex items-center justify-center text-white text-5xl shadow-2xl shadow-emerald-200 mb-10 overflow-hidden relative">
-                            <img src="/dr_niaz_flat_green.png" alt="Dr. Niaz" className="w-full h-full object-cover p-1" />
+                            <i className="fas fa-microscope text-3xl"></i>
                         </div>
 
                         <h2 className="text-5xl font-extrabold text-gray-900 mb-6 leading-tight tracking-tighter">
                             Join the <br /> <span className="text-emerald-600 underline decoration-emerald-200 underline-offset-8">Collaboration.</span>
                         </h2>
                         <p className="text-xl text-gray-600 font-medium mb-10 leading-relaxed">
-                            Request access to Dr. Niaz's specialized agenda tracker and start contributing.
+                            Request access to the Agromet Lab specialized task tracker and start contributing.
                         </p>
                     </div>
                 </div>
@@ -96,9 +96,25 @@ const RequestAccess = () => {
                 <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-300/10 rounded-full blur-[80px] -ml-24 -mb-24"></div>
             </div>
 
-            {/* Right Form Panel */}
+            {/* Right Panel - Form */}
             <div className="flex-1 bg-white flex items-center justify-center p-8 md:p-16 relative z-10 shadow-[-20px_0_50px_-20px_rgba(0,0,0,0.05)] overflow-y-auto">
                 <div className="w-full max-w-[440px] py-8">
+                    {/* Brand Identity Section */}
+                    <div className="flex flex-col items-center lg:items-start mb-10 group cursor-pointer" onClick={() => navigate('/')}>
+                        <div className="flex items-center gap-4 mb-4">
+                            <img src="/images/brri-logo.png" alt="BRRI Logo" className="w-16 h-16 object-contain drop-shadow-sm group-hover:scale-110 transition-transform duration-500" />
+                            <div className="flex flex-col">
+                                <h2 className="text-xl font-black text-gray-900 leading-none tracking-tight uppercase">
+                                    Agromet Lab
+                                </h2>
+                                <p className="text-sm text-emerald-600 font-bold tracking-[0.2em] uppercase mt-1">
+                                    Task Tracker
+                                </p>
+                            </div>
+                        </div>
+                        <div className="w-20 h-1 bg-emerald-500 rounded-full opacity-20 group-hover:w-full transition-all duration-700"></div>
+                    </div>
+
                     {/* Header */}
                     <div className="mb-8">
                         <Link to="/login" className="inline-flex items-center gap-2 text-gray-400 hover:text-emerald-600 transition-colors font-bold text-sm mb-6">

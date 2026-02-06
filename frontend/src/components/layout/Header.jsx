@@ -24,13 +24,16 @@ const Header = ({ onMenuToggle }) => {
                 >
                     <i className="fas fa-bars text-xl"></i>
                 </button>
-                <div className="flex flex-col justify-center border-l border-gray-100 pl-3">
-                    <span className="text-[13px] font-black text-gray-900 leading-tight uppercase tracking-tight">
-                        Dr. Niaz's
-                    </span>
-                    <span className="text-[10px] text-emerald-600 font-bold tracking-widest uppercase -mt-0.5">
-                        Personal Agenda
-                    </span>
+                <div className="flex items-center gap-2 border-l border-gray-100 pl-3">
+                    <img src="/images/brri-logo.png" alt="BRRI Logo" className="w-8 h-8 object-contain" />
+                    <div className="flex flex-col justify-center">
+                        <span className="text-[13px] font-black text-gray-900 leading-tight uppercase tracking-tight">
+                            Agromet Lab
+                        </span>
+                        <span className="text-[10px] text-emerald-600 font-bold tracking-widest uppercase -mt-0.5">
+                            Task Tracker
+                        </span>
+                    </div>
                 </div>
             </div>
 
