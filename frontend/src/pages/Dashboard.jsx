@@ -1,31 +1,77 @@
 import React, { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/client';
+import ProjectRequestModal from '../components/projects/ProjectRequestModal';
+import { toast } from 'react-hot-toast'; // Assuming hot-toast is used as seen in other docs
 
 const Dashboard = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+
+    const [responding, setResponding] = useState(false);
+    const [rejectModal, setRejectModal] = useState({ show: false, task: null, reason: '' });
+
+    const fetchDashboardData = async () => {
+        try {
+            // Parallel fetch: Dashboard data AND Trigger alert check
+            const [dashboardRes, _] = await Promise.all([
+                apiClient.get('dashboard/'),
+                apiClient.get('alerts/check/')
+            ]);
+            setData(dashboardRes.data);
+        } catch (error) {
+            console.error('Failed to fetch dashboard data', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchDashboardData = async () => {
-            try {
-                // Parallel fetch: Dashboard data AND Trigger alert check
-                const [dashboardRes, _] = await Promise.all([
-                    apiClient.get('dashboard/'),
-                    apiClient.get('alerts/check/')
-                ]);
-                setData(dashboardRes.data);
-            } catch (error) {
-                console.error('Failed to fetch dashboard data', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchDashboardData();
     }, []);
+
+    const handleAccept = async (taskId) => {
+        setResponding(true);
+        try {
+            await apiClient.post(`agendas/${taskId}/accept/`);
+            await fetchDashboardData();
+            toast.success('Invitation accepted!');
+        } catch (err) {
+            console.error('Accept failed', err);
+            toast.error('Failed to accept invitation');
+        } finally {
+            setResponding(false);
+        }
+    };
+
+    const handleRejectClick = (task) => {
+        setRejectModal({ show: true, task, reason: '' });
+    };
+
+    const confirmReject = async () => {
+        if (!rejectModal.task || !rejectModal.reason.trim()) {
+            toast.error('Please provide a reason');
+            return;
+        }
+        setResponding(true);
+        try {
+            await apiClient.post(`agendas/${rejectModal.task.id}/reject/`, {
+                rejection_reason: rejectModal.reason
+            });
+            await fetchDashboardData();
+            setRejectModal({ show: false, task: null, reason: '' });
+            toast.success('Invitation rejected');
+        } catch (err) {
+            console.error('Reject failed', err);
+            toast.error('Failed to reject invitation');
+        } finally {
+            setResponding(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -58,13 +104,15 @@ const Dashboard = () => {
                         <span>Task</span>
                     </NavLink>
 
-                    <NavLink
-                        to="/projects/new"
-                        className="flex-1 sm:flex-none px-4 py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-xl font-bold shadow-sm border border-gray-200 transition-all flex items-center justify-center gap-2 text-sm"
-                    >
-                        <i className="fas fa-folder-plus"></i>
-                        <span>Project</span>
-                    </NavLink>
+                    {user?.is_superuser && (
+                        <NavLink
+                            to="/projects/new"
+                            className="flex-1 sm:flex-none px-4 py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-xl font-bold shadow-sm border border-gray-200 transition-all flex items-center justify-center gap-2 text-sm"
+                        >
+                            <i className="fas fa-folder-plus text-emerald-500"></i>
+                            <span>New Project</span>
+                        </NavLink>
+                    )}
                 </div>
             </div>
 
@@ -153,6 +201,65 @@ const Dashboard = () => {
                 </div>
             )}
 
+            {/* Task Invitations */}
+            {data?.pending_invitations && data.pending_invitations.length > 0 && (
+                <div className="mb-8 animate-fade-in-up">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-200">
+                            <i className="fas fa-envelope-open-text"></i>
+                        </div>
+                        <h4 className="text-sm font-black text-indigo-800 uppercase tracking-tighter">Task Invitations <span className="text-indigo-400 font-medium ml-1">({data.pending_invitations.length})</span></h4>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {data.pending_invitations.map(invitation => (
+                            <div
+                                key={invitation.id}
+                                onClick={() => navigate(`/tasks/${invitation.id}`)}
+                                className="bg-white p-5 rounded-3xl border border-indigo-100 shadow-sm hover:shadow-md transition-all group cursor-pointer"
+                            >
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-1">Attention Required</span>
+                                        <h4 className="font-bold text-gray-800 truncate" title={invitation.title}>{invitation.title}</h4>
+                                    </div>
+                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${invitation.priority === 'high' ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-500'}`}>
+                                        <i className={`fas ${invitation.type === 'meeting' ? 'fa-video' : 'fa-clipboard-list'} text-sm`}></i>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px] text-gray-500 font-semibold mb-4">
+                                    <i className="far fa-calendar-alt"></i>
+                                    <span>{invitation.date} • {invitation.time || 'All Day'}</span>
+                                    <span className="mx-1 opacity-30">|</span>
+                                    <span className="truncate">Leader: {invitation.team_leader_name || 'Admin'}</span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleAccept(invitation.id); }}
+                                        disabled={responding}
+                                        className="flex-[1.5] py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-md shadow-emerald-100 disabled:opacity-50"
+                                    >
+                                        {responding ? <i className="fas fa-spinner fa-spin"></i> : 'Accept'}
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/tasks/${invitation.id}`); }}
+                                        className="flex-1 py-2 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 text-indigo-600 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all"
+                                    >
+                                        Details
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleRejectClick(invitation); }}
+                                        disabled={responding}
+                                        className="flex-1 py-2 bg-white border border-gray-100 hover:bg-gray-50 text-gray-400 hover:text-red-500 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all disabled:opacity-50"
+                                    >
+                                        Reject
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Main Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 mb-8 lg:min-h-[500px]">
                 {/* Today (Order 1) */}
@@ -187,7 +294,7 @@ const Dashboard = () => {
                                     </span>
                                 </p>
                                 <NavLink
-                                    to={`/tasks/${data.upcoming_tasks[0].id}/edit`}
+                                    to={`/tasks/${data.upcoming_tasks[0].id}`}
                                     className="mt-2 w-full py-2 sm:py-3 bg-[#104a37] hover:bg-[#063f2e] text-white rounded-xl font-bold text-[10px] sm:text-sm flex items-center justify-center gap-1 group"
                                 >
                                     View
@@ -246,52 +353,134 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* Projects (Order 4) */}
+                {/* Recent Tasks (Order 4) */}
                 <div className="order-4 col-span-2 lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:row-span-2">
-                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col h-full lg:min-h-[400px]">
+                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col h-full lg:min-h-[300px]">
                         <div className="flex justify-between items-center mb-5">
-                            <h3 className="font-bold text-gray-800">Projects</h3>
+                            <h3 className="font-bold text-gray-800">Recent Tasks</h3>
                             <NavLink
-                                to="/projects/new"
-                                className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-500 hover:bg-gray-50 transition-colors flex items-center gap-1"
+                                to="/tasks"
+                                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
                             >
-                                <i className="fas fa-plus"></i> New
+                                View All <i className="fas fa-arrow-right ml-1"></i>
                             </NavLink>
                         </div>
-                        <div className="space-y-4 flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                            {data?.projects?.length > 0 ? (
-                                data.projects.map((project) => (
+                        <div className="space-y-3 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                            {data?.recent_agendas?.length > 0 ? (
+                                data.recent_agendas.map((task) => (
                                     <NavLink
-                                        key={project.id}
-                                        to={`/projects/${project.id}`}
-                                        className="flex items-start gap-3 group cursor-pointer hover:bg-gray-50 p-2 rounded-xl transition-colors"
+                                        key={task.id}
+                                        to={`/tasks/${task.id}`}
+                                        className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100 group"
                                     >
-                                        <div
-                                            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-gray-100"
-                                            style={{ backgroundColor: `${project.color}15`, color: project.color }}
-                                        >
-                                            <i className="fas fa-folder text-sm"></i>
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${task.status === 'completed' ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'}`}>
+                                            <i className={`fas ${task.status === 'completed' ? 'fa-check' : 'fa-clock'} text-sm`}></i>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <h4 className="text-sm font-bold text-gray-800 group-hover:text-emerald-600 transition-colors truncate">
-                                                {project.name}
+                                            <h4 className="text-sm font-bold text-gray-800 truncate group-hover:text-emerald-600 transition-colors">
+                                                {task.title}
                                             </h4>
-                                            {project.description && (
-                                                <p className="text-[10px] text-gray-400 font-medium truncate">{project.description}</p>
-                                            )}
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-[10px] font-bold text-gray-400">
+                                                    {task.date}
+                                                </span>
+                                                {task.project_info && (
+                                                    <>
+                                                        <span className="text-gray-300">•</span>
+                                                        <span className="text-[10px] font-extrabold text-[#104a37] uppercase tracking-wider">
+                                                            {task.project_info.name}
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-[10px] font-bold text-gray-500">
-                                            {project.total_agendas || 0}
+                                        <div className="flex items-center gap-2">
+                                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${task.priority === 'high' ? 'bg-red-50 text-red-500' :
+                                                task.priority === 'medium' ? 'bg-blue-50 text-blue-500' :
+                                                    'bg-gray-50 text-gray-400'
+                                                }`}>
+                                                {task.priority}
+                                            </span>
+                                            <i className="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-emerald-500 transition-colors"></i>
                                         </div>
                                     </NavLink>
                                 ))
                             ) : (
-                                <p className="text-sm text-gray-400 text-center py-8">No projects yet.</p>
+                                <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                                    <i className="fas fa-clipboard-list text-3xl mb-2"></i>
+                                    <p className="text-sm font-medium">No recent activity.</p>
+                                </div>
                             )}
                         </div>
                     </div>
                 </div>
             </div>
+            {/* Rejection Modal */}
+            {rejectModal.show && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm animate-fade-in" onClick={() => !responding && setRejectModal({ ...rejectModal, show: false })}></div>
+                    <div className="relative transform overflow-hidden rounded-[40px] bg-white shadow-2xl transition-all sm:max-w-md w-full animate-fade-in-up z-10 p-1">
+                        <div className="bg-white rounded-[36px] p-8 border border-gray-50">
+                            <div className="flex items-center gap-4 mb-6 text-center sm:text-left flex-col sm:flex-row">
+                                <div className="h-16 w-16 rounded-[24px] bg-red-50 flex items-center justify-center text-red-500 text-2xl shadow-inner shadow-red-100">
+                                    <i className="fas fa-comment-slash"></i>
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Reject Task</h3>
+                                    <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Reason is mandatory</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="bg-gray-50 p-4 rounded-3xl border border-gray-100">
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Invited Task</label>
+                                    <p className="text-sm font-bold text-gray-700 italic px-1">"{rejectModal.task?.title}"</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Why are you rejecting? <span className="text-red-500">*</span></label>
+                                    <textarea
+                                        value={rejectModal.reason}
+                                        onChange={(e) => setRejectModal({ ...rejectModal, reason: e.target.value })}
+                                        className="w-full px-5 py-4 bg-white border-2 border-gray-100 rounded-3xl focus:ring-4 focus:ring-red-50 focus:border-red-500 transition-all text-sm min-h-[140px] font-medium placeholder:text-gray-300 shadow-sm"
+                                        placeholder="I'm currently over capacity / Not my area of expertise..."
+                                        autoFocus
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                                <button
+                                    onClick={() => setRejectModal({ ...rejectModal, show: false })}
+                                    disabled={responding}
+                                    className="order-2 sm:order-1 flex-1 px-6 py-4 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
+                                >
+                                    Go Back
+                                </button>
+                                <button
+                                    onClick={confirmReject}
+                                    disabled={responding || !rejectModal.reason.trim()}
+                                    className="order-1 sm:order-2 flex-[2] px-6 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-red-100 disabled:opacity-50 disabled:shadow-none"
+                                >
+                                    {responding ? <i className="fas fa-spinner fa-spin mr-2"></i> : null}
+                                    Confirm Rejection
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <ProjectRequestModal
+                isOpen={isRequestModalOpen}
+                onClose={() => setIsRequestModalOpen(false)}
+                onSuccess={() => {
+                    if (window.toast) {
+                        window.toast.success("Project request submitted successfully!");
+                    } else {
+                        alert("Project request submitted successfully!");
+                    }
+                }}
+            />
         </div>
     );
 };

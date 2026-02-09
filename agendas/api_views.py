@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
@@ -9,6 +9,15 @@ from rest_framework.permissions import IsAuthenticated, AllowAny, BasePermission
 class IsSuperUser(BasePermission):
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_superuser)
+
+class IsCreatorOrSuperUser(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.user and request.user.is_superuser:
+            return True
+        # Check if creator - only creator has management power
+        if obj.created_by == request.user:
+            return True
+        return False
 
 from django.db.models import Q, Count
 from django.contrib.auth.models import User
@@ -24,10 +33,10 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
-from .models import Project, Agenda, Collaborator
+from .models import Project, Agenda, Collaborator, ProjectRequest, AgendaAssignment, Notification, PersonalNote
 from .serializers import (
     ProjectSerializer, AgendaListSerializer, AgendaDetailSerializer,
-    CollaboratorSerializer, UserSerializer
+    CollaboratorSerializer, UserSerializer, ProjectRequestSerializer, PersonalNoteSerializer
 )
 from .utils import check_and_create_alerts
 
@@ -49,16 +58,49 @@ class ProjectViewSet(viewsets.ModelViewSet):
         """
         Instantiates and returns the list of permissions that this view requires.
         """
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+        # All authenticated users can create projects
+        if self.action == 'create':
+            return [IsAuthenticated(), IsSuperUser()]
+        # Only admins can update/delete projects
+        if self.action in ['update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), IsSuperUser()]
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        queryset = Project.objects.all()
-        # User Isolation: Collaborators only see projects they have tasks in
-        if not self.request.user.is_superuser:
-            queryset = queryset.filter(agendas__collaborators__user=self.request.user).distinct()
-        return queryset
+        # Filter projects by membership
+        user = self.request.user
+        if user.is_superuser:
+            return Project.objects.all()
+        
+        # Get user's collaborator profile
+        try:
+            collaborator = user.collaborator_profile
+            # Show projects where user is a member
+            return Project.objects.filter(members=collaborator).distinct()
+        except AttributeError:
+            # User has no collaborator profile
+            return Project.objects.none()
+    
+    def perform_create(self, serializer):
+        # Set creator and auto-add to members
+        project = serializer.save(created_by=self.request.user)
+        
+        # Auto-add creator to members if they have a collaborator profile
+        try:
+            collaborator = self.request.user.collaborator_profile
+            if collaborator not in project.members.all():
+                project.members.add(collaborator)
+        except AttributeError:
+            pass
+
+        # Auto-add ALL superusers to members for administrative oversight
+        try:
+            superusers_with_profiles = Collaborator.objects.filter(user__is_superuser=True)
+            for admin_collab in superusers_with_profiles:
+                if admin_collab not in project.members.all():
+                    project.members.add(admin_collab)
+        except Exception as e:
+            print(f"Error auto-adding superusers: {e}")
 
 
 class AgendaViewSet(viewsets.ModelViewSet):
@@ -75,17 +117,29 @@ class AgendaViewSet(viewsets.ModelViewSet):
         """
         Instantiates and returns the list of permissions that this view requires.
         """
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAuthenticated(), IsSuperUser()]
+        if self.action == 'create':
+            return [IsAuthenticated()]
+        if self.action in ['update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsCreatorOrSuperUser()]
         return [IsAuthenticated()]
     
     def get_queryset(self):
         """Filter agendas with query parameters"""
         queryset = Agenda.objects.all().select_related('project').prefetch_related('collaborators')
         
-        # User Isolation: Collaborators only see their assigned tasks
+        # User Isolation: Collaborators only see their assigned tasks OR tasks in their projects
         if not self.request.user.is_superuser:
-            queryset = queryset.filter(collaborators__user=self.request.user).distinct()
+            # Show tasks where they are collaborators (and NOT rejected) OR the team leader OR the creator
+            # OR tasks belonging to a project they are a member of
+            queryset = queryset.filter(
+                Q(assignments__collaborator__user=self.request.user) |
+                Q(team_leader__user=self.request.user) |
+                Q(created_by=self.request.user) |
+                Q(project__members__user=self.request.user)
+            ).exclude(
+                assignments__collaborator__user=self.request.user,
+                assignments__status='rejected'
+            ).distinct()
         
         # Filter by project
         project_id = self.request.query_params.get('project')
@@ -138,8 +192,74 @@ class AgendaViewSet(viewsets.ModelViewSet):
         return AgendaDetailSerializer
     
     def perform_create(self, serializer):
-        """Set created_by to current user"""
-        serializer.save(created_by=self.request.user)
+        """Set created_by, team_leader, and notify collaborators. Enforce project membership."""
+        user = self.request.user
+        project = serializer.validated_data.get('project')
+        
+        # Restriction: Only members can create tasks in a project
+        if project and not user.is_superuser:
+            try:
+                collaborator = user.collaborator_profile
+                if collaborator not in project.members.all():
+                    from rest_framework.exceptions import PermissionDenied
+                    raise PermissionDenied("You are not a member of this project.")
+            except AttributeError:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("You must have a collaborator profile to create tasks in projects.")
+
+        collaborator = getattr(user, 'collaborator_profile', None)
+        agenda = serializer.save(created_by=user, team_leader=collaborator)
+        self.notify_collaborators(agenda, is_new=True)
+
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        """Accept a task invitation"""
+        agenda = self.get_object()
+        assignment = get_object_or_404(AgendaAssignment, agenda=agenda, collaborator__user=request.user)
+        
+        if assignment.status == 'accepted':
+            return Response({'message': 'Already accepted'})
+        
+        assignment.status = 'accepted'
+        assignment.save()
+        
+        # Notify leader
+        if agenda.team_leader and agenda.team_leader.user:
+            Notification.objects.create(
+                user=agenda.team_leader.user,
+                title="Invitation Accepted",
+                message=f"{request.user.get_full_name() or request.user.username} has accepted your invitation to: {agenda.title}",
+                notification_type='status_change',
+                related_agenda=agenda
+            )
+            
+        return Response({'message': 'Invitation accepted'})
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """Reject a task invitation with mandatory reason"""
+        agenda = self.get_object()
+        assignment = get_object_or_404(AgendaAssignment, agenda=agenda, collaborator__user=request.user)
+        
+        rejection_reason = request.data.get('rejection_reason')
+        if not rejection_reason:
+            return Response({'error': 'Rejection reason is mandatory'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        assignment.status = 'rejected'
+        assignment.rejection_reason = rejection_reason
+        assignment.save()
+        
+        # Notify leader
+        if agenda.team_leader and agenda.team_leader.user:
+            Notification.objects.create(
+                user=agenda.team_leader.user,
+                title="Invitation Rejected",
+                message=f"{request.user.get_full_name() or request.user.username} rejected your invitation to: {agenda.title}. Reason: {rejection_reason}",
+                notification_type='status_change',
+                related_agenda=agenda
+            )
+            
+        return Response({'message': 'Invitation rejected'})
     
     @action(detail=True, methods=['post'], url_path='toggle')
     def toggle_status(self, request, pk=None):
@@ -160,10 +280,6 @@ class AgendaViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(agenda)
         return Response(serializer.data)
 
-    def perform_create(self, serializer):
-        """Override to notify collaborators on creation"""
-        agenda = serializer.save()
-        self.notify_collaborators(agenda, is_new=True)
 
     def perform_update(self, serializer):
         """Override to notify newly added collaborators"""
@@ -227,6 +343,14 @@ class AgendaViewSet(viewsets.ModelViewSet):
                                     'title': notification.title,
                                     'message': notification.message,
                                     'notification_type': notification.notification_type,
+                                    'related_agenda': {
+                                        'id': agenda.id,
+                                        'title': agenda.title
+                                    } if agenda else None,
+                                    'related_project': {
+                                        'id': agenda.project.id,
+                                        'name': agenda.project.name
+                                    } if agenda and agenda.project else None,
                                     'created_at': notification.created_at.isoformat(),
                                     'is_read': False
                                 }
@@ -257,10 +381,27 @@ class TasksOverviewAPIView(APIView):
 
     def get(self, request):
         user = request.user
-        agendas = Agenda.objects.all().select_related('project')
-
-        if not user.is_superuser:
-            agendas = agendas.filter(collaborators__user=user).distinct()
+        
+        if user.is_superuser:
+            agendas = Agenda.objects.all().select_related('project')
+            # Superusers can also have invitations
+            pending_invitations = Agenda.objects.filter(
+                assignments__collaborator__user=user,
+                assignments__status='pending'
+            ).select_related('project').distinct()
+        else:
+            # User's active tasks (Led or Accepted or Created)
+            agendas = Agenda.objects.filter(
+                Q(team_leader__user=user) | 
+                Q(assignments__collaborator__user=user, assignments__status='accepted') |
+                Q(created_by=user)
+            ).select_related('project').distinct()
+            
+            # Tasks user is invited to
+            pending_invitations = Agenda.objects.filter(
+                assignments__collaborator__user=user,
+                assignments__status='pending'
+            ).select_related('project').distinct()
 
         # Undone tasks (pending + in-progress)
         all_undone = agendas.filter(status__in=['pending', 'in-progress']).order_by('date', 'time')
@@ -278,6 +419,7 @@ class TasksOverviewAPIView(APIView):
         return Response({
             'all_undone': AgendaListSerializer(all_undone, many=True, context={'request': request}).data,
             'completed_today': AgendaListSerializer(completed_today, many=True, context={'request': request}).data,
+            'pending_invitations': AgendaListSerializer(pending_invitations, many=True, context={'request': request}).data,
             'pending_count': pending_count,
             'in_progress_count': in_progress_count,
             'high_priority_count': high_priority_count,
@@ -317,22 +459,32 @@ class DashboardAPIView(APIView):
     
     def get(self, request):
         """Get dashboard data"""
-        # Get all projects with stats
-        projects = Project.objects.all()
-
-        # User Isolation for Projects
-        if not request.user.is_superuser:
-            projects = projects.filter(agendas__collaborators__user=request.user).distinct()
+        user = request.user
         
-        # Get agenda statistics
+        # Base Querysets
+        projects = Project.objects.all()
         all_agendas_qs = Agenda.objects.all()
         
-        # User Isolation
-        if not request.user.is_superuser:
-            all_agendas_qs = all_agendas_qs.filter(collaborators__user=request.user).distinct()
-            # For projects, maybe filtered too? Or show all projects but only relevant stats?
-            # Let's show all projects for visibility, but stats within them will be personal.
+        if not user.is_superuser:
+            # User Isolation: Filter projects by membership
+            try:
+                collaborator = user.collaborator_profile
+                projects = projects.filter(members=collaborator).distinct()
+            except AttributeError:
+                projects = projects.none()
+            
+            all_agendas_qs = Agenda.objects.filter(
+                Q(team_leader__user=user) | 
+                Q(assignments__collaborator__user=user, assignments__status='accepted') |
+                Q(created_by=user)
+            ).distinct()
         
+        # Pending invitations (including for superusers)
+        pending_invitations = Agenda.objects.filter(
+            assignments__collaborator__user=user,
+            assignments__status='pending'
+        ).distinct()
+
         total_agendas = all_agendas_qs.count()
         completed_agendas = all_agendas_qs.filter(status='completed').count()
         pending_agendas = all_agendas_qs.filter(status='pending').count()
@@ -355,9 +507,9 @@ class DashboardAPIView(APIView):
         overall_progress = 0
         if total_agendas > 0:
             overall_progress = int((completed_agendas / total_agendas) * 100)
-        
         return Response({
             'projects': ProjectSerializer(projects, many=True, context={'request': request}).data,
+            'pending_invitations': AgendaListSerializer(pending_invitations, many=True, context={'request': request}).data,
             'stats': {
                 'total_agendas': total_agendas,
                 'completed_agendas': completed_agendas,
@@ -472,10 +624,19 @@ class AnalyticsAPIView(APIView):
         
         # User Isolation
         if not request.user.is_superuser:
-            # Filter projects to only those where user has tasks
-            projects = projects.filter(agendas__collaborators__user=request.user).distinct()
-            # Filter global agendas
-            all_agendas = all_agendas.filter(collaborators__user=request.user).distinct()
+            try:
+                collaborator = request.user.collaborator_profile
+                # Filter projects to only those where user is a member
+                projects = projects.filter(members=collaborator).distinct()
+                # Filter global agendas (tasks user is involved in)
+                all_agendas = all_agendas.filter(
+                    Q(team_leader__user=request.user) | 
+                    Q(assignments__collaborator__user=request.user, assignments__status='accepted') |
+                    Q(created_by=request.user)
+                ).distinct()
+            except AttributeError:
+                projects = projects.none()
+                all_agendas = all_agendas.none()
             # Note: For strict isolation, we should also filter the 'projects' queryset prefetch,
             # but filtering 'all_agendas' covers the global stats.
             # For the per-project stats loop below, we need to filter `p_agendas` manually.
@@ -604,6 +765,8 @@ def register_user(request):
     password = request.data.get('password')
     first_name = request.data.get('first_name', '')
     last_name = request.data.get('last_name', '')
+    designation = request.data.get('designation', '')
+    division = request.data.get('division', '')
     
     if not username or not password:
         return Response(
@@ -627,6 +790,17 @@ def register_user(request):
     )
     user.is_active = False
     user.save()
+
+    # Create Collaborator Profile immediately
+    fullname = f"{first_name} {last_name}".strip() or username
+    Collaborator.objects.create(
+        user=user,
+        name=fullname,
+        email=email,
+        whatsapp_number=username,
+        designation=designation,
+        division=division
+    )
     
     return Response({
         'message': 'Registration successful. Account is pending admin approval.',
@@ -648,11 +822,19 @@ def login_user(request):
     # If that fails, try to find user by phone number
     if user is None:
         try:
+            # Check UserProfile first (original logic)
             from .models import UserProfile
             user_profile = UserProfile.objects.get(phone_number=username_or_phone)
             user = authenticate(username=user_profile.user.username, password=password)
         except UserProfile.DoesNotExist:
-            pass
+            # If not in UserProfile, check Collaborator whatsapp_number
+            try:
+                from .models import Collaborator
+                collaborator = Collaborator.objects.get(whatsapp_number=username_or_phone)
+                if collaborator.user:
+                    user = authenticate(username=collaborator.user.username, password=password)
+            except Collaborator.DoesNotExist:
+                pass
         except Exception as e:
             print(f"Login debug error: {str(e)}")
     
@@ -660,19 +842,30 @@ def login_user(request):
         # Check if user exists but password matches (or if user doesn't exist)
         # to give specific error messages as requested.
         try:
-            existing_user = User.objects.get(username=username_or_phone)
-            if not existing_user.is_active:
+            # Check if username exists
+            existing_user = User.objects.filter(username=username_or_phone).first()
+            
+            # If not username, check if it's a phone number
+            if not existing_user:
+                # Check Collaborator phone
+                from .models import Collaborator
+                collab = Collaborator.objects.filter(whatsapp_number=username_or_phone).first()
+                if collab and collab.user:
+                    existing_user = collab.user
+            
+            if existing_user:
+                if not existing_user.is_active:
+                    return Response(
+                        {'error': 'Your account is pending admin approval. Please wait for confirmation.'},
+                        status=status.HTTP_401_UNAUTHORIZED
+                    )
+                # If user exists and is active, but authenticate failed -> Wrong password
                 return Response(
-                    {'error': 'Your account is pending admin approval. Please wait for confirmation.'},
+                    {'error': 'Invalid password. Please try again.'},
                     status=status.HTTP_401_UNAUTHORIZED
                 )
-            # If user exists and is active, but authenticate failed -> Wrong password
-            return Response(
-                {'error': 'Invalid password. Please try again.'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        except User.DoesNotExist:
-            # Check if it's a phone number
+        except Exception:
+            pass
             try:
                 from .models import UserProfile
                 user_profile = UserProfile.objects.get(phone_number=username_or_phone)
@@ -696,6 +889,13 @@ def login_user(request):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
     
+    # Final check to prevent crash if user is still None
+    if user is None:
+        return Response(
+            {'error': 'Invalid credentials or account not found.'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+        
     # Generate JWT tokens
     refresh = RefreshToken.for_user(user)
     
@@ -840,3 +1040,121 @@ def export_past_work_pdf(request):
     
     filename = f"work_summary_{end_date.strftime('%Y%m%d')}_{days}d.pdf"
     return FileResponse(buffer, as_attachment=True, filename=filename)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def track_meeting_join(request, pk):
+    """Record that a collaborator has joined a meeting"""
+    agenda = get_object_or_404(Agenda, pk=pk, type='meeting')
+    
+    try:
+        collaborator = request.user.collaborator_profile
+    except Collaborator.DoesNotExist:
+        return Response({'error': 'User has no collaborator profile'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    # Add to actual_participants if not already there
+    if not agenda.actual_participants.filter(id=collaborator.id).exists():
+        agenda.actual_participants.add(collaborator)
+        return Response({'message': 'Attendance recorded successfully'}, status=status.HTTP_200_OK)
+        
+    return Response({'message': 'Attendance already recorded'}, status=status.HTTP_200_OK)
+
+
+class ProjectRequestViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Project Creation Requests
+    """
+    queryset = ProjectRequest.objects.all()
+    serializer_class = ProjectRequestSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+    
+    def get_queryset(self):
+        if self.request.user.is_superuser:
+            return ProjectRequest.objects.all()
+        return ProjectRequest.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsSuperUser])
+    def approve(self, request, pk=None):
+        project_request = self.get_object()
+        if project_request.status != 'pending':
+            return Response({'error': 'Request already processed'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Create the project with requester as creator
+        project = Project.objects.create(
+            name=project_request.name,
+            description=project_request.description,
+            color=project_request.color,
+            created_by=project_request.user
+        )
+        
+        # Add requester as member
+        try:
+            requester_collab = project_request.user.collaborator_profile
+            project.members.add(requester_collab)
+        except AttributeError:
+            pass
+            
+        # Add the approving admin as a member
+        try:
+            admin_collab = request.user.collaborator_profile
+            if admin_collab not in project.members.all():
+                project.members.add(admin_collab)
+        except AttributeError:
+            pass
+        
+        # Update request status
+        project_request.status = 'approved'
+        project_request.admin_comment = request.data.get('admin_comment', 'Approved by administrator')
+        project_request.save()
+        
+        # Notify user
+        from .models import Notification
+        Notification.objects.create(
+            user=project_request.user,
+            title="Project Request Approved",
+            message=f"Your request for project '{project.name}' has been approved.",
+            notification_type='project_created',
+            related_project=project
+        )
+        
+        return Response({'message': 'Project approved and created', 'project_id': project.id})
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsSuperUser])
+    def reject(self, request, pk=None):
+        project_request = self.get_object()
+        if project_request.status != 'pending':
+            return Response({'error': 'Request already processed'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        project_request.status = 'rejected'
+        project_request.admin_comment = request.data.get('admin_comment', 'Rejected by administrator')
+        project_request.save()
+        
+        # Notify user
+        from .models import Notification
+        Notification.objects.create(
+            user=project_request.user,
+            title="Project Request Rejected",
+            message=f"Your request for project '{project_request.name}' was rejected: {project_request.admin_comment}",
+            notification_type='status_change'
+        )
+        
+        return Response({'message': 'Project request rejected'})
+
+class PersonalNoteViewSet(viewsets.ModelViewSet):
+    """ViewSet for personal notes CRUD operations"""
+    serializer_class = PersonalNoteSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+    
+    def get_queryset(self):
+        """Return only the current user's notes"""
+        return PersonalNote.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        """Automatically set the user when creating a note"""
+        serializer.save(user=self.request.user)

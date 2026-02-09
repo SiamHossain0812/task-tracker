@@ -12,6 +12,8 @@ router.register(r'projects', api_views.ProjectViewSet, basename='project')
 router.register(r'agendas', api_views.AgendaViewSet, basename='agenda')
 router.register(r'collaborators', api_views.CollaboratorViewSet, basename='collaborator')
 router.register(r'notifications', NotificationViewSet, basename='notification')
+router.register(r'project-requests', api_views.ProjectRequestViewSet, basename='project-request')
+router.register(r'personal-notes', api_views.PersonalNoteViewSet, basename='personal-note')
 
 urlpatterns = [
     # Router URLs
@@ -42,5 +44,8 @@ urlpatterns = [
     
     # Export
     path('export/past-work-pdf/', api_views.export_past_work_pdf, name='api-export-pdf'),
+    
+    # Meeting Participation
+    path('agendas/<int:pk>/track-join/', api_views.track_meeting_join, name='api-track-join'),
 ]
 

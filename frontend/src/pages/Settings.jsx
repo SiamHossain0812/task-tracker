@@ -5,6 +5,17 @@ import apiClient from '../api/client';
 const Settings = () => {
     const { user: authUser } = useAuth();
     const [profile, setProfile] = useState({
+        name: '',
+        institute: '',
+        address: '',
+        whatsapp_number: '',
+        designation: '',
+        division: '',
+        organization: '',
+        education: '',
+        research_experience: '',
+        publications: '',
+        research_interests: '',
         image_url: null,
         image: null,
         image_preview: null
@@ -29,6 +40,17 @@ const Settings = () => {
                 const { collaborator } = response.data;
                 setProfile(prev => ({
                     ...prev,
+                    name: collaborator.name || '',
+                    institute: collaborator.institute || '',
+                    address: collaborator.address || '',
+                    whatsapp_number: collaborator.whatsapp_number || '',
+                    designation: collaborator.designation || '',
+                    division: collaborator.division || '',
+                    organization: collaborator.organization || '',
+                    education: collaborator.education || '',
+                    research_experience: collaborator.research_experience || '',
+                    publications: collaborator.publications || '',
+                    research_interests: collaborator.research_interests || '',
                     image_url: collaborator.image_url || null
                 }));
             } catch (err) {
@@ -39,6 +61,11 @@ const Settings = () => {
         };
         fetchProfile();
     }, []);
+
+    const handleProfileChange = (e) => {
+        const { name, value } = e.target;
+        setProfile(prev => ({ ...prev, [name]: value }));
+    };
 
     const handlePasswordChange = (e) => {
         const { name, value } = e.target;
@@ -62,14 +89,26 @@ const Settings = () => {
         setMessage({ text: '', type: '' });
 
         try {
-            // 1. Handle Image Upload if changed
+            const formData = new FormData();
             if (profile.image) {
-                const formData = new FormData();
                 formData.append('image', profile.image);
-
-                // Note: We don't set Content-Type manually to let browser set boundary
-                await apiClient.post('auth/profile/update/', formData);
             }
+
+            // Append other fields
+            formData.append('name', profile.name);
+            formData.append('institute', profile.institute);
+            formData.append('address', profile.address);
+            formData.append('whatsapp_number', profile.whatsapp_number);
+            formData.append('designation', profile.designation);
+            formData.append('division', profile.division);
+            formData.append('organization', profile.organization);
+            formData.append('education', profile.education);
+            formData.append('research_experience', profile.research_experience);
+            formData.append('publications', profile.publications);
+            formData.append('research_interests', profile.research_interests);
+
+            // 1. Update Profile
+            await apiClient.post('auth/profile/update/', formData);
 
             // 2. Handle Password Reset if requested
             if (passwords.new_password) {
@@ -77,7 +116,6 @@ const Settings = () => {
                     throw new Error("New passwords do not match");
                 }
 
-                // Call password change endpoint (assuming Django standard or custom)
                 await apiClient.post('auth/password/change/', {
                     old_password: passwords.current_password,
                     new_password: passwords.new_password
@@ -112,50 +150,50 @@ const Settings = () => {
     };
 
     if (loading) return (
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center min-h-[400px]">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
         </div>
     );
 
     return (
-        <div className="max-w-3xl mx-auto animate-fade-in pb-12">
-            <div className="flex items-center justify-between mb-8">
+        <div className="max-w-4xl mx-auto animate-fade-in pb-20">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 px-4 md:px-0">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Account Settings</h1>
-                    <p className="text-gray-500 text-sm mt-1">Manage your profile photo and security</p>
+                    <h1 className="text-3xl font-bold text-gray-800">Account Settings</h1>
+                    <p className="text-gray-500 text-sm mt-1">Manage your professional identity and security</p>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold uppercase tracking-wider">
+                <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold uppercase tracking-wider self-start md:self-center">
                     <i className="fas fa-shield-alt"></i>
                     <span>Secure Session</span>
                 </div>
             </div>
 
             {message.text && (
-                <div className={`mb-6 p-4 rounded-2xl flex items-center gap-3 animate-fade-in ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'
+                <div className={`mx-4 md:mx-0 mb-8 p-4 rounded-2xl flex items-center gap-3 animate-fade-in ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'
                     }`}>
                     <i className={`fas ${message.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}`}></i>
-                    <p className="text-sm font-medium">{message.text}</p>
+                    <p className="text-sm font-bold">{message.text}</p>
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-8 px-4 md:px-0">
                 {/* Profile Photo Section */}
-                <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm relative overflow-hidden">
-                    <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:shadow-emerald-500/5 transition-all">
+                    <h2 className="text-xl font-bold text-gray-800 mb-8 flex items-center gap-2">
                         <i className="far fa-image text-emerald-500"></i>
-                        <span>Profile Photo</span>
+                        <span>Profile Picture</span>
                     </h2>
 
-                    <div className="flex flex-col md:flex-row items-center gap-8">
+                    <div className="flex flex-col md:flex-row items-center gap-10">
                         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                            <div className="w-32 h-32 rounded-3xl overflow-hidden ring-4 ring-gray-50 shadow-md transition-transform group-hover:scale-105">
+                            <div className="w-40 h-40 rounded-[2rem] overflow-hidden ring-8 ring-gray-50 shadow-lg transition-transform group-hover:scale-105 relative">
                                 <img
                                     src={profile.image_preview || profile.image_url || "/favicon.ico"}
                                     alt="Profile"
                                     className="w-full h-full object-cover"
                                 />
-                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                                    <i className="fas fa-camera text-2xl"></i>
+                                <div className="absolute inset-0 bg-emerald-600/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white backdrop-blur-sm">
+                                    <i className="fas fa-camera text-3xl"></i>
                                 </div>
                             </div>
                             <input
@@ -166,28 +204,151 @@ const Settings = () => {
                                 onChange={handleImageChange}
                             />
                         </div>
-                        <div className="text-center md:text-left">
-                            <h3 className="text-lg font-bold text-gray-800 mb-1">Upload New Picture</h3>
-                            <p className="text-sm text-gray-400 mb-4 max-w-xs">Supports JPG, PNG. Max size 2MB.</p>
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors"
-                            >
-                                Choose File
-                            </button>
+                        <div className="text-center md:text-left space-y-4">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-800">Update Photo</h3>
+                                <p className="text-sm text-gray-400 mt-1 max-w-xs">A professional photo helps collaborators recognize you easily.</p>
+                            </div>
+                            <div className="flex flex-wrap justify-center md:justify-start gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="px-6 py-3 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-bold hover:bg-emerald-100 transition-all active:scale-95"
+                                >
+                                    Select Image
+                                </button>
+                                {profile.image_preview && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setProfile(prev => ({ ...prev, image: null, image_preview: null }))}
+                                        className="px-6 py-3 bg-red-50 text-red-600 rounded-xl text-sm font-bold hover:bg-red-100 transition-all"
+                                    >
+                                        Reset
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Professional Info Section */}
+                <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+                    <h2 className="text-xl font-bold text-gray-800 mb-8 flex items-center gap-2">
+                        <i className="fas fa-user-graduate text-emerald-500"></i>
+                        <span>Professional Details</span>
+                    </h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-600 px-1">Full Name <span className="text-red-500">*</span></label>
+                            <input
+                                type="text"
+                                required
+                                name="name"
+                                value={profile.name}
+                                onChange={handleProfileChange}
+                                className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-[1.25rem] focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none font-bold"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-600 px-1">Designation</label>
+                            <input
+                                type="text"
+                                name="designation"
+                                value={profile.designation}
+                                onChange={handleProfileChange}
+                                placeholder="e.g. Senior Researcher"
+                                className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-[1.25rem] focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-600 px-1">Division / Department</label>
+                            <input
+                                type="text"
+                                name="division"
+                                value={profile.division}
+                                onChange={handleProfileChange}
+                                placeholder="e.g. Computer Science & Engineering"
+                                className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-[1.25rem] focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-600 px-1">Organization</label>
+                            <input
+                                type="text"
+                                name="organization"
+                                value={profile.organization}
+                                onChange={handleProfileChange}
+                                placeholder="e.g. BRRI / Agromet Lab"
+                                className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-[1.25rem] focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                            <label className="text-sm font-bold text-gray-600 px-1">Education</label>
+                            <textarea
+                                name="education"
+                                rows="3"
+                                value={profile.education}
+                                onChange={handleProfileChange}
+                                placeholder="Post-doc in AI, PhD in CSE..."
+                                className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-[1.25rem] focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none resize-none"
+                            ></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Research & Experience Section */}
+                <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+                    <h2 className="text-xl font-bold text-gray-800 mb-8 flex items-center gap-2">
+                        <i className="fas fa-microscope text-emerald-500"></i>
+                        <span>Research & Background</span>
+                    </h2>
+
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-600 px-1">Research Interests</label>
+                            <input
+                                type="text"
+                                name="research_interests"
+                                value={profile.research_interests}
+                                onChange={handleProfileChange}
+                                placeholder="e.g. Machine Learning, Agro-Meteorology, IoT"
+                                className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-[1.25rem] focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-600 px-1">Research Experience</label>
+                            <textarea
+                                name="research_experience"
+                                rows="4"
+                                value={profile.research_experience}
+                                onChange={handleProfileChange}
+                                placeholder="Describe your background and previous research work..."
+                                className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-[1.25rem] focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none resize-none"
+                            ></textarea>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-600 px-1">Selected Publications</label>
+                            <textarea
+                                name="publications"
+                                rows="4"
+                                value={profile.publications}
+                                onChange={handleProfileChange}
+                                placeholder="List your key journals or conference papers..."
+                                className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-[1.25rem] focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none resize-none"
+                            ></textarea>
                         </div>
                     </div>
                 </div>
 
                 {/* Password Reset Section */}
-                <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
-                    <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                        <i className="fas fa-key text-emerald-500"></i>
-                        <span>Change Password</span>
+                <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+                    <h2 className="text-xl font-bold text-gray-800 mb-8 flex items-center gap-2">
+                        <i className="fas fa-fingerprint text-emerald-500"></i>
+                        <span>Security & Access</span>
                     </h2>
 
-                    <div className="space-y-4 max-w-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-600 px-1">Current Password</label>
                             <input
@@ -196,7 +357,8 @@ const Settings = () => {
                                 value={passwords.current_password}
                                 onChange={handlePasswordChange}
                                 placeholder="••••••••"
-                                className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all text-gray-700 outline-none"
+                                autoComplete="current-password"
+                                className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-[1.25rem] focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none"
                             />
                         </div>
                         <div className="space-y-2">
@@ -207,43 +369,81 @@ const Settings = () => {
                                 value={passwords.new_password}
                                 onChange={handlePasswordChange}
                                 placeholder="••••••••"
-                                className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all text-gray-700 outline-none"
+                                autoComplete="new-password"
+                                className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-[1.25rem] focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none"
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-gray-600 px-1">Confirm New Password</label>
+                            <label className="text-sm font-bold text-gray-600 px-1">Confirm Password</label>
                             <input
                                 type="password"
                                 name="confirm_password"
                                 value={passwords.confirm_password}
                                 onChange={handlePasswordChange}
                                 placeholder="••••••••"
-                                className="w-full px-5 py-3.5 bg-gray-50 border border-transparent rounded-2xl focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all text-gray-700 outline-none"
+                                autoComplete="new-password"
+                                className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-[1.25rem] focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Contact Section */}
+                <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+                    <h2 className="text-xl font-bold text-gray-800 mb-8 flex items-center gap-2">
+                        <i className="fas fa-headset text-emerald-500"></i>
+                        <span>Contact Information</span>
+                    </h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-600 px-1">WhatsApp / Phone</label>
+                            <input
+                                type="text"
+                                name="whatsapp_number"
+                                value={profile.whatsapp_number}
+                                onChange={handleProfileChange}
+                                placeholder="+880 1XXX-XXXXXX"
+                                className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-[1.25rem] focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-600 px-1">Office Address</label>
+                            <input
+                                type="text"
+                                name="address"
+                                value={profile.address}
+                                onChange={handleProfileChange}
+                                placeholder="Room No, Building Name..."
+                                className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent rounded-[1.25rem] focus:bg-white focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all outline-none"
                             />
                         </div>
                     </div>
                 </div>
 
                 {/* Submit Buttons */}
-                <div className="flex items-center justify-end gap-4 pb-4">
+                <div className="flex flex-col-reverse md:flex-row items-center justify-end gap-4 pb-10">
                     <button
                         type="button"
-                        onClick={() => window.location.href = '/about'}
-                        className="px-8 py-4 text-gray-500 font-bold hover:text-gray-700 transition-colors"
+                        onClick={() => window.history.back()}
+                        className="w-full md:w-auto px-10 py-5 text-gray-400 font-bold hover:text-gray-600 transition-colors"
                     >
-                        Cancel
+                        Discard Changes
                     </button>
                     <button
                         type="submit"
                         disabled={saving}
-                        className="min-w-[160px] px-8 py-4 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 group disabled:opacity-70"
+                        className="w-full md:min-w-[240px] px-10 py-5 bg-gradient-to-br from-emerald-600 to-teal-500 text-white rounded-[1.5rem] font-bold hover:from-emerald-700 hover:to-teal-600 transition-all shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-2 group disabled:opacity-70 transform hover:-translate-y-1 active:scale-95"
                     >
                         {saving ? (
-                            <i className="fas fa-spinner fa-spin"></i>
+                            <>
+                                <i className="fas fa-spinner fa-spin"></i>
+                                <span>Saving Profile...</span>
+                            </>
                         ) : (
                             <>
-                                <span>Save Changes</span>
-                                <i className="fas fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
+                                <span>Update Account</span>
+                                <i className="fas fa-check-double text-xs group-hover:scale-125 transition-transform"></i>
                             </>
                         )}
                     </button>
@@ -251,9 +451,10 @@ const Settings = () => {
             </form>
 
             <style>{`
-                @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-                .animate-fade-in { animation: fade-in 0.5s ease-out; }
-                input::placeholder { color: #cbd5e1; }
+                @keyframes fade-in { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+                .animate-fade-in { animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+                input::placeholder, textarea::placeholder { color: #cbd5e1; }
+                label span { font-size: 0.8em; }
             `}</style>
         </div>
     );

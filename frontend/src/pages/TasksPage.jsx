@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
 const TasksPage = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [data, setData] = useState({
         all_undone: [],
         completed_today: [],
+        pending_invitations: [],
         pending_count: 0,
         in_progress_count: 0,
         high_priority_count: 0,
@@ -17,8 +19,10 @@ const TasksPage = () => {
     const [error, setError] = useState(null);
     const [modal, setModal] = useState({ show: false, task: null, nextStatus: '', statusLabel: '' });
     const [deleteModal, setDeleteModal] = useState({ show: false, task: null });
+    const [rejectModal, setRejectModal] = useState({ show: false, task: null, reason: '' });
     const [toggling, setToggling] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [responding, setResponding] = useState(false);
 
     const fetchTasks = async () => {
         try {
@@ -35,6 +39,43 @@ const TasksPage = () => {
     useEffect(() => {
         fetchTasks();
     }, []);
+
+    const handleAccept = async (taskId) => {
+        setResponding(true);
+        try {
+            await apiClient.post(`agendas/${taskId}/accept/`);
+            await fetchTasks();
+        } catch (err) {
+            console.error('Accept failed', err);
+            alert('Failed to accept invitation');
+        } finally {
+            setResponding(false);
+        }
+    };
+
+    const handleRejectClick = (task) => {
+        setRejectModal({ show: true, task, reason: '' });
+    };
+
+    const confirmReject = async () => {
+        if (!rejectModal.task || !rejectModal.reason.trim()) {
+            alert('Please provide a reason for rejection');
+            return;
+        }
+        setResponding(true);
+        try {
+            await apiClient.post(`agendas/${rejectModal.task.id}/reject/`, {
+                rejection_reason: rejectModal.reason
+            });
+            await fetchTasks();
+            setRejectModal({ show: false, task: null, reason: '' });
+        } catch (err) {
+            console.error('Reject failed', err);
+            alert('Failed to reject invitation');
+        } finally {
+            setResponding(false);
+        }
+    };
 
     const handleToggleClick = (task) => {
         const nextStatus = task.status === 'pending' ? 'in-progress' : (task.status === 'in-progress' ? 'completed' : 'pending');
@@ -139,6 +180,65 @@ const TasksPage = () => {
                 </div>
             </div>
 
+            {/* Task Invitations */}
+            {data.pending_invitations && data.pending_invitations.length > 0 && (
+                <div className="mb-8 animate-fade-in-up">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
+                            <i className="fas fa-envelope-open-text"></i>
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-800">New Task Invitations <span className="text-indigo-400 text-sm font-medium ml-2">({data.pending_invitations.length})</span></h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {data.pending_invitations.map(invitation => (
+                            <div
+                                key={invitation.id}
+                                onClick={() => navigate(`/tasks/${invitation.id}`)}
+                                className="bg-white p-5 rounded-3xl border border-indigo-100 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                            >
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1">Invitation</span>
+                                        <h4 className="font-bold text-gray-800">{invitation.title}</h4>
+                                    </div>
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${invitation.priority === 'high' ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-500'}`}>
+                                        <i className={`fas ${invitation.type === 'meeting' ? 'fa-video' : 'fa-clipboard-list'} text-sm`}></i>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-gray-500 mb-4">
+                                    <i className="far fa-calendar-alt"></i>
+                                    <span>{invitation.date} {invitation.time}</span>
+                                    <span className="mx-1">•</span>
+                                    <span>By {invitation.team_leader_name || 'Admin'}</span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleAccept(invitation.id); }}
+                                        disabled={responding}
+                                        className="flex-[1.5] py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-md shadow-emerald-100 disabled:opacity-50"
+                                    >
+                                        {responding ? <i className="fas fa-spinner fa-spin"></i> : 'Accept'}
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/tasks/${invitation.id}`); }}
+                                        className="flex-1 py-2 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 text-indigo-600 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all"
+                                    >
+                                        Details
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleRejectClick(invitation); }}
+                                        disabled={responding}
+                                        className="flex-1 py-2 bg-white border border-gray-100 hover:bg-gray-50 text-gray-400 hover:text-red-500 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all disabled:opacity-50"
+                                    >
+                                        Reject
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Content Area */}
             <div className="space-y-8">
                 {/* Undone Tasks Section */}
@@ -171,10 +271,10 @@ const TasksPage = () => {
                                                     <div className={`w-2 h-2 rounded-full ${task.priority === 'high' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]' : task.priority === 'medium' ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
+                                                    <NavLink to={`/tasks/${task.id}`} className="flex flex-col hover:text-emerald-600 transition-colors">
                                                         <span className="text-sm font-bold text-gray-800">{task.title}</span>
                                                         {task.description && <span className="text-[10px] text-gray-400 truncate max-w-xs">{task.description}</span>}
-                                                    </div>
+                                                    </NavLink>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     {task.project_info ? (
@@ -196,10 +296,10 @@ const TasksPage = () => {
                                                 </td>
                                                 <td className="px-6 py-4 text-right pr-8">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        <NavLink to={`/tasks/${task.id}/edit`} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50">
-                                                            <i className="fas fa-pen text-xs"></i>
+                                                        <NavLink to={`/tasks/${task.id}`} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-emerald-600 hover:bg-emerald-50">
+                                                            <i className="fas fa-eye text-xs"></i>
                                                         </NavLink>
-                                                        {user?.is_superuser && (
+                                                        {(user?.is_superuser || task.created_by === user?.id) && (
                                                             <button
                                                                 onClick={() => handleDeleteClick(task)}
                                                                 className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50"
@@ -250,7 +350,11 @@ const TasksPage = () => {
                                                 <td className="px-6 py-4">
                                                     <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
                                                 </td>
-                                                <td className="px-6 py-4 text-sm font-bold text-gray-500 line-through decoration-emerald-200">{task.title}</td>
+                                                <td className="px-6 py-4">
+                                                    <NavLink to={`/tasks/${task.id}`} className="text-sm font-bold text-gray-500 line-through decoration-emerald-200 hover:text-emerald-600 transition-colors">
+                                                        {task.title}
+                                                    </NavLink>
+                                                </td>
                                                 <td className="px-6 py-4">
                                                     {task.project_info ? (
                                                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-50 text-gray-400">
@@ -268,7 +372,10 @@ const TasksPage = () => {
                                                 </td>
                                                 <td className="px-6 py-4 text-right pr-8">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        {user?.is_superuser && (
+                                                        <NavLink to={`/tasks/${task.id}`} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 transition-all">
+                                                            <i className="fas fa-eye text-xs"></i>
+                                                        </NavLink>
+                                                        {(user?.is_superuser || task.created_by === user?.id) && (
                                                             <button
                                                                 onClick={() => handleDeleteClick(task)}
                                                                 className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50"
@@ -361,6 +468,64 @@ const TasksPage = () => {
                                     className="flex-1 bg-white border border-gray-100 text-gray-900 rounded-xl py-2 text-sm font-semibold hover:bg-gray-50 transition-all"
                                 >
                                     Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Rejection Modal */}
+            {rejectModal.show && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm animate-fade-in" onClick={() => !responding && setRejectModal({ ...rejectModal, show: false })}></div>
+                    <div className="relative transform overflow-hidden rounded-3xl bg-white shadow-xl transition-all sm:max-w-md w-full animate-fade-in-up z-10">
+                        <div className="p-8">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="h-12 w-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 text-xl">
+                                    <i className="fas fa-times-circle"></i>
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-gray-900">Reject Invitation</h3>
+                                    <p className="text-gray-500 text-sm">Please provide a reason for rejecting</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Task</label>
+                                    <div className="p-3 bg-gray-50 rounded-xl text-sm font-bold text-gray-700 border border-gray-100 italic">
+                                        "{rejectModal.task?.title}"
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Reason for Rejection <span className="text-red-500">*</span></label>
+                                    <textarea
+                                        value={rejectModal.reason}
+                                        onChange={(e) => setRejectModal({ ...rejectModal, reason: e.target.value })}
+                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm min-h-[120px]"
+                                        placeholder="Explain why you cannot join this task..."
+                                        autoFocus
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-8 flex gap-3">
+                                <button
+                                    onClick={() => setRejectModal({ ...rejectModal, show: false })}
+                                    disabled={responding}
+                                    className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-2xl text-sm font-bold transition-all disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmReject}
+                                    disabled={responding || !rejectModal.reason.trim()}
+                                    className="flex-[2] px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl text-sm font-bold transition-all shadow-lg shadow-red-100 disabled:opacity-50 disabled:shadow-none"
+                                >
+                                    {responding ? <i className="fas fa-spinner fa-spin mr-2"></i> : null}
+                                    Confirm Rejection
                                 </button>
                             </div>
                         </div>

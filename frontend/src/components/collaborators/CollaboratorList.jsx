@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import apiClient from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { Link } from 'react-router-dom';
 
 const CollaboratorList = () => {
     const { user } = useAuth();
@@ -148,7 +149,8 @@ const CollaboratorList = () => {
 
                         {/* ... content ... */}
 
-                        <div className="flex items-center gap-4 mb-5 relative z-10">
+
+                        <Link to={`/profile/${collaborator.id}`} className="flex items-center gap-4 mb-5 relative z-10 hover:-translate-y-0.5 transition-transform cursor-pointer">
                             <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-black text-2xl overflow-hidden border-4 border-white shadow-sm shrink-0 uppercase">
                                 {collaborator.image ? (
                                     <img src={collaborator.image} className="w-full h-full object-cover" alt={collaborator.name} />
@@ -158,9 +160,9 @@ const CollaboratorList = () => {
                             </div>
                             <div className="min-w-0">
                                 <h3 className="font-bold text-gray-800 group-hover:text-emerald-600 transition-colors truncate">{collaborator.name}</h3>
-                                <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{collaborator.institute || "Collaborator"}</div>
+                                <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{collaborator.designation || collaborator.institute || "Collaborator"}</div>
                             </div>
-                        </div>
+                        </Link>
 
                         <div className="space-y-3 text-sm text-gray-600 relative z-10">
                             {collaborator.whatsapp_number && (

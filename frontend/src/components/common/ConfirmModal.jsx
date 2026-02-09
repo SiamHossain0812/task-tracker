@@ -1,42 +1,61 @@
 import React from 'react';
 
-const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText = 'Confirm', cancelText = 'Cancel', isDangerous = false }) => {
+const ConfirmModal = ({
+    isOpen,
+    title,
+    message,
+    onConfirm,
+    onCancel,
+    onClose,
+    confirmText,
+    confirmLabel,
+    cancelText = 'Cancel',
+    isDangerous = false,
+    type,
+    children
+}) => {
     if (!isOpen) return null;
+
+    const handleCancel = onCancel || onClose;
+    const finalConfirmText = confirmLabel || confirmText || 'Confirm';
+    const finalIsDangerous = isDangerous || type === 'danger';
 
     return (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm animate-fade-in"
-                onClick={onCancel}
+                onClick={handleCancel}
             ></div>
 
             {/* Modal Content */}
             <div className="relative bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 transform transition-all animate-scale-up overflow-hidden">
                 <div className="flex flex-col items-center text-center">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-6 text-2xl shadow-lg ${isDangerous ? 'bg-red-50 text-red-500 shadow-red-100' : 'bg-emerald-50 text-emerald-600 shadow-emerald-100'
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-6 text-2xl shadow-lg ${finalIsDangerous ? 'bg-red-50 text-red-500 shadow-red-100' : 'bg-emerald-50 text-emerald-600 shadow-emerald-100'
                         }`}>
-                        <i className={`fas ${isDangerous ? 'fa-exclamation-triangle' : 'fa-question'}`}></i>
+                        <i className={`fas ${finalIsDangerous ? 'fa-exclamation-triangle' : 'fa-question'}`}></i>
                     </div>
 
                     <h3 className="text-xl font-black text-gray-800 mb-2">{title}</h3>
-                    <p className="text-gray-500 font-medium mb-8 text-sm leading-relaxed">{message}</p>
+                    {message && <p className="text-gray-500 font-medium mb-4 text-sm leading-relaxed">{message}</p>}
+
+                    {children && <div className="w-full text-left mb-6">{children}</div>}
 
                     <div className="flex gap-3 w-full">
                         <button
-                            onClick={onCancel}
+                            onClick={handleCancel}
                             className="flex-1 px-5 py-3 border border-gray-100 text-gray-500 font-bold rounded-xl hover:bg-gray-50 transition-colors uppercase text-xs tracking-widest"
                         >
                             {cancelText}
                         </button>
                         <button
                             onClick={onConfirm}
-                            className={`flex-1 px-5 py-3 text-white font-bold rounded-xl shadow-lg transition-transform active:scale-95 uppercase text-xs tracking-widest ${isDangerous
-                                    ? 'bg-red-500 hover:bg-red-600 shadow-red-200'
-                                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+                            className={`flex-1 px-5 py-3 text-white font-bold rounded-xl shadow-lg transition-transform active:scale-95 uppercase text-xs tracking-widest ${finalIsDangerous
+                                ? 'bg-red-500 hover:bg-red-600 shadow-red-200'
+                                : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
                                 }`}
                         >
-                            {confirmText}
+                            {finalConfirmText}
                         </button>
                     </div>
                 </div>

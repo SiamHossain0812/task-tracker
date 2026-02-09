@@ -1,198 +1,258 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/client';
+import { Link, useParams } from 'react-router-dom';
 
 const About = () => {
     const { user: authUser } = useAuth();
+    const { id } = useParams();
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchProfile = async () => {
-            if (!authUser?.is_superuser) {
-                try {
+            setLoading(true);
+            try {
+                if (id) {
+                    // Fetch specific collaborator profile
+                    const response = await apiClient.get(`collaborators/${id}/`);
+                    // Unify structure: collaborators/:id returns the object directly, 
+                    // but we need to normalize it to match auth/profile/ structure or adapt displayData
+                    setProfile({
+                        collaborator: response.data,
+                        user: response.data.user
+                    });
+                } else {
+                    // Fetch current user's profile
                     const response = await apiClient.get('auth/profile/');
                     setProfile(response.data);
-                } catch (err) {
-                    console.error('Failed to fetch profile', err);
-                } finally {
-                    setLoading(false);
                 }
-            } else {
+            } catch (err) {
+                console.error('Failed to fetch profile', err);
+            } finally {
                 setLoading(false);
             }
         };
         fetchProfile();
-    }, [authUser]);
+    }, [authUser, id]);
 
     if (loading) return (
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center h-full min-h-[400px]">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
         </div>
     );
 
-    // Dr. Niaz's Hardcoded Info for Superusers
-    const drNiazInfo = {
-        name: "Niaz Md. Farhat Rahman",
-        title: "Principal Scientist",
-        org: "Bangladesh Rice Research Institute (BRRI)",
-        loc: "Dhaka, Bangladesh",
-        image: "/dr_niaz_flat_green.png",
-        skills: ['Teaching', 'Research', 'Science', 'Statistics'],
-        linkedin: "https://www.linkedin.com/in/niaz-md-farhat-rahman-72407834",
-        email: "scientist@brri.org",
-        experience: [
-            { title: 'Principal Scientist', org: 'Bangladesh Rice Research Institute (BRRI)', period: 'Dec 2022 - Present', loc: 'Gazipur District, Dhaka, Bangladesh', active: true },
-            { title: 'Senior Scientist', org: 'Bangladesh Rice Research Institute (BRRI)', period: 'Sep 2014 - Oct 2023', loc: 'Gazipur District, Dhaka, Bangladesh' },
-            { title: 'Scientist', org: 'Bangladesh Rice Research Institute (BRRI)', period: 'Jan 2013 - Sep 2014', loc: 'Gazipur District, Dhaka, Bangladesh' },
-            { title: 'Lecturer', org: 'Bangladesh University', period: 'Apr 2012 - Dec 2012', loc: 'Teaching and Research' },
-            { title: 'Lecturer', org: 'Mirpur College', period: 'July 2010 - April 2012', loc: 'Teaching and Research' }
-        ],
-        education: [
-            { school: 'Bangladesh Agricultural University', degree: 'Master of Science (M.S.), Statistics', period: '2008 - 2009', active: true },
-            { school: 'Shahjalal University of Science and Technology', degree: 'Bachelor of Science (B.Sc.), Statistics', period: '2002 - 2007' },
-            { school: 'Govt. Debendra College, Manikganj', degree: 'HSC, Science', period: '1998 - 1999' }
-        ]
-    };
+    const collaborator = profile?.collaborator;
+    const user = profile?.user;
 
-    const isSuper = authUser?.is_superuser;
-    const displayData = isSuper ? drNiazInfo : {
-        name: profile?.collaborator?.name || authUser?.username,
-        title: profile?.collaborator?.institute || "Collaborator",
-        org: profile?.collaborator?.address || "",
-        loc: profile?.user?.email || "",
-        image: profile?.collaborator?.image_url || "/favicon.ico",
-        skills: ['Collaborative Research', 'Task Management'],
-        experience: [],
-        education: []
+    const displayData = {
+        name: collaborator?.name || user?.first_name ? `${user.first_name} ${user.last_name}` : user?.username,
+        designation: collaborator?.designation || "Researcher",
+        institute: collaborator?.institute || "Agromet Lab",
+        organization: collaborator?.organization || "Bangladesh Rice Research Institute (BRRI)",
+        division: collaborator?.division || "",
+        address: collaborator?.address || "",
+        email: user?.email || collaborator?.email || "",
+        whatsapp: collaborator?.whatsapp_number || "",
+        image: collaborator?.image_url || "/favicon.ico",
+        research_interests: collaborator?.research_interests ? collaborator.research_interests.split(',').map(s => s.trim()) : [],
+        research_experience: collaborator?.research_experience || "",
+        publications: collaborator?.publications || "",
+        education: collaborator?.education || ""
     };
 
     return (
         <div className="max-w-6xl mx-auto animate-fade-in pb-12 px-4 sm:px-0">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Sidebar: Profile Card */}
-                <div className="space-y-6">
-                    <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-lg shadow-gray-100/50 text-center relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-emerald-50 to-teal-50"></div>
-                        <div className="relative z-10">
-                            <div className="w-32 h-32 mx-auto mb-4 rounded-full p-1 bg-white ring-4 ring-emerald-50 shadow-sm overflow-hidden">
-                                <img
-                                    src={displayData.image}
-                                    alt={displayData.name}
-                                    className="w-full h-full rounded-full object-cover"
-                                />
-                            </div>
-                            <h1 className="text-2xl font-bold text-gray-800 mb-1 leading-tight">{displayData.name}</h1>
-                            <div className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold uppercase tracking-wider rounded-full inline-block mb-4">
-                                {displayData.title}
-                            </div>
-                            <p className="text-gray-500 text-sm mb-6 leading-relaxed">
-                                {displayData.org}<br />
-                                {displayData.loc}
-                            </p>
-                            <div className="space-y-3">
-                                {isSuper && (
-                                    <a
-                                        href={displayData.linkedin}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center justify-center gap-2 w-full py-3 bg-[#0a66c2] text-white rounded-xl font-semibold hover:bg-[#004182] transition-colors shadow-lg shadow-blue-200"
-                                    >
-                                        <i className="fab fa-linkedin"></i>
-                                        <span>Connect on LinkedIn</span>
-                                    </a>
-                                )}
-                                <a
-                                    href={`mailto:${displayData.email || authUser?.email}`}
-                                    className="flex items-center justify-center gap-2 w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
-                                >
-                                    <i className="far fa-envelope"></i>
-                                    <span>Contact Me</span>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
-                        <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
-                            <i className="fas fa-layer-group text-emerald-500"></i>
-                            <span>Top Skills</span>
-                        </h3>
-                        <div className="flex flex-wrap gap-2 mb-8">
-                            {displayData.skills.map(skill => (
-                                <span key={skill} className="px-3 py-1.5 bg-gray-50 text-gray-600 text-sm font-medium rounded-lg border border-gray-100 italic">
-                                    {skill}
-                                </span>
-                            ))}
+            {/* Header Section */}
+            <div className="bg-white rounded-[3rem] border border-gray-100 shadow-xl shadow-emerald-500/5 overflow-hidden mb-8">
+                <div className="h-48 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 relative">
+                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+                    <div className="absolute -bottom-16 left-8 sm:left-12">
+                        <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-[2.5rem] bg-white p-1.5 shadow-2xl relative group">
+                            <img
+                                src={displayData.image}
+                                alt={displayData.name}
+                                className="w-full h-full rounded-[2.2rem] object-cover"
+                            />
+                            {authUser?.id === user?.id && (
+                                <Link to="/settings" className="absolute inset-0 bg-black/40 rounded-[2.2rem] opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-white backdrop-blur-sm">
+                                    <i className="fas fa-camera text-2xl"></i>
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {/* Right Content: Experience & Education */}
-                <div className="lg:col-span-2 space-y-8">
-                    {displayData.experience.length > 0 && (
-                        <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
-                            <h2 className="text-xl font-bold text-gray-800 mb-8 pb-4 border-b border-gray-50 flex items-center gap-3">
-                                <span className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg shadow-sm">
-                                    <i className="fas fa-briefcase"></i>
-                                </span>
-                                Experience
-                            </h2>
-                            <div className="space-y-10 relative before:absolute before:left-3.5 before:top-2 before:h-full before:w-0.5 before:bg-gray-100">
-                                {displayData.experience.map((item, idx) => (
-                                    <div key={idx} className="relative pl-10 animate-slide-in" style={{ animationDelay: `${idx * 0.1}s` }}>
-                                        <div className={`absolute left-1.5 top-1.5 w-4 h-4 rounded-full ring-4 ring-white shadow-md ${item.active ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-                                        <h3 className="text-lg font-bold text-gray-800">{item.title}</h3>
-                                        <div className={`${item.active ? 'text-emerald-600' : 'text-gray-600'} font-medium mb-1`}>{item.org}</div>
-                                        <p className="text-sm text-gray-400 mb-1">{item.period}</p>
-                                        <p className="text-sm text-gray-400">{item.loc}</p>
-                                    </div>
-                                ))}
-                            </div>
+                <div className="pt-20 pb-10 px-8 sm:px-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                    <div className="space-y-2">
+                        <h1 className="text-4xl font-black text-gray-900 tracking-tight">{displayData.name}</h1>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-black uppercase tracking-widest rounded-lg">
+                                {displayData.designation}
+                            </span>
+                            <span className="text-gray-400 font-bold text-sm">
+                                <i className="fas fa-building mr-1.5"></i>
+                                {displayData.division ? `${displayData.division}, ` : ""}{displayData.institute}
+                            </span>
                         </div>
-                    )}
+                        <p className="text-gray-500 font-medium max-w-2xl">
+                            {displayData.organization}
+                        </p>
+                    </div>
 
-                    {displayData.education.length > 0 && (
-                        <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
-                            <h2 className="text-xl font-bold text-gray-800 mb-8 pb-4 border-b border-gray-50 flex items-center gap-3">
-                                <span className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg shadow-sm">
-                                    <i className="fas fa-graduation-cap"></i>
-                                </span>
-                                Education
-                            </h2>
-                            <div className="space-y-8 relative before:absolute before:left-3.5 before:top-2 before:h-full before:w-0.5 before:bg-gray-100">
-                                {displayData.education.map((item, idx) => (
-                                    <div key={idx} className="relative pl-10 animate-slide-in" style={{ animationDelay: `${0.5 + idx * 0.1}s` }}>
-                                        <div className={`absolute left-2 top-2 w-3 h-3 rounded-full ring-4 ring-white shadow-sm ${item.active ? 'bg-emerald-500' : 'bg-gray-300'}`}></div>
-                                        <h3 className="text-lg font-bold text-gray-800">{item.school}</h3>
-                                        <p className="text-gray-600 font-medium">{item.degree}</p>
-                                        <p className="text-sm text-gray-400">{item.period}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {!isSuper && (
-                        <div className="bg-emerald-50 rounded-3xl p-8 border border-emerald-100 text-center">
-                            <p className="text-emerald-800 font-medium mb-4">Want to customize your lab profile details?</p>
-                            <a href="/settings" className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100">
+                    <div className="flex gap-3 w-full md:w-auto">
+                        {(authUser?.id === user?.id) && (
+                            <Link to="/settings" className="flex-1 md:flex-none px-6 py-3.5 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-2">
                                 <i className="fas fa-user-edit"></i>
-                                <span>Go to Settings</span>
-                            </a>
+                                <span>Edit Profile</span>
+                            </Link>
+                        )}
+                        {id && authUser?.is_superuser && authUser?.id !== user?.id && (
+                            <Link to="/collaborators" className="flex-1 md:flex-none px-6 py-3.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 rounded-2xl font-bold transition-all flex items-center justify-center gap-2">
+                                <i className="fas fa-arrow-left"></i>
+                                <span>Back to Team</span>
+                            </Link>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Left Column */}
+                <div className="space-y-8">
+                    {/* Contact Info */}
+                    <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm">
+                        <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
+                            <i className="fas fa-id-card text-emerald-500"></i>
+                            Connect
+                        </h3>
+                        <div className="space-y-4">
+                            {displayData.email && (
+                                <a href={`mailto:${displayData.email}`} className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-emerald-200 hover:bg-white transition-all group">
+                                    <div className="w-10 h-10 rounded-xl bg-white text-gray-400 flex items-center justify-center shadow-sm group-hover:text-emerald-600 transition-colors">
+                                        <i className="far fa-envelope"></i>
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Email</p>
+                                        <p className="text-sm font-bold text-gray-700 truncate">{displayData.email}</p>
+                                    </div>
+                                </a>
+                            )}
+                            {displayData.whatsapp && (
+                                <a href={`https://wa.me/${displayData.whatsapp}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-emerald-200 hover:bg-white transition-all group">
+                                    <div className="w-10 h-10 rounded-xl bg-white text-gray-400 flex items-center justify-center shadow-sm group-hover:text-emerald-600 transition-colors">
+                                        <i className="fab fa-whatsapp"></i>
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">WhatsApp</p>
+                                        <p className="text-sm font-bold text-gray-700 truncate">{displayData.whatsapp}</p>
+                                    </div>
+                                </a>
+                            )}
+                            {displayData.address && (
+                                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-transparent">
+                                    <div className="w-10 h-10 rounded-xl bg-white text-gray-400 flex items-center justify-center shadow-sm">
+                                        <i className="fas fa-map-marker-alt"></i>
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Address</p>
+                                        <p className="text-sm font-bold text-gray-700 line-clamp-2">{displayData.address}</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    )}
+                    </div>
+
+                    {/* Research Interests */}
+                    <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm">
+                        <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
+                            <i className="fas fa-lightbulb text-emerald-500"></i>
+                            Interests
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                            {displayData.research_interests.length > 0 ? (
+                                displayData.research_interests.map((interest, idx) => (
+                                    <span key={idx} className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-100">
+                                        {interest}
+                                    </span>
+                                ))
+                            ) : (
+                                <p className="text-gray-400 text-sm italic">No interests listed.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Column */}
+                <div className="lg:col-span-2 space-y-8">
+                    {/* Research Experience */}
+                    <div className="bg-white rounded-[2.5rem] p-8 sm:p-10 border border-gray-100 shadow-sm">
+                        <h3 className="text-xl font-black text-gray-900 mb-8 flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                <i className="fas fa-microscope"></i>
+                            </div>
+                            Research Experience
+                        </h3>
+                        {displayData.research_experience ? (
+                            <div className="prose prose-emerald max-w-none">
+                                <p className="text-gray-600 leading-relaxed font-medium whitespace-pre-wrap">
+                                    {displayData.research_experience}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="py-10 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                                <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No experience details added</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Publications */}
+                    <div className="bg-white rounded-[2.5rem] p-8 sm:p-10 border border-gray-100 shadow-sm">
+                        <h3 className="text-xl font-black text-gray-900 mb-8 flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                                <i className="fas fa-book"></i>
+                            </div>
+                            Selected Publications
+                        </h3>
+                        {displayData.publications ? (
+                            <div className="prose prose-blue max-w-none">
+                                <p className="text-gray-600 leading-relaxed font-medium whitespace-pre-wrap">
+                                    {displayData.publications}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="py-10 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                                <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No publications listed</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Education */}
+                    <div className="bg-white rounded-[2.5rem] p-8 sm:p-10 border border-gray-100 shadow-sm">
+                        <h3 className="text-xl font-black text-gray-900 mb-8 flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                                <i className="fas fa-graduation-cap"></i>
+                            </div>
+                            Education
+                        </h3>
+                        {displayData.education ? (
+                            <div className="prose prose-purple max-w-none">
+                                <p className="text-gray-600 leading-relaxed font-medium whitespace-pre-wrap">
+                                    {displayData.education}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="py-10 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                                <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Education background not set</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             <style>{`
-                @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-                @keyframes slide-in { 
-                    from { opacity: 0; transform: translateX(-15px); } 
-                    to { opacity: 1; transform: translateX(0); } 
-                }
-                .animate-fade-in { animation: fade-in 0.6s ease-out; }
-                .animate-slide-in { animation: slide-in 0.5s ease-out backwards; }
+                @keyframes fade-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+                .animate-fade-in { animation: fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
             `}</style>
         </div>
     );

@@ -60,6 +60,15 @@ def update_profile(request):
     address = request.data.get('address')
     whatsapp_number = request.data.get('whatsapp_number')
     image = request.FILES.get('image')
+    
+    # Professional Profile Fields
+    designation = request.data.get('designation')
+    division = request.data.get('division')
+    organization = request.data.get('organization')
+    education = request.data.get('education')
+    research_experience = request.data.get('research_experience')
+    publications = request.data.get('publications')
+    research_interests = request.data.get('research_interests')
 
     if name:
         collaborator.name = name
@@ -71,6 +80,21 @@ def update_profile(request):
         collaborator.whatsapp_number = whatsapp_number
     if image:
         collaborator.image = image
+    
+    if designation is not None:
+        collaborator.designation = designation
+    if division is not None:
+        collaborator.division = division
+    if organization is not None:
+        collaborator.organization = organization
+    if education is not None:
+        collaborator.education = education
+    if research_experience is not None:
+        collaborator.research_experience = research_experience
+    if publications is not None:
+        collaborator.publications = publications
+    if research_interests is not None:
+        collaborator.research_interests = research_interests
     
     collaborator.save()
 

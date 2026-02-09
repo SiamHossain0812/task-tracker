@@ -14,9 +14,12 @@ class Project(models.Model):
         ('slate', 'Slate'),
     ]
     
+    
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     color = models.CharField(max_length=20, choices=COLOR_CHOICES, default='indigo')
+    created_by = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='created_projects', null=True, blank=True)
+    members = models.ManyToManyField('Collaborator', related_name='projects', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -50,6 +53,16 @@ class Collaborator(models.Model):
     email = models.EmailField(blank=True)
     whatsapp_number = models.CharField(max_length=20, blank=True)
     image = models.ImageField(upload_to='collaborators/', blank=True, null=True)
+    
+    # Professional Profile Fields
+    designation = models.CharField(max_length=200, blank=True, null=True)
+    division = models.CharField(max_length=200, blank=True, null=True)
+    organization = models.CharField(max_length=200, blank=True, null=True)
+    education = models.TextField(blank=True, null=True)
+    research_experience = models.TextField(blank=True, null=True)
+    publications = models.TextField(blank=True, null=True)
+    research_interests = models.TextField(blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -100,7 +113,9 @@ class Agenda(models.Model):
     google_event_id = models.CharField(max_length=255, blank=True, help_text="Google Calendar event ID")
     
     created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='created_agendas')
-    collaborators = models.ManyToManyField(Collaborator, blank=True, related_name='agendas')
+    team_leader = models.ForeignKey(Collaborator, on_delete=models.SET_NULL, null=True, blank=True, related_name='led_agendas')
+    collaborators = models.ManyToManyField(Collaborator, blank=True, related_name='agendas', through='AgendaAssignment')
+    actual_participants = models.ManyToManyField(Collaborator, blank=True, related_name='attended_meetings')
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -217,3 +232,65 @@ class GoogleToken(models.Model):
     def __str__(self):
         return f"Google Token for {self.user.username}"
 
+
+class ProjectRequest(models.Model):
+    """Model for project creation requests from collaborators"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    user = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='project_requests')
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    color = models.CharField(max_length=20, choices=Project.COLOR_CHOICES, default='indigo')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_comment = models.TextField(blank=True, help_text="Reason for rejection or approval notes")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Request for {self.name} by {self.user.username}"
+
+class AgendaAssignment(models.Model):
+    """Through model for Agenda collaborators to track invitation status"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    agenda = models.ForeignKey(Agenda, on_delete=models.CASCADE, related_name='assignments')
+    collaborator = models.ForeignKey(Collaborator, on_delete=models.CASCADE, related_name='assignments')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    rejection_reason = models.TextField(blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('agenda', 'collaborator')
+        ordering = ['-created_at']
+
+
+class PersonalNote(models.Model):
+    """Simple personal notes for users"""
+    user = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='personal_notes')
+    title = models.CharField(max_length=200, blank=True)
+    content = models.TextField()
+    color = models.CharField(max_length=50, default='#ffffff')  # hex color
+    is_pinned = models.BooleanField(default=False)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-is_pinned', '-updated_at']
+
+    def __str__(self):
+        return f"Note by {self.user.username}: {self.title or self.content[:30]}"

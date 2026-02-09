@@ -11,6 +11,7 @@ const MeetingsPage = () => {
     const [error, setError] = useState(null);
     const [editingCollaborators, setEditingCollaborators] = useState(null);
     const [updating, setUpdating] = useState(false);
+    const [reportingMeeting, setReportingMeeting] = useState(null);
 
     const dropdownRef = useRef(null);
 
@@ -88,30 +89,23 @@ const MeetingsPage = () => {
         }, 2000);
     };
 
-    const toggleCollaborator = async (meeting, collabId) => {
-        setUpdating(true);
+    const handleJoinMeeting = async (meeting) => {
         try {
-            // Check if serializer expects collaborator_ids for update
-            // Based on serializers.py, it takes collaborator_ids in write_only field
-            const agendaResponse = await apiClient.get(`agendas/${meeting.id}/`);
-            const currentIds = agendaResponse.data.collaborators.map(c => c.id);
-
-            let newIds;
-            if (currentIds.includes(collabId)) {
-                newIds = currentIds.filter(id => id !== collabId);
-            } else {
-                newIds = [...currentIds, collabId];
-            }
-
-            await apiClient.patch(`agendas/${meeting.id}/`, {
-                collaborator_ids: newIds
-            });
-            fetchMeetings();
+            await apiClient.post(`agendas/${meeting.id}/track-join/`);
         } catch (err) {
-            console.error('Failed to update collaborators', err);
-            alert('Failed to update participants');
-        } finally {
-            setUpdating(false);
+            console.error('Failed to track join event', err);
+        }
+        // Always open the link even if tracking fails
+        window.open(meeting.meeting_link, '_blank', 'noopener,noreferrer');
+    };
+
+    const handleViewReport = async (meetingId) => {
+        try {
+            const response = await apiClient.get(`agendas/${meetingId}/`);
+            setReportingMeeting(response.data);
+        } catch (err) {
+            console.error('Failed to load meeting report', err);
+            alert('Failed to load attendance report');
         }
     };
 
@@ -156,9 +150,23 @@ const MeetingsPage = () => {
                                     </button>
                                 )}
 
+                                {/* Priority Badge */}
+                                {meeting.priority && (
+                                    <div className={`absolute top-5 left-5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 pointer-events-none z-10 ${meeting.priority === 'high'
+                                        ? 'bg-red-50 text-red-600 border-red-100'
+                                        : meeting.priority === 'medium'
+                                            ? 'bg-amber-50 text-amber-600 border-amber-100'
+                                            : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                        }`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${meeting.priority === 'high' ? 'bg-red-500 animate-pulse' : meeting.priority === 'medium' ? 'bg-amber-500' : 'bg-emerald-500'
+                                            }`}></span>
+                                        {meeting.priority}
+                                    </div>
+                                )}
+
                                 {/* Header: Icon + Title */}
                                 <div className="flex items-start gap-4 mb-4 pr-10">
-                                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl shadow-sm shrink-0">
+                                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl shadow-sm shrink-0 mt-8">
                                         <i className="fas fa-video"></i>
                                     </div>
                                     <div>
@@ -223,10 +231,10 @@ const MeetingsPage = () => {
                                                     disabled={updating}
                                                     onClick={() => toggleCollaborator(meeting, collab.id)}
                                                     className={`w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center justify-between group ${meeting.collaborators?.some(c => c.id === collab.id) ||
-                                                            // Fallback for list serializer collaborator_count vs detail serializer collaborators array
-                                                            meeting.collaborator_count > 0 && meeting.collaborators?.some(c => c.id === collab.id)
-                                                            ? 'bg-emerald-50 text-emerald-700'
-                                                            : 'hover:bg-gray-50 text-gray-600'
+                                                        // Fallback for list serializer collaborator_count vs detail serializer collaborators array
+                                                        meeting.collaborator_count > 0 && meeting.collaborators?.some(c => c.id === collab.id)
+                                                        ? 'bg-emerald-50 text-emerald-700'
+                                                        : 'hover:bg-gray-50 text-gray-600'
                                                         }`}
                                                 >
                                                     <div className="flex items-center gap-2">
@@ -258,21 +266,30 @@ const MeetingsPage = () => {
                                             </button>
                                         )}
                                         {meeting.meeting_link ? (
-                                            <a
-                                                href={meeting.meeting_link}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
+                                            <button
+                                                onClick={() => handleJoinMeeting(meeting)}
                                                 className="flex-[2] py-3 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-100 transform active:scale-95"
                                             >
                                                 <i className="fas fa-video text-sm"></i>
                                                 Join Meeting
-                                            </a>
+                                            </button>
                                         ) : (
                                             <div className="w-full py-3 bg-gray-50 text-gray-400 font-bold rounded-2xl text-center border-2 border-dashed border-gray-200 cursor-not-allowed text-xs">
                                                 Link Pending Configuration
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Admin Report Button */}
+                                    {user?.is_superuser && (
+                                        <button
+                                            onClick={() => handleViewReport(meeting.id)}
+                                            className="w-full py-3 bg-indigo-50 text-indigo-700 font-bold rounded-2xl hover:bg-indigo-100 transition-all flex items-center justify-center gap-2 border border-indigo-100 mt-2"
+                                        >
+                                            <i className="fas fa-file-alt"></i>
+                                            <span>Attendance Report</span>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -292,6 +309,117 @@ const MeetingsPage = () => {
                     </div>
                 )}
             </div>
+
+            {/* Attendance Report Modal */}
+            {reportingMeeting && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-gray-900/60 backdrop-blur-md animate-fade-in"
+                        onClick={() => setReportingMeeting(null)}
+                    ></div>
+                    <div className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-fade-in-up">
+                        {/* Modal Header */}
+                        <div className="p-8 pb-4 flex justify-between items-start">
+                            <div>
+                                <h3 className="text-2xl font-bold text-gray-800 tracking-tight">{reportingMeeting.title}</h3>
+                                <p className="text-gray-400 font-medium">Meeting Attendance Analytics</p>
+                            </div>
+                            <button
+                                onClick={() => setReportingMeeting(null)}
+                                className="w-10 h-10 rounded-full bg-gray-50 text-gray-400 hover:text-gray-600 hover:bg-gray-100 flex items-center justify-center transition-all"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="p-8 pt-4 overflow-y-auto max-h-[70vh] custom-scrollbar">
+                            {/* Stats Summary */}
+                            <div className="grid grid-cols-3 gap-4 mb-8">
+                                <div className="bg-emerald-50/50 p-4 rounded-3xl border border-emerald-100 flex flex-col items-center">
+                                    <span className="text-emerald-600 font-black text-2xl">{reportingMeeting.actual_participants?.length || 0}</span>
+                                    <span className="text-[10px] uppercase font-bold text-emerald-500 tracking-widest">Joined</span>
+                                </div>
+                                <div className="bg-red-50/50 p-4 rounded-3xl border border-red-100 flex flex-col items-center">
+                                    <span className="text-red-600 font-black text-2xl">
+                                        {Math.max(0, (reportingMeeting.collaborators?.length || 0) - (reportingMeeting.actual_participants?.length || 0))}
+                                    </span>
+                                    <span className="text-[10px] uppercase font-bold text-red-500 tracking-widest">Missed</span>
+                                </div>
+                                <div className="bg-indigo-50/50 p-4 rounded-3xl border border-indigo-100 flex flex-col items-center">
+                                    <span className="text-indigo-600 font-black text-2xl">
+                                        {reportingMeeting.collaborators?.length ? Math.round((reportingMeeting.actual_participants?.length / reportingMeeting.collaborators.length) * 100) : 0}%
+                                    </span>
+                                    <span className="text-[10px] uppercase font-bold text-indigo-500 tracking-widest">Rate</span>
+                                </div>
+                            </div>
+
+                            {/* Participant Lists */}
+                            <div className="space-y-6">
+                                {/* Joined List */}
+                                <div>
+                                    <h4 className="flex items-center gap-2 text-sm font-bold text-emerald-600 mb-3 uppercase tracking-wider">
+                                        <i className="fas fa-check-circle"></i>
+                                        Attended ({reportingMeeting.actual_participants?.length || 0})
+                                    </h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {reportingMeeting.actual_participants?.length > 0 ? (
+                                            reportingMeeting.actual_participants.map(collab => (
+                                                <div key={collab.id} className="flex items-center gap-3 p-3 bg-emerald-50/30 rounded-2xl border border-emerald-50">
+                                                    <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold text-xs">
+                                                        {collab.name[0]}
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-bold text-gray-800">{collab.name}</div>
+                                                        <div className="text-[10px] text-emerald-600 font-medium">Joined via link</div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-xs text-gray-400 italic col-span-2">No participants have joined yet.</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Missing List */}
+                                <div>
+                                    <h4 className="flex items-center gap-2 text-sm font-bold text-red-600 mb-3 uppercase tracking-wider">
+                                        <i className="fas fa-times-circle"></i>
+                                        Absent ({Math.max(0, (reportingMeeting.collaborators?.length || 0) - (reportingMeeting.actual_participants?.length || 0))})
+                                    </h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {reportingMeeting.collaborators?.filter(c => !reportingMeeting.actual_participants?.some(ap => ap.id === c.id)).length > 0 ? (
+                                            reportingMeeting.collaborators?.filter(c => !reportingMeeting.actual_participants?.some(ap => ap.id === c.id)).map(collab => (
+                                                <div key={collab.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100 grayscale-[0.8]">
+                                                    <div className="w-8 h-8 rounded-xl bg-gray-200 text-gray-500 flex items-center justify-center font-bold text-xs">
+                                                        {collab.name[0]}
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-bold text-gray-400">{collab.name}</div>
+                                                        <div className="text-[10px] text-gray-400 font-medium italic">Sent invite</div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-xs text-gray-400 italic col-span-2">Everyone joined or no one was invited.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-8 border-t border-gray-50 bg-gray-50/30">
+                            <button
+                                onClick={() => setReportingMeeting(null)}
+                                className="w-full py-4 bg-gray-900 text-white font-bold rounded-2xl hover:bg-gray-800 transition-all shadow-xl shadow-gray-200"
+                            >
+                                Close Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }

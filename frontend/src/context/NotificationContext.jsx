@@ -38,11 +38,10 @@ export const NotificationProvider = ({ children }) => {
         if (!isAuthenticated || !('serviceWorker' in navigator)) return;
 
         try {
-            const registration = await navigator.serviceWorker.ready;
+            // Check if permission is already granted
+            if (Notification.permission !== 'granted') return;
 
-            // Request permission
-            const permission = await Notification.requestPermission();
-            if (permission !== 'granted') return;
+            const registration = await navigator.serviceWorker.ready;
 
             const publicVapidKey = 'BPatCliCZSYI7aZuvBB29XJ43S4Y6_fT3mYpI6r9F0Jm6XzpLvc94QDqLQhtMcUf08z1nc7R6b2bU-8yY8oN87Y';
 
@@ -96,7 +95,7 @@ export const NotificationProvider = ({ children }) => {
                 showToast(
                     data.notification.title || 'New Notification',
                     'info',
-                    targetId ? () => navigate(`/tasks/${targetId}/edit`) : null
+                    targetId ? () => navigate(`/tasks/${targetId}`) : null
                 );
             }
 
@@ -114,7 +113,7 @@ export const NotificationProvider = ({ children }) => {
                         vibrate: [200, 100, 200],
                         data: {
                             url: data.notification.related_agenda
-                                ? `/tasks/${data.notification.related_agenda.id}/edit`
+                                ? `/tasks/${data.notification.related_agenda.id}`
                                 : '/'
                         },
                         actions: [

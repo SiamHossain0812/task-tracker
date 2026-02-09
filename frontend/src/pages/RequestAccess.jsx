@@ -8,6 +8,8 @@ const RequestAccess = () => {
         last_name: '',
         username: '', // Phone number
         email: '',
+        designation: '',
+        division: '',
         password: '',
         confirm_password: ''
     });
@@ -37,7 +39,9 @@ const RequestAccess = () => {
                 password: formData.password,
                 email: formData.email,
                 first_name: formData.first_name,
-                last_name: formData.last_name
+                last_name: formData.last_name,
+                designation: formData.designation,
+                division: formData.division
             });
             setSuccess(true);
         } catch (err) {
@@ -190,6 +194,37 @@ const RequestAccess = () => {
                                     required
                                 />
                                 <i className="far fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors text-sm"></i>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-black text-gray-700 ml-1 uppercase tracking-wider">Designation <span className="text-red-500">*</span></label>
+                            <div className="relative group">
+                                <input
+                                    type="text"
+                                    name="designation"
+                                    value={formData.designation}
+                                    onChange={handleChange}
+                                    className="w-full h-12 pl-10 pr-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
+                                    placeholder="e.g. Senior Researcher"
+                                    required
+                                />
+                                <i className="fas fa-briefcase absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors text-sm"></i>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-black text-gray-700 ml-1 uppercase tracking-wider">Division / Department</label>
+                            <div className="relative group">
+                                <input
+                                    type="text"
+                                    name="division"
+                                    value={formData.division}
+                                    onChange={handleChange}
+                                    className="w-full h-12 pl-10 pr-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
+                                    placeholder="e.g. Computer Science"
+                                />
+                                <i className="fas fa-building absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors text-sm"></i>
                             </div>
                         </div>
 

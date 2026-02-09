@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import NotificationPrompt from '../common/NotificationPrompt';
+import PersonalNotesDrawer from '../notes/PersonalNotesDrawer';
 
 const MainLayout = ({ children }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isNotesOpen, setIsNotesOpen] = useState(false);
 
     return (
         <div className="flex bg-[#F4F7FE] h-screen w-full overflow-hidden selection:bg-emerald-500 selection:text-white">
@@ -27,6 +29,18 @@ const MainLayout = ({ children }) => {
 
             {/* Notification Permission Prompt */}
             <NotificationPrompt />
+
+            {/* Personal Notes Drawer */}
+            <PersonalNotesDrawer isOpen={isNotesOpen} onClose={() => setIsNotesOpen(false)} />
+
+            {/* Floating Action Button for Notes */}
+            <button
+                onClick={() => setIsNotesOpen(true)}
+                className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-2xl shadow-2xl shadow-indigo-200 flex items-center justify-center z-30 transition-all hover:scale-110 group"
+                title="My Notes"
+            >
+                <i className="fas fa-sticky-note text-xl group-hover:rotate-12 transition-transform"></i>
+            </button>
 
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar {

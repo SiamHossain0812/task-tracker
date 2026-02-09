@@ -226,8 +226,8 @@ const CalendarView = () => {
                                                     {event.project_name && <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-tighter">{event.project_name}</span>}
                                                 </div>
                                             </div>
-                                            <NavLink to={`/tasks/${event.id}/edit`} className="w-9 h-9 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
-                                                <i className="fas fa-edit text-xs"></i>
+                                            <NavLink to={`/tasks/${event.id}`} className="w-9 h-9 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
+                                                <i className="fas fa-eye text-xs"></i>
                                             </NavLink>
                                         </div>
                                     ))

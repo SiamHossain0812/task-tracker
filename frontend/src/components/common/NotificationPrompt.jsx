@@ -28,18 +28,27 @@ const NotificationPrompt = () => {
     }, [permission]);
 
     const handleEnable = async () => {
+        console.log('🔔 Enable button clicked');
+        console.log('Current permission state:', permission);
+        console.log('Notification.permission:', Notification.permission);
+
         if (permission === 'default') {
+            console.log('Permission is default, requesting...');
             try {
                 const result = await Notification.requestPermission();
+                console.log('Permission request result:', result);
                 setPermission(result);
 
                 if (result === 'granted') {
+                    console.log('Permission granted! Proceeding with setup...');
                     setShow(false);
                     // Register functionality with backend immediately
+                    console.log('Calling registerPush...');
                     registerPush();
 
                     // Show a test notification
                     if ('serviceWorker' in navigator) {
+                        console.log('Service worker available, showing test notification...');
                         const registration = await navigator.serviceWorker.ready;
                         await registration.showNotification('Notifications Enabled! 🎉', {
                             body: 'You will now receive instant updates',
@@ -47,11 +56,16 @@ const NotificationPrompt = () => {
                             badge: '/logo192.png',
                             vibrate: [200, 100, 200]
                         });
+                        console.log('Test notification shown successfully');
                     }
+                } else {
+                    console.log('Permission not granted:', result);
                 }
             } catch (error) {
                 console.error('Failed to request notification permission:', error);
             }
+        } else {
+            console.log('Permission is not default, current value:', permission);
         }
     };
 

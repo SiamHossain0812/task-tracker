@@ -6,14 +6,16 @@ const Sidebar = ({ isOpen, onClose }) => {
     const { user, logout } = useAuth();
 
     const links = [
-        { to: "/", icon: "fas fa-th-large", label: "Dashboard", adminOnly: true },
-        { to: "/projects", icon: "fas fa-folder-open", label: "Projects", adminOnly: true },
+        { to: "/", icon: "fas fa-th-large", label: "Dashboard", adminOnly: false, end: true },
+        { to: "/projects", icon: "fas fa-folder-open", label: "Projects", adminOnly: false, end: true },
         { to: "/tasks", icon: "fas fa-tasks", label: "Tasks", adminOnly: false },
-        { to: "/calendar", icon: "far fa-calendar", label: "Calendar", adminOnly: true },
+        { to: "/calendar", icon: "far fa-calendar", label: "Calendar", adminOnly: false },
         { to: "/meetings", icon: "fas fa-video", label: "Meetings", adminOnly: false },
+        { to: "/project-requests", icon: "fas fa-file-contract", label: "Project Requests", adminOnly: false },
         { to: "/analytics", icon: "fas fa-chart-pie", label: "Analytics", adminOnly: true },
         { to: "/collaborators", icon: "fas fa-users", label: "Team", adminOnly: true },
         { to: "/auth/requests", icon: "fas fa-user-plus", label: "Access Requests", adminOnly: true },
+        { to: "/about", icon: "fas fa-user-circle", label: "My Profile", adminOnly: false },
     ];
 
     const filteredLinks = links.filter(link => !link.adminOnly || user?.is_superuser);
@@ -31,9 +33,14 @@ const Sidebar = ({ isOpen, onClose }) => {
                     <div className="w-12 h-12 flex items-center justify-center shrink-0">
                         <img src="/images/brri-logo.png" alt="BRRI Logo" className="w-full h-full object-contain" />
                     </div>
-                    <span className="text-lg font-bold text-gray-800 tracking-tight leading-tight">
-                        Agromet Lab<br />Task Tracker
-                    </span>
+                    <div className="flex flex-col">
+                        <span className="text-lg font-bold text-gray-800 tracking-tight leading-tight">
+                            Agromet Lab<br />Task Tracker
+                        </span>
+                        <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full w-fit mt-1 uppercase tracking-wider">
+                            v3.2.0-beta
+                        </span>
+                    </div>
                 </NavLink>
                 {/* Close Button (Mobile) */}
                 <button
@@ -54,6 +61,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                             <NavLink
                                 key={link.to}
                                 to={link.to}
+                                end={link.end}
                                 className={({ isActive }) =>
                                     `sidebar-link relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
                                         ? 'text-emerald-600 bg-emerald-50 active'
@@ -69,25 +77,12 @@ const Sidebar = ({ isOpen, onClose }) => {
                     </nav>
                 </div>
 
-                {/* General Group */}
                 <div>
                     <h3 className="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">General</h3>
                     <nav className="space-y-1">
                         <NavLink
-                            to="/about"
-                            className={({ isActive }) =>
-                                `sidebar-link relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
-                                    ? 'text-emerald-600 bg-emerald-50 active'
-                                    : 'text-gray-500 hover:text-emerald-600 hover:bg-emerald-50'
-                                }`
-                            }
-                            onClick={onClose}
-                        >
-                            <i className="far fa-id-card w-5 text-center"></i>
-                            <span>About</span>
-                        </NavLink>
-                        <NavLink
                             to="/settings"
+                            end
                             className={({ isActive }) =>
                                 `sidebar-link relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
                                     ? 'text-emerald-600 bg-emerald-50 active'

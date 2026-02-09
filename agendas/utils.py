@@ -168,6 +168,14 @@ def check_and_create_alerts(user):
                                 'title': notification.title,
                                 'message': notification.message,
                                 'notification_type': notification.notification_type,
+                                'related_agenda': {
+                                    'id': agenda.id,
+                                    'title': agenda.title
+                                } if agenda else None,
+                                'related_project': {
+                                    'id': agenda.project.id,
+                                    'name': agenda.project.name
+                                } if agenda and agenda.project else None,
                                 'created_at': notification.created_at.isoformat(),
                                 'is_read': False
                             }

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../api/client';
+import { toast } from 'react-hot-toast';
+import ConfirmModal from '../common/ConfirmModal';
 
 const AgendaForm = () => {
     const { id } = useParams();
@@ -80,6 +82,10 @@ const AgendaForm = () => {
     const [isCollabDropdownOpen, setIsCollabDropdownOpen] = useState(false);
     const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
     const [quickAddData, setQuickAddData] = useState({ name: '', whatsapp_number: '' });
+    const [isManualCategory, setIsManualCategory] = useState(false);
+    const [responding, setResponding] = useState(false);
+    const [myAssignment, setMyAssignment] = useState(null);
+    const [rejectModal, setRejectModal] = useState({ show: false, reason: '' });
 
     const dropdownRef = useRef(null);
 
@@ -95,13 +101,22 @@ const AgendaForm = () => {
 
                 if (isEdit) {
                     const agendaRes = await apiClient.get(`agendas/${id}/`);
+                    const agendaData = agendaRes.data;
+
                     setFormData({
-                        ...agendaRes.data,
-                        project: agendaRes.data.project || '',
-                        collaborators: agendaRes.data.collaborators?.map(c => c.id) || [],
-                        send_whatsapp: true, // Default to true for edits as well
-                        attachment: null // Reset attachment as file input can't be set
+                        ...agendaData,
+                        project: agendaData.project?.id || agendaData.project_id || '',
+                        collaborators: agendaData.collaborators?.map(c => c.id) || [],
+                        send_whatsapp: true,
+                        attachment: null
                     });
+
+                    // Find current user's assignment
+                    const me = collaboratorsRes.data.find(c => c.user?.id === user?.id);
+                    if (me) {
+                        const assignment = agendaData.assignments?.find(a => a.collaborator === me.id);
+                        setMyAssignment(assignment);
+                    }
                 }
             } catch (err) {
                 console.error('Failed to fetch data', err);
@@ -122,6 +137,14 @@ const AgendaForm = () => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // Auto-calculate category when dates change (only if not manually selected)
+    useEffect(() => {
+        if (formData.date && formData.expected_finish_date && !isManualCategory) {
+            const calculatedCategory = getCalculatedCategory(formData.date, formData.expected_finish_date);
+            setFormData(prev => ({ ...prev, category: calculatedCategory }));
+        }
+    }, [formData.date, formData.expected_finish_date]);
 
     const validateTimes = () => {
         if (formData.date && formData.expected_finish_date) {
@@ -202,6 +225,48 @@ const AgendaForm = () => {
         }
     };
 
+    const handleAccept = async () => {
+        setResponding(true);
+        try {
+            await apiClient.post(`agendas/${id}/accept/`);
+            toast.success('Invitation accepted!');
+            // Refresh data to update UI
+            const agendaRes = await apiClient.get(`agendas/${id}/`);
+            const agendaData = agendaRes.data;
+            const me = (await apiClient.get('collaborators/')).data.find(c => c.user?.id === user?.id);
+            if (me) {
+                const assignment = agendaData.assignments?.find(a => a.collaborator === me.id);
+                setMyAssignment(assignment);
+            }
+        } catch (err) {
+            console.error('Accept failed', err);
+            toast.error('Failed to accept invitation');
+        } finally {
+            setResponding(false);
+        }
+    };
+
+    const handleRejectSubmit = async () => {
+        if (!rejectModal.reason.trim()) {
+            toast.error('Please provide a reason');
+            return;
+        }
+        setResponding(true);
+        try {
+            await apiClient.post(`agendas/${id}/reject/`, {
+                rejection_reason: rejectModal.reason
+            });
+            toast.success('Invitation rejected');
+            navigate(-1);
+        } catch (err) {
+            console.error('Reject failed', err);
+            toast.error('Failed to reject invitation');
+        } finally {
+            setResponding(false);
+            setRejectModal({ show: false, reason: '' });
+        }
+    };
+
     if (loading) return (
         <div className="flex items-center justify-center min-h-[400px]">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
@@ -211,6 +276,36 @@ const AgendaForm = () => {
     return (
         <div className="flex justify-center p-4 min-h-full animate-fade-in custom-scrollbar">
             <div className="card w-full max-w-2xl bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden mt-4 mb-8">
+                {/* Invitation Banner */}
+                {isEdit && myAssignment?.status === 'pending' && (
+                    <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 text-white">
+                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                                <i className="fas fa-envelope-open-text"></i>
+                            </div>
+                            <div>
+                                <h4 className="font-bold">Pending Invitation</h4>
+                                <p className="text-xs text-indigo-100">You've been invited to join this {isMeeting ? 'meeting' : 'task'}.</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                            <button
+                                onClick={handleAccept}
+                                disabled={responding}
+                                className="flex-1 sm:flex-none px-6 py-2 bg-white text-indigo-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-all disabled:opacity-50"
+                            >
+                                {responding ? <i className="fas fa-spinner fa-spin"></i> : 'Accept'}
+                            </button>
+                            <button
+                                onClick={() => setRejectModal({ show: true, reason: '' })}
+                                disabled={responding}
+                                className="flex-1 sm:flex-none px-6 py-2 bg-indigo-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-400 transition-all border border-indigo-400 disabled:opacity-50"
+                            >
+                                Reject
+                            </button>
+                        </div>
+                    </div>
+                )}
                 {/* Header */}
                 <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                     <div>
@@ -248,7 +343,7 @@ const AgendaForm = () => {
                             </div>
                         )}
 
-                        {/* Title */}
+                        {/* a) Task Title */}
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-1.5">Task Title <span className="text-red-500">*</span></label>
                             <input
@@ -261,7 +356,51 @@ const AgendaForm = () => {
                             />
                         </div>
 
-                        {/* Task Category */}
+                        {/* b) Start and Expected Finish */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
+                                <label className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-2 font-mono tracking-widest">
+                                    <i className="far fa-clock"></i> {isMeeting ? 'Meeting Time' : 'Start'}
+                                </label>
+                                <input
+                                    type="date" required
+                                    disabled={isReadOnly}
+                                    value={formData.date}
+                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                    className="w-full mb-3 px-4 py-2.5 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-sm font-medium disabled:bg-gray-50"
+                                />
+                                <input
+                                    type="time"
+                                    disabled={isReadOnly}
+                                    value={formData.time}
+                                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-sm font-medium disabled:bg-gray-50"
+                                />
+                            </div>
+                            {!isMeeting && (
+                                <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
+                                    <label className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-2 font-mono tracking-widest">
+                                        <i className="fas fa-flag-checkered"></i> Expected Finish
+                                    </label>
+                                    <input
+                                        type="date"
+                                        disabled={isReadOnly}
+                                        value={formData.expected_finish_date}
+                                        onChange={(e) => setFormData({ ...formData, expected_finish_date: e.target.value })}
+                                        className="w-full mb-3 px-4 py-2.5 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-sm font-medium disabled:bg-gray-50"
+                                    />
+                                    <input
+                                        type="time"
+                                        disabled={isReadOnly}
+                                        value={formData.expected_finish_time}
+                                        onChange={(e) => setFormData({ ...formData, expected_finish_time: e.target.value })}
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-sm font-medium disabled:bg-gray-50"
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* c) Task Category (Automatic) */}
                         {!isMeeting && (
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Task Category</label>
@@ -270,14 +409,8 @@ const AgendaForm = () => {
                                     disabled={isReadOnly}
                                     onChange={(e) => {
                                         const newCategory = e.target.value;
-                                        setFormData(prev => {
-                                            const updates = { ...prev, category: newCategory };
-                                            // Auto-suggest finish date when category is selected
-                                            if (newCategory && prev.date) {
-                                                updates.expected_finish_date = getSuggestedFinishDate(newCategory, prev.date);
-                                            }
-                                            return updates;
-                                        });
+                                        setIsManualCategory(newCategory !== ''); // Track if user manually selected
+                                        setFormData(prev => ({ ...prev, category: newCategory }));
                                     }}
                                     className="w-full px-5 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all font-medium disabled:bg-gray-50"
                                 >
@@ -301,33 +434,64 @@ const AgendaForm = () => {
                             </div>
                         )}
 
-                        {/* Description */}
+                        {/* d) Description/Activities */}
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1.5">Description</label>
+                            <label className="block text-sm font-bold text-gray-700 mb-1.5">Description/Activities</label>
                             {isReadOnly ? (
                                 <div className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium whitespace-pre-wrap min-h-[5rem]">
                                     {formData.description || 'No description provided.'}
                                 </div>
                             ) : (
                                 <textarea
-                                    rows="3"
+                                    rows="4"
                                     value={formData.description}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     className="w-full px-5 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all placeholder-gray-400 font-medium resize-none"
-                                    placeholder="Add details..."
+                                    placeholder="Add details and activities..."
                                 ></textarea>
                             )}
                         </div>
 
-                        {/* Resources Section */}
+                        {/* e) Attachments & f) External Link */}
                         <div className="bg-gray-50/50 rounded-2xl p-5 border border-gray-100 space-y-4">
                             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                                <i className="fas fa-layer-group"></i> Resources & Collaboration
+                                <i className="fas fa-paperclip"></i> Resources & Attachments
                             </h3>
 
-                            {/* External Link */}
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1.5">External Link</label>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">e) Attachments</label>
+                                {isReadOnly ? (
+                                    formData.attachment ? (
+                                        <a
+                                            href={formData.attachment}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center justify-between w-full px-5 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                                    <i className="fas fa-file-alt"></i>
+                                                </div>
+                                                <span className="truncate max-w-[200px] sm:max-w-xs">{typeof formData.attachment === 'string' ? formData.attachment.split('/').pop() : 'Attached File'}</span>
+                                            </div>
+                                            <i className="fas fa-download text-gray-400"></i>
+                                        </a>
+                                    ) : (
+                                        <div className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-400 font-medium italic">
+                                            No attachment
+                                        </div>
+                                    )
+                                ) : (
+                                    <input
+                                        type="file"
+                                        onChange={(e) => setFormData({ ...formData, attachment: e.target.files[0] })}
+                                        className="block w-full text-sm text-gray-500 bg-white border border-gray-200 rounded-xl file:mr-4 file:py-2.5 file:px-4 file:rounded-l-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer transition-colors"
+                                    />
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1.5">f) External Link</label>
                                 <div className="relative group">
                                     <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400 group-focus-within:text-emerald-500 transition-colors">
                                         <i className="fas fa-link"></i>
@@ -358,11 +522,17 @@ const AgendaForm = () => {
                                     )}
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Collaborators */}
+                        {/* g) Team Leader & h) Collaborators */}
+                        <div className="bg-gray-50/50 rounded-2xl p-5 border border-gray-100 space-y-4">
+                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                <i className="fas fa-users"></i> Team & Collaborators
+                            </h3>
+
                             <div className="relative" ref={dropdownRef}>
                                 <div className="flex items-center justify-between mb-2">
-                                    <label className="block text-sm font-bold text-gray-700">Collaborators</label>
+                                    <label className="block text-sm font-bold text-gray-700">h) Collaborators</label>
                                     {!isReadOnly && (
                                         <button
                                             type="button"
@@ -451,114 +621,12 @@ const AgendaForm = () => {
                                     </div>
                                 )}
                             </div>
-
-                            {/* Attachment */}
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Attachment</label>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Attachment</label>
-                                {isReadOnly ? (
-                                    formData.attachment ? (
-                                        <a
-                                            href={formData.attachment}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center justify-between w-full px-5 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 transition-colors"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                                                    <i className="fas fa-file-alt"></i>
-                                                </div>
-                                                <span className="truncate max-w-[200px] sm:max-w-xs">{typeof formData.attachment === 'string' ? formData.attachment.split('/').pop() : 'Attached File'}</span>
-                                            </div>
-                                            <i className="fas fa-download text-gray-400"></i>
-                                        </a>
-                                    ) : (
-                                        <div className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-400 font-medium italic">
-                                            No attachment
-                                        </div>
-                                    )
-                                ) : (
-                                    <input
-                                        type="file"
-                                        onChange={(e) => setFormData({ ...formData, attachment: e.target.files[0] })}
-                                        className="block w-full text-sm text-gray-500 bg-white border border-gray-200 rounded-xl file:mr-4 file:py-2.5 file:px-4 file:rounded-l-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer transition-colors"
-                                    />
-                                )}
-                            </div>
-
-
-                            {isMeeting && (
-                                <div className="p-5 bg-gradient-to-br from-emerald-50/50 to-indigo-50/30 rounded-[2rem] border border-emerald-100 shadow-sm relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16"></div>
-                                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 relative z-10">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-200 shrink-0">
-                                                <i className="fas fa-video"></i>
-                                            </div>
-                                            <div className="flex-grow">
-                                                <label className="block text-sm font-bold text-gray-800">Connection Link</label>
-                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Google Meet Integration</p>
-                                            </div>
-                                        </div>
-                                        {!isReadOnly && (
-                                            <a
-                                                href="https://meet.google.com/"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="w-full sm:w-auto px-4 py-2 bg-white text-emerald-600 border border-emerald-100 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 shadow-sm"
-                                            >
-                                                <i className="fas fa-external-link-alt"></i>
-                                                Generate Link
-                                            </a>
-                                        )}
-                                    </div>
-
-                                    <div className="flex gap-2 relative z-10">
-                                        <div className="relative flex-grow">
-                                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                                <i className="fas fa-link text-emerald-400"></i>
-                                            </div>
-                                            <input
-                                                type="text"
-                                                name="meeting_link"
-                                                disabled={isReadOnly}
-                                                placeholder="Paste Meet link (e.g. meet.google.com/abc-xyz)"
-                                                value={formData.meeting_link}
-                                                onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })}
-                                                onBlur={(e) => {
-                                                    let val = e.target.value.trim();
-                                                    if (val && !/^https?:\/\//i.test(val)) {
-                                                        const newVal = 'https://' + val;
-                                                        setFormData({ ...formData, meeting_link: newVal });
-                                                    }
-                                                }}
-                                                className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium disabled:bg-gray-50"
-                                            />
-                                        </div>
-                                        {formData.meeting_link && (
-                                            <a
-                                                href={formData.meeting_link}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="px-5 py-3 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all flex items-center justify-center shadow-lg shadow-emerald-100"
-                                                title="Check Connection"
-                                            >
-                                                <i className="fas fa-external-link-alt text-sm"></i>
-                                            </a>
-                                        )}
-                                    </div>
-                                    <p className="mt-3 text-[10px] text-emerald-700/60 font-bold flex items-center gap-1.5 ml-1">
-                                        <i className="fas fa-info-circle"></i>
-                                        Paste the link generated from Google Meet here.
-                                    </p>
-                                </div>
-                            )}
                         </div>
 
-                        {/* Meta Info */}
+                        {/* i) Project & j) Priority */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Project</label>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">i) Project</label>
                                 <select
                                     value={formData.project}
                                     disabled={isReadOnly}
@@ -571,71 +639,89 @@ const AgendaForm = () => {
                                     ))}
                                 </select>
                             </div>
-                            {!isMeeting && (
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Priority</label>
-                                    <div className="relative">
-                                        <select
-                                            value={formData.priority}
-                                            disabled={isReadOnly}
-                                            onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                                            className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-700 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all appearance-none disabled:bg-gray-50"
-                                        >
-                                            <option value="low">Low Priority</option>
-                                            <option value="medium">Medium Priority</option>
-                                            <option value="high">High Priority</option>
-                                        </select>
-                                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
-                                            <i className="fas fa-chevron-down text-xs"></i>
-                                        </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">{isMeeting ? 'Meeting Priority' : 'j) Priority'}</label>
+                                <div className="relative">
+                                    <select
+                                        value={formData.priority}
+                                        disabled={isReadOnly}
+                                        onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                                        className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-700 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all appearance-none disabled:bg-gray-50"
+                                    >
+                                        <option value="low">Low Priority</option>
+                                        <option value="medium">Medium Priority</option>
+                                        <option value="high">High Priority</option>
+                                    </select>
+                                    <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
+                                        <i className="fas fa-chevron-down text-xs"></i>
                                     </div>
                                 </div>
-                            )}
+                            </div>
                         </div>
 
-                        {/* Schedule */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
-                                <label className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-2 font-mono tracking-widest">
-                                    <i className="far fa-clock"></i> {isMeeting ? 'Meeting Time' : 'Start'}
-                                </label>
-                                <input
-                                    type="date" required
-                                    disabled={isReadOnly}
-                                    value={formData.date}
-                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                    className="w-full mb-3 px-4 py-2.5 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-sm font-medium disabled:bg-gray-50"
-                                />
-                                <input
-                                    type="time"
-                                    disabled={isReadOnly}
-                                    value={formData.time}
-                                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-sm font-medium disabled:bg-gray-50"
-                                />
-                            </div>
-                            {!isMeeting && (
-                                <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
-                                    <label className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-2 font-mono tracking-widest">
-                                        <i className="fas fa-flag-checkered"></i> Expected Finish
-                                    </label>
-                                    <input
-                                        type="date"
-                                        disabled={isReadOnly}
-                                        value={formData.expected_finish_date}
-                                        onChange={(e) => setFormData({ ...formData, expected_finish_date: e.target.value })}
-                                        className="w-full mb-3 px-4 py-2.5 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-sm font-medium disabled:bg-gray-50"
-                                    />
-                                    <input
-                                        type="time"
-                                        disabled={isReadOnly}
-                                        value={formData.expected_finish_time}
-                                        onChange={(e) => setFormData({ ...formData, expected_finish_time: e.target.value })}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-sm font-medium disabled:bg-gray-50"
-                                    />
+                        {/* Meeting Link (if meeting type) */}
+                        {isMeeting && (
+                            <div className="p-5 bg-gradient-to-br from-emerald-50/50 to-indigo-50/30 rounded-[2rem] border border-emerald-100 shadow-sm relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16"></div>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 relative z-10">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-200 shrink-0">
+                                            <i className="fas fa-video"></i>
+                                        </div>
+                                        <div className="flex-grow">
+                                            <label className="block text-sm font-bold text-gray-800">Connection Link</label>
+                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Google Meet Integration</p>
+                                        </div>
+                                    </div>
+                                    {!isReadOnly && (
+                                        <a
+                                            href="https://meet.google.com/"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full sm:w-auto px-4 py-2 bg-white text-emerald-600 border border-emerald-100 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 shadow-sm"
+                                        >
+                                            <i className="fas fa-external-link-alt"></i>
+                                            Generate Link
+                                        </a>
+                                    )}
                                 </div>
-                            )}
-                        </div>
+
+                                <div className="flex gap-2 relative z-10">
+                                    <div className="relative flex-grow">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <i className="fas fa-link text-emerald-400"></i>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            name="meeting_link"
+                                            disabled={isReadOnly}
+                                            placeholder="Paste Meet link (e.g. meet.google.com/abc-xyz)"
+                                            value={formData.meeting_link}
+                                            onChange={(e) => setFormData({ ...formData, meeting_link: e.target.value })}
+                                            onBlur={(e) => {
+                                                let val = e.target.value.trim();
+                                                if (val && !/^https?:\/\//i.test(val)) {
+                                                    const newVal = 'https://' + val;
+                                                    setFormData({ ...formData, meeting_link: newVal });
+                                                }
+                                            }}
+                                            className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium disabled:bg-gray-50"
+                                        />
+                                    </div>
+                                    {formData.meeting_link && (
+                                        <a
+                                            href={formData.meeting_link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-5 py-3 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all flex items-center justify-center shadow-lg shadow-emerald-100"
+                                            title="Check Connection"
+                                        >
+                                            <i className="fas fa-external-link-alt text-sm"></i>
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Actions */}
                         <div className="pt-5 flex gap-4 border-t border-gray-100">
@@ -658,7 +744,27 @@ const AgendaForm = () => {
                         </div>
                     </form>
                 </div>
-            </div>
+            </div >
+
+            <ConfirmModal
+                isOpen={rejectModal.show}
+                onClose={() => setRejectModal({ show: false, reason: '' })}
+                onConfirm={handleRejectSubmit}
+                title="Reject Task"
+                message="Are you sure you want to reject this task? This action cannot be undone."
+                type="danger"
+                confirmLabel="Reject"
+            >
+                <div className="mt-4">
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Rejection Reason *</label>
+                    <textarea
+                        value={rejectModal.reason}
+                        onChange={(e) => setRejectModal({ ...rejectModal, reason: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-red-100 focus:border-red-500 outline-none transition-all text-sm min-h-[100px]"
+                        placeholder="Why are you rejecting?"
+                    />
+                </div>
+            </ConfirmModal>
 
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 6px; }
@@ -667,7 +773,7 @@ const AgendaForm = () => {
                 @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
                 .animate-fade-in { animation: fade-in 0.4s ease-out; }
             `}</style>
-        </div>
+        </div >
     );
 };
 

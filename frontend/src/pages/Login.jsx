@@ -90,17 +90,17 @@ const Login = () => {
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div className="space-y-4">
                             <div className="group">
-                                <label className="block text-[11px] font-bold text-gray-900 uppercase tracking-wider mb-1.5 ml-1">Phone Number</label>
+                                <label className="block text-[11px] font-bold text-gray-900 uppercase tracking-wider mb-1.5 ml-1">Username or Phone Number</label>
                                 <div className="relative transform transition-all duration-300 group-focus-within:-translate-y-0.5">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-emerald-600 transition-colors">
-                                        <i className="fas fa-phone text-sm"></i>
+                                        <i className="fas fa-user text-sm"></i>
                                     </div>
                                     <input
                                         type="text"
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value)}
                                         className="block w-full pl-10 pr-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.1)] transition-all font-semibold text-sm"
-                                        placeholder="017xxxxxxxx"
+                                        placeholder="Username or 017xxxxxxxx"
                                         required
                                     />
                                 </div>

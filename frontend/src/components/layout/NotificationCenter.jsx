@@ -89,7 +89,10 @@ const NotificationCenter = () => {
                                         onClick={() => {
                                             if (!n.is_read) markAsRead(n.id);
                                             if (n.related_agenda) {
-                                                navigate(`/tasks/${n.related_agenda.id || n.related_agenda}/edit`);
+                                                navigate(`/tasks/${n.related_agenda.id || n.related_agenda}`);
+                                                setIsOpen(false);
+                                            } else if (n.related_project) {
+                                                navigate(`/projects/${n.related_project.id || n.related_project}/edit`);
                                                 setIsOpen(false);
                                             }
                                         }}

@@ -10,6 +10,8 @@ def signup_view(request):
         name = request.POST.get('name')
         phone = request.POST.get('phone')
         password = request.POST.get('password')
+        designation = request.POST.get('designation')
+        division = request.POST.get('division')
         
         # Check if user already exists
         if User.objects.filter(username=phone).exists():
@@ -27,12 +29,16 @@ def signup_view(request):
             collaborator = Collaborator.objects.get(whatsapp_number=phone)
             collaborator.user = user
             collaborator.name = name 
+            collaborator.designation = designation
+            collaborator.division = division
             collaborator.save()
         except Collaborator.DoesNotExist:
             Collaborator.objects.create(
                 user=user,
                 name=name,
-                whatsapp_number=phone
+                whatsapp_number=phone,
+                designation=designation,
+                division=division
             )
             
         messages.success(request, 'Account created! Please wait for Dr. Niaz to approve your account.')

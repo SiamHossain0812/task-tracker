@@ -96,6 +96,7 @@ def dashboard(request):
     return render(request, 'agendas/dashboard.html', context)
 
 
+@user_passes_test(lambda u: u.is_superuser)
 @login_required
 def project_create(request):
     """Create a new project."""
@@ -117,6 +118,7 @@ def project_create(request):
     })
 
 
+@user_passes_test(lambda u: u.is_superuser)
 @login_required
 def project_edit(request, pk):
     """Edit an existing project."""
@@ -136,6 +138,8 @@ def project_edit(request, pk):
     })
 
 
+@user_passes_test(lambda u: u.is_superuser)
+@login_required
 def project_delete(request, pk):
     """Delete a project."""
     project = get_object_or_404(Project, pk=pk)
@@ -155,10 +159,7 @@ def project_delete(request, pk):
 @login_required
 def agenda_create(request, project_pk=None):
     """Create a new agenda. project_pk is optional."""
-    # Restrict creation to Superusers only
-    if not request.user.is_superuser:
-        messages.error(request, "Permission denied. Only authorized administrators can create tasks.")
-        return redirect('undone_tasks')
+    # Relaxed restriction to allow collaborators
 
     initial_data = {}
     project = None
@@ -179,6 +180,8 @@ def agenda_create(request, project_pk=None):
                 request.POST.get('expected_finish_time')
             )
             agenda.status = status
+            agenda.created_by = request.user
+            agenda.team_leader = getattr(request.user, 'collaborator_profile', None)
             agenda.save()
             form.save_m2m() # Important for collaborators
             
@@ -212,10 +215,7 @@ def agenda_create(request, project_pk=None):
 @login_required
 def agenda_edit(request, pk):
     """Edit an existing agenda."""
-    # Restrict to Superusers
-    if not request.user.is_superuser:
-        messages.error(request, "Permission denied.")
-        return redirect('undone_tasks')
+    # Allowed for collaborators who are assigned or superusers
 
     agenda = get_object_or_404(Agenda, pk=pk)
     
@@ -232,6 +232,8 @@ def agenda_edit(request, pk):
                 request.POST.get('expected_finish_time')
             )
             agenda.status = status
+            agenda.created_by = request.user
+            agenda.team_leader = getattr(request.user, 'collaborator_profile', None)
             agenda.save()
             form.save_m2m()
             
@@ -254,10 +256,7 @@ def agenda_edit(request, pk):
 @login_required
 def agenda_delete(request, pk):
     """Delete an agenda."""
-    # Restrict to Superusers
-    if not request.user.is_superuser:
-        messages.error(request, "Permission denied.")
-        return redirect('undone_tasks')
+    # Allowed for collaborators who are assigned or superusers
 
     agenda = get_object_or_404(Agenda, pk=pk)
     if request.method == 'POST':
