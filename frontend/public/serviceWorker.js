@@ -9,6 +9,8 @@ const urlsToCache = [
 const CACHE_NAME = 'agenda-tracker-v1';
 
 self.addEventListener('install', (event) => {
+    // Force the waiting service worker to become the active service worker
+    self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
@@ -18,10 +20,32 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+    const url = new URL(event.request.url);
+
+    // Network First strategy for root and index.html
+    if (url.pathname === '/' || url.pathname === '/index.html') {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    // Update cache with the latest version
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseClone);
+                    });
+                    return response;
+                })
+                .catch(() => {
+                    // Fallback to cache if network fails
+                    return caches.match(event.request);
+                })
+        );
+        return;
+    }
+
+    // Cache First strategy for other resources
     event.respondWith(
         caches.match(event.request)
             .then((response) => {
-                // Cache hit - return response
                 if (response) {
                     return response;
                 }
@@ -31,6 +55,9 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+    // Ensure the service worker takes control of all clients immediately
+    event.waitUntil(self.clients.claim());
+
     const cacheWhitelist = [CACHE_NAME];
     event.waitUntil(
         caches.keys().then((cacheNames) => {
