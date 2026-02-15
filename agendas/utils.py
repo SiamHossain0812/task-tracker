@@ -4,6 +4,8 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+from .models import Agenda, Notification
+
 
 def calculate_status(date_str, time_str, end_date_str, end_time_str):
     """
