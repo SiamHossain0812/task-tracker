@@ -21,6 +21,7 @@ import About from './pages/About';
 import ProjectForm from './components/projects/ProjectForm';
 import AgendaForm from './components/agendas/AgendaForm';
 import AgendaDetailView from './components/agendas/AgendaDetailView';
+import NotificationArchive from './pages/NotificationArchive';
 import './App.css';
 
 function App() {
@@ -57,6 +58,7 @@ function App() {
 
               {/* Other Features */}
               <Route element={<MainLayout><SearchPage /></MainLayout>} path="/search" />
+              <Route element={<MainLayout><NotificationArchive /></MainLayout>} path="/notifications/archive" />
               <Route element={<MainLayout><About /></MainLayout>} path="/about" />
               <Route element={<MainLayout><About /></MainLayout>} path="/profile/:id" />
               <Route element={<MainLayout><Settings /></MainLayout>} path="/settings" />

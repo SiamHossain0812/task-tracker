@@ -4,6 +4,7 @@ import apiClient from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import ConfirmModal from '../common/ConfirmModal';
+import ExtendTaskModal from './ExtendTaskModal';
 
 const AgendaDetailView = () => {
     const { id } = useParams();
@@ -17,6 +18,7 @@ const AgendaDetailView = () => {
     const [myAssignment, setMyAssignment] = useState(null);
     const [rejectModal, setRejectModal] = useState({ show: false, reason: '' });
     const [deleteModal, setDeleteModal] = useState(false);
+    const [extendModal, setExtendModal] = useState(false);
 
     const fetchTaskDetails = async () => {
         try {
@@ -29,9 +31,9 @@ const AgendaDetailView = () => {
             setTask(agendaData);
 
             // Find current user's assignment
-            const me = collaboratorsRes.data.find(c => c.user?.id === user?.id);
+            const me = collaboratorsRes.data.find(c => c.user?.id == user?.id);
             if (me) {
-                const assignment = agendaData.assignments?.find(a => a.collaborator === me.id);
+                const assignment = agendaData.assignments?.find(a => a.collaborator == me.id);
                 setMyAssignment(assignment);
             }
         } catch (err) {
@@ -136,340 +138,432 @@ const AgendaDetailView = () => {
     const canEdit = user?.is_superuser || task.created_by === user?.id;
     const canDelete = user?.is_superuser || task.created_by === user?.id;
 
+    // Permission check for extending time
+    const isApprover = task.can_approve_extension;
+    const canRequest = (myAssignment && myAssignment.status === 'accepted') && !isApprover;
+
+    // Total permission to interact with extension system
+    const canExtend = isApprover || canRequest;
+
+    const handleExtensionAction = async (action) => {
+        try {
+            await apiClient.post(`agendas/${id}/extend-time/`, { action });
+            toast.success(action === 'approve' ? 'Extension approved' : 'Extension rejected');
+            fetchTaskDetails();
+        } catch (error) {
+            console.error('Extension action failed', error);
+            toast.error(error.response?.data?.error || 'Action failed');
+        }
+    };
+
+
     return (
-        <div className="max-w-5xl mx-auto px-4 py-8 animate-fade-in pb-24">
-            {/* Header / Navigation */}
-            <div className="flex items-center justify-between mb-8">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 text-gray-400 hover:text-emerald-600 font-bold transition-all group"
-                >
-                    <div className="w-10 h-10 rounded-xl bg-white border border-gray-100 shadow-sm flex items-center justify-center group-hover:border-emerald-100 group-hover:shadow-emerald-50">
-                        <i className="fas fa-arrow-left text-sm transition-transform group-hover:-translate-x-1"></i>
-                    </div>
-                    <span>Go Back</span>
-                </button>
+        <div className="min-h-screen bg-gray-50/50 pb-20 pt-8 animate-fade-in">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
-                <div className="flex items-center gap-3">
-                    {canEdit && (
-                        <NavLink
-                            to={`/tasks/${id}/edit`}
-                            className="px-5 py-2.5 bg-white border border-gray-100 shadow-sm hover:border-emerald-200 text-gray-600 hover:text-emerald-600 rounded-xl font-bold transition-all flex items-center gap-2"
-                        >
-                            <i className="fas fa-pen-nib text-sm"></i>
-                            <span>Edit Context</span>
-                        </NavLink>
-                    )}
-                    {canDelete && (
-                        <button
-                            onClick={() => setDeleteModal(true)}
-                            className="w-10 h-10 bg-white border border-gray-100 shadow-sm hover:border-red-200 text-gray-400 hover:text-red-500 rounded-xl transition-all flex items-center justify-center"
-                            title="Delete Task"
-                        >
-                            <i className="fas fa-trash-alt text-sm"></i>
-                        </button>
-                    )}
-                    <div className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest shadow-sm ${task.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                        task.status === 'in-progress' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' :
-                            'bg-amber-50 text-amber-600 border border-amber-100'
-                        }`}>
-                        {task.status_display || task.status}
-                    </div>
-                </div>
-            </div>
+                {/* 1. Header Navigation */}
+                <div className="flex items-center justify-between mb-6">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="flex items-center text-sm font-bold text-gray-400 hover:text-gray-900 transition-colors group"
+                    >
+                        <i className="fas fa-arrow-left mr-2 transition-transform group-hover:-translate-x-1"></i>
+                        Back to Board
+                    </button>
 
-            {/* Main Content Card */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                <div className="lg:col-span-2 space-y-8">
-                    {/* Title & Description Workspace */}
-                    <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-200/50 p-8 sm:p-12 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-50 to-indigo-50 rounded-full -mr-32 -mt-32 opacity-50 group-hover:scale-110 transition-transform duration-700"></div>
-
-                        <div className="relative z-10">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className={`w-3 h-12 rounded-full ${task.priority === 'high' ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]' :
-                                    task.priority === 'medium' ? 'bg-amber-500' : 'bg-emerald-500'
-                                    }`}></div>
-                                <div>
-                                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">
-                                        {task.category} • {isMeeting ? 'Meeting Session' : 'Task Flow'}
-                                    </div>
-                                    <h1 className="text-3xl sm:text-4xl font-black text-gray-800 tracking-tight leading-tight">
-                                        {task.title}
-                                    </h1>
-                                </div>
-                            </div>
-
-                            <div className="prose prose-emerald max-w-none">
-                                <p className="text-gray-500 text-lg leading-relaxed font-medium whitespace-pre-wrap">
-                                    {task.description || 'No detailed description provided for this entry.'}
-                                </p>
-                            </div>
-
-                            {/* Meeting Link Integration */}
-                            {isMeeting && task.meeting_link && (
-                                <div className="mt-10 p-6 bg-gradient-to-br from-[#104a37] to-[#063f2e] rounded-[2rem] text-white shadow-xl shadow-emerald-100 flex flex-col sm:flex-row items-center justify-between gap-6 overflow-hidden relative">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16"></div>
-                                    <div className="flex items-center gap-5 relative z-10">
-                                        <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-3xl">
-                                            <i className="fas fa-video"></i>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-emerald-50">Join Virtual Meeting</h4>
-                                            <p className="text-xs text-emerald-200/80 font-medium">Click to connect via Google Meet</p>
-                                        </div>
-                                    </div>
-                                    <a
-                                        href={task.meeting_link}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="w-full sm:w-auto px-8 py-3 bg-white text-emerald-800 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all shadow-lg text-center relative z-10"
-                                    >
-                                        Enter Meeting
-                                    </a>
-                                </div>
-                            )}
-
-                            {/* Attachments Section */}
-                            {task.attachment_url && (
-                                <div className="mt-8 pt-8 border-t border-gray-100">
-                                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Attached Resources</h4>
-                                    <a
-                                        href={task.attachment_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-3 p-4 bg-gray-50 hover:bg-emerald-50 border border-gray-100 hover:border-emerald-200 rounded-2xl transition-all group"
-                                    >
-                                        <div className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-emerald-600 shadow-sm">
-                                            <i className="fas fa-file-pdf"></i>
-                                        </div>
-                                        <div className="text-left">
-                                            <div className="text-sm font-bold text-gray-800">Review Document</div>
-                                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Click to browse attachment</div>
-                                        </div>
-                                        <i className="fas fa-external-link-alt text-[10px] text-gray-300 ml-4 group-hover:text-emerald-400"></i>
-                                    </a>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Timeline & Context */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm flex flex-col items-center text-center">
-                            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center mb-4 shadow-inner">
-                                <i className="far fa-calendar-alt text-xl"></i>
-                            </div>
-                            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Schedule Date</h4>
-                            <p className="text-lg font-black text-gray-800">{task.date}</p>
-                            <p className="text-xs text-gray-400 font-bold">{task.time || 'All Day Focus'}</p>
-                        </div>
-                        <div className="bg-white rounded-[2rem] border border-gray-100 p-6 shadow-sm flex flex-col items-center text-center">
-                            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mb-4 shadow-inner">
-                                <i className="fas fa-flag-checkered text-xl"></i>
-                            </div>
-                            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Expected Completion</h4>
-                            <p className="text-lg font-black text-gray-800">{task.expected_finish_date || 'Ongoing'}</p>
-                            <p className="text-xs text-gray-400 font-bold">{task.expected_finish_time || 'End of Day'}</p>
-                        </div>
+                    {/* Global Page Actions */}
+                    <div className="flex items-center gap-2">
+                        {canEdit && (
+                            <NavLink
+                                to={`/tasks/${id}/edit`}
+                                className="w-9 h-9 flex items-center justify-center rounded-full bg-white border border-gray-200 text-gray-400 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm"
+                                title="Edit Task"
+                            >
+                                <i className="fas fa-pen text-xs"></i>
+                            </NavLink>
+                        )}
+                        {canDelete && (
+                            <button
+                                onClick={() => setDeleteModal(true)}
+                                className="w-9 h-9 flex items-center justify-center rounded-full bg-white border border-gray-200 text-gray-400 hover:text-red-600 hover:border-red-200 transition-all shadow-sm"
+                                title="Delete Task"
+                            >
+                                <i className="fas fa-trash text-xs"></i>
+                            </button>
+                        )}
                     </div>
                 </div>
 
-                {/* Sidebar Context */}
-                <div className="space-y-8">
-                    {/* Invitation Actions Section */}
-                    {myAssignment?.status === 'pending' && (
-                        <div className="bg-indigo-600 rounded-[2rem] p-8 text-white shadow-xl shadow-indigo-100 animate-bounce-subtle">
-                            <div className="flex flex-col items-center text-center">
-                                <div className="w-16 h-16 rounded-[1.5rem] bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl mb-6">
-                                    <i className="fas fa-handshake"></i>
-                                </div>
-                                <h3 className="text-xl font-black mb-2 tracking-tight">Accept Request?</h3>
-                                <p className="text-indigo-100 text-sm font-medium mb-8 leading-relaxed">
-                                    You've been invited to collaborate on this {isMeeting ? 'meeting' : 'research task'}.
-                                </p>
-                                <div className="flex flex-col gap-3 w-full">
-                                    <button
-                                        onClick={handleAccept}
-                                        disabled={responding}
-                                        className="w-full py-4 bg-white text-indigo-700 rounded-2xl font-black text-xs uppercase tracking-[0.15em] hover:bg-indigo-50 transition-all shadow-lg disabled:opacity-50"
-                                    >
-                                        {responding ? <i className="fas fa-spinner fa-spin"></i> : 'Accept Task'}
-                                    </button>
-                                    <button
-                                        onClick={() => setRejectModal({ show: true, reason: '' })}
-                                        disabled={responding}
-                                        className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-[0.15em] hover:bg-indigo-400 transition-all border border-indigo-400/50 disabled:opacity-50"
-                                    >
-                                        Decline
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                {/* 2. Extension Banner (Conditional) */}
+                {task.extension_status === 'pending' && (
+                    <div className="mb-8 rounded-2xl bg-white border border-indigo-100 shadow-lg shadow-indigo-50/50 relative overflow-hidden animate-fade-in">
+                        {/* Decorative Background */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
 
-                    {/* Progress Control */}
-                    {myAssignment?.status === 'accepted' && (
-                        <div className="bg-white rounded-[2rem] border border-emerald-100 p-8 shadow-lg shadow-emerald-50 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-full -mr-12 -mt-12"></div>
+                        <div className="p-6 relative z-10">
+                            <div className="flex flex-col md:flex-row gap-6 justify-between items-start">
 
-                            <div className="relative z-10 text-center">
-                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Workspace Control</h4>
-                                {task.status === 'completed' ? (
-                                    <div className="flex flex-col items-center">
-                                        <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center text-2xl shadow-xl shadow-emerald-100 mb-4 animate-scale-in">
-                                            <i className="fas fa-check-double"></i>
+                                {/* Left: Requester & Details */}
+                                <div className="flex-1 w-full">
+                                    {/* Header: Who requested */}
+                                    <div className="flex items-center gap-3 mb-4">
+                                        {task.extension_requested_by ? (
+                                            <>
+                                                {task.extension_requested_by.image_url ? (
+                                                    <img src={task.extension_requested_by.image_url} alt={task.extension_requested_by.name} className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm" />
+                                                ) : (
+                                                    <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm font-bold border-2 border-white shadow-sm">
+                                                        {task.extension_requested_by.name?.charAt(0) || '?'}
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">
+                                                        {task.extension_requested_by.name}
+                                                    </p>
+                                                    <p className="text-xs text-indigo-600 font-medium">Requested an extension</p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            // Fallback if no requester recorded (old data)
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-lg">
+                                                    <i className="fas fa-user"></i>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">Unknown User</p>
+                                                    <p className="text-xs text-gray-500">Extension Request</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Proposal Details Card */}
+                                    <div className="bg-indigo-50/30 rounded-xl p-4 border border-indigo-100/50 space-y-3">
+                                        {/* New Date */}
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">
+                                                <i className="fas fa-calendar-alt"></i>
+                                            </div>
+                                            <span className="text-sm text-gray-600 font-medium">Proposed Deadline:</span>
+                                            <span className="text-sm font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                                {task.requested_finish_date}
+                                                {task.requested_finish_time && ` at ${task.requested_finish_time}`}
+                                            </span>
                                         </div>
-                                        <h3 className="text-xl font-black text-emerald-700 mb-6">Mission Accomplished</h3>
+
+                                        {/* Reason */}
+                                        {task.extension_reason && (
+                                            <div className="flex items-start gap-2">
+                                                <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs mt-0.5 shrink-0">
+                                                    <i className="fas fa-quote-left"></i>
+                                                </div>
+                                                <p className="text-sm text-gray-600 italic">"{task.extension_reason}"</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Right: Actions */}
+                                {isApprover ? (
+                                    <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto mt-2 md:mt-0">
                                         <button
-                                            onClick={handleStatusToggle}
-                                            disabled={responding}
-                                            className="w-full py-3 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all"
+                                            onClick={() => handleExtensionAction('approve')}
+                                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-indigo-200 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
                                         >
-                                            Re-open Task
+                                            <i className="fas fa-check"></i> Approve
+                                        </button>
+                                        <button
+                                            onClick={() => handleExtensionAction('reject')}
+                                            className="bg-white border-2 border-gray-100 text-gray-500 hover:border-red-100 hover:text-red-600 hover:bg-red-50 px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <i className="fas fa-times"></i> Reject
                                         </button>
                                     </div>
                                 ) : (
-                                    <button
-                                        onClick={handleStatusToggle}
-                                        disabled={responding}
-                                        className={`w-full py-6 rounded-3xl font-black text-xs uppercase tracking-[0.15em] transition-all shadow-xl flex flex-col items-center gap-3 ${task.status === 'in-progress'
-                                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'
-                                            : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'
-                                            }`}
-                                    >
-                                        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl">
-                                            <i className={`fas ${task.status === 'in-progress' ? 'fa-check' : 'fa-play'}`}></i>
-                                        </div>
-                                        {responding ? <i className="fas fa-spinner fa-spin"></i> : (task.status === 'in-progress' ? 'Finish Task' : 'Start Task Now')}
-                                    </button>
+                                    <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 text-yellow-700 rounded-lg border border-yellow-100 text-sm font-bold shrink-0">
+                                        <i className="fas fa-clock fa-spin"></i> Pending Review
+                                    </div>
                                 )}
                             </div>
                         </div>
-                    )}
+                    </div>
+                )}
 
-                    {/* Team Workspace */}
-                    <div className="bg-white rounded-[2rem] border border-gray-100 p-8 shadow-sm">
-                        <div className="flex items-center justify-between mb-6">
-                            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Collaborators</h4>
-                            <div className="w-5 h-5 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-[10px] font-black text-gray-400">
-                                {task.collaborators?.length || 0}
+                {/* 3. Unified Dashboard Panel */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col lg:flex-row min-h-[500px]">
+
+                    {/* Left Panel: Content (2/3) */}
+                    <div className="flex-1 p-8 lg:p-10 border-b lg:border-b-0 lg:border-r border-gray-100">
+                        {/* Task Header info */}
+                        <div className="mb-8">
+                            <div className="flex flex-wrap items-center gap-2 mb-4">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${task.priority === 'high' ? 'bg-red-50 text-red-700 border-red-100' :
+                                    task.priority === 'medium' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                        'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                    }`}>
+                                    {task.priority} Priority
+                                </span>
+                                {task.category && (
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded bg-gray-50 text-gray-500 border border-gray-100 text-[10px] font-bold uppercase tracking-wider">
+                                        {task.category}
+                                    </span>
+                                )}
+                            </div>
+
+                            <h1 className="text-3xl font-bold text-gray-900 leading-tight mb-4">
+                                {task.title}
+                            </h1>
+
+                            <div className="flex items-center gap-6 text-xs font-medium text-gray-400">
+                                <div className="flex items-center gap-2">
+                                    <i className="far fa-calendar"></i>
+                                    <span>Created {new Date(task.created_at).toLocaleDateString()}</span>
+                                </div>
+                                {task.project && (
+                                    <NavLink to={`/projects/${task.project.id}`} className="flex items-center gap-2 hover:text-indigo-600 transition-colors">
+                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: task.project.color || '#ccc' }}></div>
+                                        <span>{task.project.name}</span>
+                                    </NavLink>
+                                )}
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            {/* Team Leader */}
-                            {task.team_leader && (
-                                <div className="flex items-center gap-4 p-3 bg-emerald-50 border border-emerald-100 rounded-2xl">
-                                    <div className="relative">
-                                        <img
-                                            src={task.team_leader.image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(task.team_leader.name)}&background=104a37&color=fff`}
-                                            alt={task.team_leader.name}
-                                            className="w-10 h-10 rounded-xl object-cover border border-white"
-                                        />
-                                        <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center text-[8px] text-white" title="Team Leader">
-                                            <i className="fas fa-crown"></i>
+                        {/* Description Body */}
+                        <div className="prose prose-sm max-w-none text-gray-600 mb-10 leading-relaxed">
+                            <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-3 border-b border-gray-50 pb-2 w-fit">Description</h3>
+                            {task.description ? (
+                                <p className="whitespace-pre-wrap">{task.description}</p>
+                            ) : (
+                                <p className="italic text-gray-400">No detailed description provided for this entry.</p>
+                            )}
+                        </div>
+
+                        {/* Attachments / Links Grid */}
+                        {(task.attachment_url || (isMeeting && task.meeting_link)) && (
+                            <div className="mt-auto pt-8 border-t border-gray-50">
+                                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-4">Resources & Links</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {isMeeting && task.meeting_link && (
+                                        <a href={task.meeting_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-emerald-400 hover:bg-emerald-50/30 transition-all group">
+                                            <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                                <i className="fas fa-video"></i>
+                                            </div>
+                                            <div className="overflow-hidden">
+                                                <div className="font-bold text-gray-900 text-sm truncate">Join Meeting</div>
+                                                <div className="text-xs text-gray-500">Google Meet</div>
+                                            </div>
+                                        </a>
+                                    )}
+                                    {task.attachment_url && (
+                                        <a href={task.attachment_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-blue-400 hover:bg-blue-50/30 transition-all group">
+                                            <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                                <i className="fas fa-paperclip"></i>
+                                            </div>
+                                            <div className="overflow-hidden">
+                                                <div className="font-bold text-gray-900 text-sm truncate">View Attachment</div>
+                                                <div className="text-xs text-gray-500">Document</div>
+                                            </div>
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right Panel: Sidebar (1/3) */}
+                    <div className="lg:w-[360px] bg-gray-50/50 p-8 flex flex-col gap-8">
+
+                        {/* A. Status & Info Card */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Current Status</h4>
+                            <div className={`flex items-center gap-3 p-3 rounded-lg border mb-4 ${task.status === 'completed' ? 'bg-emerald-50 border-emerald-100' :
+                                task.is_overdue ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'
+                                }`}>
+                                <div className={`w-3 h-3 rounded-full ${task.status === 'completed' ? 'bg-emerald-500 animate-pulse' :
+                                    task.is_overdue ? 'bg-red-500' : 'bg-indigo-500'
+                                    }`}></div>
+                                <span className={`text-sm font-bold ${task.status === 'completed' ? 'text-emerald-700' :
+                                    task.is_overdue ? 'text-red-700' : 'text-gray-700'
+                                    }`}>
+                                    {task.status === 'completed' ? 'Completed' :
+                                        task.is_overdue ? 'Overdue' :
+                                            (task.status_display || task.status.replace('-', ' '))}
+                                </span>
+                            </div>
+
+                            <div className="space-y-4 pt-4 border-t border-gray-50">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-medium text-gray-500">Start Date</span>
+                                    <span className="text-sm font-bold text-gray-900">{task.date}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-medium text-gray-500">Due Date</span>
+                                    <span className={`text-sm font-bold ${task.is_overdue ? 'text-red-600' : 'text-gray-900'}`}>{task.expected_finish_date}</span>
+                                </div>
+                                {task.expected_finish_time && (
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-medium text-gray-500">Time</span>
+                                        <span className="text-sm font-bold text-gray-700">{task.expected_finish_time}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* B. Action Buttons */}
+                        <div>
+                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">Actions</h4>
+                            <div className="space-y-3">
+                                {myAssignment?.status === 'pending' ? (
+                                    <>
+                                        <button
+                                            onClick={handleAccept}
+                                            disabled={responding}
+                                            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-200 transition-all hover:scale-[1.02]"
+                                        >
+                                            {responding ? 'Processing...' : 'Accept Assignment'}
+                                        </button>
+                                        <button
+                                            onClick={() => setRejectModal({ show: true, reason: '' })}
+                                            disabled={responding}
+                                            className="w-full py-3 bg-white border border-gray-200 hover:border-red-200 text-gray-600 hover:text-red-600 rounded-xl font-bold text-sm transition-all"
+                                        >
+                                            Decline
+                                        </button>
+                                    </>
+                                ) : myAssignment?.status === 'accepted' ? (
+                                    <>
+                                        {task.status !== 'completed' ? (
+                                            <button
+                                                onClick={handleStatusToggle}
+                                                disabled={responding}
+                                                className={`w-full py-3.5 rounded-xl font-bold text-sm shadow-lg transition-all hover:scale-[1.02] flex items-center justify-center gap-2 ${task.status === 'in-progress'
+                                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'
+                                                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'
+                                                    }`}
+                                            >
+                                                {responding ? <i className="fas fa-spinner fa-spin"></i> : (
+                                                    <>
+                                                        <i className={`fas ${task.status === 'in-progress' ? 'fa-check' : 'fa-play'}`}></i>
+                                                        {task.status === 'in-progress' ? 'Mark Completed' : 'Start Task'}
+                                                    </>
+                                                )}
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={handleStatusToggle}
+                                                className="w-full py-3 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl font-bold text-sm hover:bg-emerald-100 transition-all"
+                                            >
+                                                Re-open Task
+                                            </button>
+                                        )}
+
+                                        {canExtend && task.extension_status === 'none' && task.is_overdue && task.extension_count < 1 && (
+                                            <button
+                                                onClick={() => setExtendModal(true)}
+                                                className="w-full py-3 bg-white border border-amber-200 text-amber-700 hover:bg-amber-50 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm mt-3"
+                                            >
+                                                <i className={`fas ${isApprover ? 'fa-clock' : 'fa-hand-paper'}`}></i>
+                                                {isApprover ? 'Extend Time' : 'Request Extension'}
+                                            </button>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="p-4 bg-gray-100 rounded-xl text-center text-xs font-bold text-gray-400">
+                                        Read-only View
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* C. Team */}
+                        <div>
+                            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">Collaborators</h4>
+                            <div className="flex flex-col gap-3">
+                                {task.team_leader && (
+                                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-white transition-colors">
+                                        <div className="relative">
+                                            <img
+                                                src={task.team_leader.image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(task.team_leader.name)}&background=104a37&color=fff`}
+                                                alt={task.team_leader.name}
+                                                className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm"
+                                            />
+                                            <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5" title="Team Leader">
+                                                <i className="fas fa-crown text-[10px] text-amber-500"></i>
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-bold text-gray-900 truncate">{task.team_leader.name}</div>
+                                            <div className="text-[10px] text-gray-500">Leader</div>
                                         </div>
                                     </div>
-                                    <div className="min-w-0 flex-1">
-                                        <div className="text-sm font-black text-emerald-900 truncate">{task.team_leader.name}</div>
-                                        <div className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter">Team Leader</div>
-                                    </div>
-                                </div>
-                            )}
+                                )}
 
-                            {/* Collaborators List */}
-                            <div className="space-y-2">
                                 {task.assignments?.filter(a => a.collaborator !== task.team_leader?.id).map((assignment, idx) => (
-                                    <div key={idx} className="flex items-center gap-4 p-2.5 hover:bg-gray-50 rounded-xl transition-colors group">
+                                    <div key={idx} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white transition-colors">
                                         <img
-                                            src={assignment.collaborator_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(assignment.collaborator_name)}&background=f0fdf4&color=104a37`}
+                                            src={assignment.collaborator_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(assignment.collaborator_name)}&background=f3f4f6&color=4b5563`}
                                             alt={assignment.collaborator_name}
-                                            className="w-9 h-9 rounded-xl object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all border border-gray-50"
+                                            className={`w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm ${assignment.status === 'rejected' ? 'grayscale opacity-50' : ''}`}
                                         />
-                                        <div className="min-w-0 flex-1">
-                                            <div className="text-xs font-bold text-gray-700 truncate">{assignment.collaborator_name}</div>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <div className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${assignment.status === 'accepted' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                    assignment.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                        'bg-amber-50 text-amber-600 border-amber-100'
-                                                    }`}>
-                                                    {assignment.status === 'pending' ? 'Waiting' : assignment.status}
-                                                </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-bold text-gray-900 truncate">{assignment.collaborator_name}</div>
+                                            <div className={`text-[10px] font-bold uppercase tracking-wider ${assignment.status === 'accepted' ? 'text-emerald-600' :
+                                                assignment.status === 'rejected' ? 'text-red-500' : 'text-amber-500'
+                                                }`}>
+                                                {assignment.status}
                                             </div>
-                                            {assignment.status === 'rejected' && assignment.rejection_reason && (user?.is_superuser || (task.team_leader && task.team_leader.user?.id === user?.id)) && (
-                                                <div className="mt-1.5 p-2 bg-red-50/50 border border-red-100/50 rounded-lg">
-                                                    <p className="text-[10px] text-red-600 font-medium italic leading-tight">
-                                                        <i className="fas fa-comment-dots mr-1 opacity-50"></i>
-                                                        "{assignment.rejection_reason}"
-                                                    </p>
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                    </div>
 
-                    {/* Project Association */}
-                    {task.project && (
-                        <div className="bg-gradient-to-br from-white to-gray-50 border border-gray-100 rounded-[2rem] p-8 shadow-sm">
-                            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Under Project</h4>
-                            <NavLink to={`/projects/${task.project.id}`} className="flex items-start gap-4 group">
-                                <div
-                                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-lg transition-transform group-hover:scale-105"
-                                    style={{ backgroundColor: `${task.project.color}15`, color: task.project.color }}
-                                >
-                                    <i className="fas fa-folder"></i>
-                                </div>
-                                <div className="min-w-0">
-                                    <h4 className="text-sm font-black text-gray-800 group-hover:text-emerald-600 transition-colors truncate">{task.project.name}</h4>
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Explore project context</p>
-                                </div>
-                            </NavLink>
-                        </div>
-                    )}
+                    </div>
                 </div>
+
+                {/* Modals placed here */}
+                <ConfirmModal
+                    isOpen={rejectModal.show}
+                    onClose={() => setRejectModal({ show: false, reason: '' })}
+                    onConfirm={handleRejectSubmit}
+                    title="Reject Assignment"
+                    message="Are you sure you want to decline this task? Please let the leader know why."
+                    type="danger"
+                    confirmLabel="Reject"
+                >
+                    <div className="mt-4">
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Decline Reason *</label>
+                        <textarea
+                            value={rejectModal.reason}
+                            onChange={(e) => setRejectModal({ ...rejectModal, reason: e.target.value })}
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-red-100 focus:border-red-500 outline-none transition-all text-sm min-h-[100px] font-medium resize-none placeholder-gray-400"
+                            placeholder="e.g. Current workload is high..."
+                        />
+                    </div>
+                </ConfirmModal>
+
+                <ConfirmModal
+                    isOpen={deleteModal}
+                    onClose={() => setDeleteModal(false)}
+                    onConfirm={handleDelete}
+                    title="Delete Task"
+                    message="Are you sure you want to permanently delete this task? This action cannot be undone."
+                    type="danger"
+                    confirmLabel="Delete Permanently"
+                />
+
+                <ExtendTaskModal
+                    task={task}
+                    isOpen={extendModal}
+                    onClose={() => setExtendModal(false)}
+                    onUpdate={fetchTaskDetails}
+                    isApprover={isApprover}
+                />
             </div>
 
-            <ConfirmModal
-                isOpen={rejectModal.show}
-                onClose={() => setRejectModal({ show: false, reason: '' })}
-                onConfirm={handleRejectSubmit}
-                title="Reject Assignment"
-                message="Are you sure you want to decline this task? Please let the leader know why."
-                type="danger"
-                confirmLabel="Reject"
-            >
-                <div className="mt-4">
-                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Decline Reason *</label>
-                    <textarea
-                        value={rejectModal.reason}
-                        onChange={(e) => setRejectModal({ ...rejectModal, reason: e.target.value })}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-red-100 focus:border-red-500 outline-none transition-all text-sm min-h-[100px] font-medium"
-                        placeholder="e.g. Current workload is high..."
-                    />
-                </div>
-            </ConfirmModal>
-
-            <ConfirmModal
-                isOpen={deleteModal}
-                onClose={() => setDeleteModal(false)}
-                onConfirm={handleDelete}
-                title="Delete Task"
-                message="Are you sure you want to permanently delete this task? This action cannot be undone."
-                type="danger"
-                confirmLabel="Delete Permanently"
-            />
-
             <style>{`
-                @keyframes fade-in { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-                @keyframes scale-in { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-                .animate-fade-in { animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .animate-scale-in { animation: scale-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-                .animate-bounce-subtle { animation: bounce-subtle 3s ease-in-out infinite; }
-                @keyframes bounce-subtle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+                @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+                .animate-fade-in { animation: fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
             `}</style>
         </div>
     );

@@ -123,7 +123,18 @@ const NotificationCenter = () => {
                             )}
                         </div>
 
-
+                        <div className="dropdown-footer border-t border-gray-100 p-3 bg-gray-50/50">
+                            <button
+                                onClick={() => {
+                                    setIsOpen(false);
+                                    navigate('/notifications/archive');
+                                }}
+                                className="w-full py-2 flex items-center justify-center gap-2 text-sm font-bold text-gray-500 hover:text-indigo-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-gray-200 hover:shadow-sm"
+                            >
+                                <Clock size={16} />
+                                View Past Notifications
+                            </button>
+                        </div>
                     </div>
                 </>
             )}

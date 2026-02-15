@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import Notification
 from .serializers import NotificationSerializer
+from django.utils import timezone
+from datetime import timedelta
 
 
 class NotificationViewSet(viewsets.ModelViewSet):
@@ -15,8 +17,24 @@ class NotificationViewSet(viewsets.ModelViewSet):
     pagination_class = None
     
     def get_queryset(self):
-        """Only show notifications for current user"""
-        return Notification.objects.filter(user=self.request.user)
+        """
+        Filter notifications for current user.
+        Supports `filter` query param:
+        - 'recent': last 24 hours (default for bell)
+        - 'archived': older than 24 hours
+        - 'all': everything
+        """
+        queryset = Notification.objects.filter(user=self.request.user)
+        filter_type = self.request.query_params.get('filter', 'all')
+        
+        if filter_type == 'recent':
+            threshold = timezone.now() - timedelta(hours=24)
+            queryset = queryset.filter(created_at__gte=threshold)
+        elif filter_type == 'archived':
+            threshold = timezone.now() - timedelta(hours=24)
+            queryset = queryset.filter(created_at__lt=threshold)
+            
+        return queryset.order_by('-created_at')
     
     @action(detail=False, methods=['get'])
     def unread(self, request):
@@ -45,3 +63,11 @@ class NotificationViewSet(viewsets.ModelViewSet):
         """Mark all notifications as read"""
         self.get_queryset().filter(is_read=False).update(is_read=True)
         return Response({'status': 'all notifications marked as read'})
+
+    @action(detail=False, methods=['post'])
+    def clear_archived(self, request):
+        """Delete all archived notifications (older than 24h)"""
+        # We need to manually filter for archived here because get_queryset depends on query params
+        threshold = timezone.now() - timedelta(hours=24)
+        count, _ = Notification.objects.filter(user=request.user, created_at__lt=threshold).delete()
+        return Response({'status': 'archived notifications cleared', 'count': count})

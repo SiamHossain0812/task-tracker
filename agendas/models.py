@@ -117,6 +117,25 @@ class Agenda(models.Model):
     collaborators = models.ManyToManyField(Collaborator, blank=True, related_name='agendas', through='AgendaAssignment')
     actual_participants = models.ManyToManyField(Collaborator, blank=True, related_name='attended_meetings')
     
+    # Extension Tracking
+    was_missed = models.BooleanField(default=False, help_text="Flagged if task passed deadline without completion")
+    extension_count = models.IntegerField(default=0, help_text="Number of times time has been extended")
+    original_deadline_date = models.DateField(null=True, blank=True)
+    original_deadline_time = models.TimeField(null=True, blank=True)
+    
+    # Extension Request System
+    EXTENSION_STATUS_CHOICES = (
+        ('none', 'None'),
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    )
+    extension_status = models.CharField(max_length=20, choices=EXTENSION_STATUS_CHOICES, default='none')
+    requested_finish_date = models.DateField(null=True, blank=True)
+    requested_finish_time = models.TimeField(null=True, blank=True)
+    extension_reason = models.TextField(null=True, blank=True)
+    extension_requested_by = models.ForeignKey(Collaborator, on_delete=models.SET_NULL, null=True, blank=True, related_name='requested_extensions')
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -175,6 +194,7 @@ class Notification(models.Model):
         ('agenda_created', 'Agenda Created'),
         ('agenda_updated', 'Agenda Updated'),
         ('project_created', 'Project Created'),
+        ('time_elapsed_warning', 'Time Elapsed Warning'),
     ]
     
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='notifications')

@@ -84,6 +84,7 @@ const AgendaForm = () => {
     const [quickAddData, setQuickAddData] = useState({ name: '', whatsapp_number: '' });
     const [isManualCategory, setIsManualCategory] = useState(false);
     const [responding, setResponding] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const [myAssignment, setMyAssignment] = useState(null);
     const [rejectModal, setRejectModal] = useState({ show: false, reason: '' });
 
@@ -208,6 +209,7 @@ const AgendaForm = () => {
             }
         });
 
+        setSubmitting(true);
         try {
             if (isEdit) {
                 await apiClient.put(`agendas/${id}/`, data, {
@@ -222,6 +224,7 @@ const AgendaForm = () => {
         } catch (err) {
             console.error('Failed to save task', err);
             setError('Failed to save task. Check your fields.');
+            setSubmitting(false);
         }
     };
 
@@ -735,10 +738,17 @@ const AgendaForm = () => {
                             {!isReadOnly && (
                                 <button
                                     type="submit"
-                                    disabled={!!validationError}
-                                    className={`flex-1 px-6 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transform transition-all hover:-translate-y-0.5 ${!!validationError ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    disabled={!!validationError || submitting}
+                                    className={`flex-1 px-6 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transform transition-all hover:-translate-y-0.5 ${(!!validationError || submitting) ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
-                                    {isEdit ? 'Save Changes' : (isMeeting ? 'Schedule Meeting' : 'Create Task')}
+                                    {submitting ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                            <i className="fas fa-spinner fa-spin"></i>
+                                            <span>Saving...</span>
+                                        </span>
+                                    ) : (
+                                        isEdit ? 'Save Changes' : (isMeeting ? 'Schedule Meeting' : 'Create Task')
+                                    )}
                                 </button>
                             )}
                         </div>

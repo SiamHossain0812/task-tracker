@@ -48,14 +48,14 @@ def calculate_status(date_str, time_str, end_date_str, end_time_str):
 from django.utils import timezone
 from datetime import timedelta
 from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
-from .models import Agenda, Notification
-
-def check_and_create_alerts(user):
+def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
     """
     Checks for overdue, stagnant, or warning-state agendas for the user
     and creates notifications if needed.
     """
+    if loud_types is None:
+        loud_types = []
+        
     if not user.is_authenticated:
         return {
             'alerts_created': 0,
@@ -117,8 +117,25 @@ def check_and_create_alerts(user):
                 title = "Gentle Reminder"
                 message = f"It looks like '{agenda.title}' is awaiting your start. It was scheduled for {start_dt.strftime('%H:%M')}."
 
-        # --- Rule 2: Deadline Approaching (Within 2 hours) ---
-        elif agenda.status != 'completed' and now < finish_dt and (finish_dt - now) <= timedelta(hours=2):
+        # --- Rule 2: 80% Time Elapsed (In Progress) ---
+        elif agenda.status == 'in-progress' and finish_dt > start_dt:
+             total_duration = (finish_dt - start_dt).total_seconds()
+             elapsed_duration = (now - start_dt).total_seconds()
+             
+             if total_duration > 0 and (elapsed_duration / total_duration) >= 0.8:
+                 # Check if we already sent this specific warning
+                 if not Notification.objects.filter(
+                    user=user,
+                    related_agenda=agenda,
+                    notification_type='time_elapsed_warning'
+                 ).exists():
+                     alert_type = 'time_elapsed_warning'
+                     title = "Time Check"
+                     message = f"Heads up! 80% of the allocated time for '{agenda.title}' has passed."
+
+        # --- Rule 3: Deadline Approaching (Within 2 hours) ---
+        # Only check if we haven't already triggered the 80% warning (to avoid double alerts in same check)
+        elif agenda.status != 'completed' and now < finish_dt and (finish_dt - now) <= timedelta(hours=2) and not alert_type:
             # Check for recent warning
             if not Notification.objects.filter(
                 user=user, 
@@ -131,7 +148,7 @@ def check_and_create_alerts(user):
                 time_left = int((finish_dt - now).total_seconds() / 60)
                 message = f"'{agenda.title}' is reaching its milestone soon (in {time_left} minutes)."
 
-        # --- Rule 3: Overdue (Missed Deadline) ---
+        # --- Rule 4: Overdue (Missed Deadline) ---
         elif agenda.status != 'completed' and now > finish_dt:
              if not Notification.objects.filter(
                 user=user, 
@@ -153,51 +170,63 @@ def check_and_create_alerts(user):
                 related_agenda=agenda,
                 related_project=agenda.project
             )
-            created_alerts.append(f"{alert_type}: {agenda.title}")
             
-            # Send Real-time WebSocket update
-            try:
-                channel_layer = get_channel_layer()
-                if channel_layer:
-                    async_to_sync(channel_layer.group_send)(
-                        f'notifications_{user.id}',
-                        {
-                            'type': 'notification_message',
-                            'notification': {
-                                'id': notification.id,
-                                'title': notification.title,
-                                'message': notification.message,
-                                'notification_type': notification.notification_type,
-                                'related_agenda': {
-                                    'id': agenda.id,
-                                    'title': agenda.title
-                                } if agenda else None,
-                                'related_project': {
-                                    'id': agenda.project.id,
-                                    'name': agenda.project.name
-                                } if agenda and agenda.project else None,
-                                'created_at': notification.created_at.isoformat(),
-                                'is_read': False
+            # Store structured info for the return value
+            alert_info = {
+                'id': notification.id,
+                'type': alert_type,
+                'title': title,
+                'message': message,
+                'agenda_id': agenda.id,
+                'agenda_title': agenda.title,
+                'project_name': agenda.project.name if agenda.project else None
+            }
+            created_alerts.append(alert_info)
+            
+            # Send Real-time WebSocket update (if not silenced, OR if explicitly loud)
+            if emit_websocket or (alert_type in loud_types):
+                try:
+                    channel_layer = get_channel_layer()
+                    if channel_layer:
+                        async_to_sync(channel_layer.group_send)(
+                            f'notifications_{user.id}',
+                            {
+                                'type': 'notification_message',
+                                'notification': {
+                                    'id': notification.id,
+                                    'title': notification.title,
+                                    'message': notification.message,
+                                    'notification_type': notification.notification_type,
+                                    'related_agenda': {
+                                        'id': agenda.id,
+                                        'title': agenda.title
+                                    } if agenda else None,
+                                    'related_project': {
+                                        'id': agenda.project.id,
+                                        'name': agenda.project.name
+                                    } if agenda and agenda.project else None,
+                                    'created_at': notification.created_at.isoformat(),
+                                    'is_read': False
+                                }
                             }
-                        }
-                    )
-            except Exception as e:
-                pass  # WebSocket push failed
+                        )
+                except Exception as e:
+                    pass  # WebSocket push failed
 
-            # Trigger Native Push Notification
-            try:
-                send_push_notification(
-                    user=user,
-                    title=title,
-                    message=message,
-                    url=f"/agendas/{agenda.id}/edit"
-                )
-            except Exception as push_e:
-                pass  # Native push failed
+                # Trigger Native Push Notification
+                try:
+                    send_push_notification(
+                        user=user,
+                        title=title,
+                        message=message,
+                        url=f"/agendas/{agenda.id}/edit"
+                    )
+                except Exception as push_e:
+                    pass  # Native push failed
 
     return {
         'alerts_created': len(created_alerts),
-        'details': created_alerts
+        'alerts': created_alerts
     }
 
 

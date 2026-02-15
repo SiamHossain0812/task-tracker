@@ -75,8 +75,10 @@ const CalendarView = () => {
 
         const allDays = eachDayOfInterval({ start: startDate, end: endDate });
 
+        // Ensure we always have enough padding at the bottom by enforcing a min-height via CSS or check
+
         return (
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col">
                 {/* Custom Header Nav */}
                 <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-gray-100 bg-gray-50/50">
                     <div className="flex items-center justify-between">

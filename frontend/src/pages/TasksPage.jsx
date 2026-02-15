@@ -289,9 +289,13 @@ const TasksPage = () => {
                                                 <td className="px-6 py-4">
                                                     <button
                                                         onClick={() => handleToggleClick(task)}
-                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all w-28 ${task.status === 'in-progress' ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all w-28 ${task.status === 'in-progress' ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100' :
+                                                                task.is_overdue ? 'bg-red-50 text-red-600 hover:bg-red-100' :
+                                                                    'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                                                            }`}
                                                     >
-                                                        {task.status_display || (task.status === 'in-progress' ? 'In Progress' : task.status)}
+                                                        {task.is_overdue ? 'OVERDUE' :
+                                                            (task.status_display || (task.status === 'in-progress' ? 'In Progress' : task.status))}
                                                     </button>
                                                 </td>
                                                 <td className="px-6 py-4 text-right pr-8">

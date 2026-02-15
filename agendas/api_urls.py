@@ -45,6 +45,9 @@ urlpatterns = [
     # Export
     path('export/past-work-pdf/', api_views.export_past_work_pdf, name='api-export-pdf'),
     
+    # Task Time Extension
+    path('agendas/<int:pk>/extend-time/', api_views.ExtendTaskTimeView.as_view(), name='api-agenda-extend-time'),
+    
     # Meeting Participation
     path('agendas/<int:pk>/track-join/', api_views.track_meeting_join, name='api-track-join'),
 ]

@@ -146,10 +146,10 @@ class AgendaListSerializer(serializers.ModelSerializer):
             'project', 'project_name', 'project_color', 'project_info',
             'is_overdue', 'calculated_category', 'collaborator_count', 'meeting_link', 
             'created_by', 'creator_name', 'team_leader', 'team_leader_name', 
-            'actual_participants', 'created_at'
+            'actual_participants', 'extension_status', 'created_at', 'extension_count'
         ]
-        read_only_fields = ['id', 'created_at', 'created_by', 'team_leader']
-    
+        read_only_fields = ['id', 'created_at', 'created_by', 'team_leader', 'extension_status', 'extension_count']
+
     def get_collaborator_count(self, obj):
         return obj.collaborators.count()
 
@@ -194,6 +194,9 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
+    extension_requested_by = CollaboratorSerializer(read_only=True)
+    
+    can_approve_extension = serializers.SerializerMethodField()
     
     class Meta:
         model = Agenda
@@ -203,9 +206,22 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
             'status', 'priority', 'category', 'external_link', 'attachment', 'attachment_url',
             'collaborators', 'collaborator_ids', 'assignments', 'actual_participants', 'team_leader', 'team_leader_id', 'is_overdue', 'calculated_category',
             'meeting_link', 'google_event_id', 'created_by',
-            'created_at', 'updated_at'
+            'extension_status', 'requested_finish_date', 'requested_finish_time', 'extension_reason', 'extension_requested_by', 'can_approve_extension',
+            'created_at', 'updated_at', 'extension_count'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'extension_status', 'requested_finish_date', 'requested_finish_time', 'extension_reason', 'extension_requested_by', 'extension_count']
+    
+    def get_can_approve_extension(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user:
+            return False
+        user = request.user
+        if user.is_superuser:
+            return True
+        # Check if user is the Team Leader (or Creator, effectively)
+        if obj.team_leader and obj.team_leader.user == user:
+            return True
+        return False
     
     def get_attachment_url(self, obj):
         """Get absolute URL for attachment"""

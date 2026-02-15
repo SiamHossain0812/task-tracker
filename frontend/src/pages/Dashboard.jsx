@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import apiClient from '../api/client';
 import ProjectRequestModal from '../components/projects/ProjectRequestModal';
-import { toast } from 'react-hot-toast'; // Assuming hot-toast is used as seen in other docs
+import { toast } from 'react-hot-toast';
 
 const Dashboard = () => {
     const { user } = useAuth();
+    const { refresh: refreshNotifications, showToast } = useNotifications();
     const navigate = useNavigate();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -18,11 +20,42 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
         try {
             // Parallel fetch: Dashboard data AND Trigger alert check
-            const [dashboardRes, _] = await Promise.all([
+            const [dashboardRes, alertsRes] = await Promise.all([
                 apiClient.get('dashboard/'),
                 apiClient.get('alerts/check/')
             ]);
             setData(dashboardRes.data);
+
+            // Smart Notification Grouping
+            if (alertsRes.data?.alerts_created > 0) {
+                const alerts = alertsRes.data.alerts || [];
+
+                // 1. Show individual toasts for "Deadline Warnings" (Reminders)
+                const reminders = alerts.filter(a => a.type === 'deadline_warning');
+                reminders.forEach(alert => {
+                    showToast(alert.title + ": " + alert.message, 'info', () => navigate(`/tasks/${alert.agenda_id}`));
+                });
+
+                // 2. Group Overdue and Stagnation alerts into a single summary
+                const bulkAlerts = alerts.filter(a => a.type === 'agenda_overdue' || a.type === 'stagnation');
+                if (bulkAlerts.length > 0) {
+                    if (bulkAlerts.length === 1) {
+                        // Just one? Show it specifically
+                        const alert = bulkAlerts[0];
+                        showToast(alert.title + ": " + alert.message, 'warning', () => navigate(`/tasks/${alert.agenda_id}`));
+                    } else {
+                        // Multiple? Summarize to avoid flood
+                        showToast(
+                            `System Update: You have ${bulkAlerts.length} overdue tasks that need attention.`,
+                            'warning',
+                            () => navigate('/tasks?filter=overdue')
+                        );
+                    }
+                }
+
+                // Refresh notification center to show all new items in the list
+                refreshNotifications();
+            }
         } catch (error) {
             console.error('Failed to fetch dashboard data', error);
         } finally {
@@ -32,6 +65,13 @@ const Dashboard = () => {
 
     useEffect(() => {
         fetchDashboardData();
+
+        // Poll for updates (and trigger alerts) every 60 seconds
+        const intervalId = setInterval(() => {
+            fetchDashboardData();
+        }, 60000);
+
+        return () => clearInterval(intervalId);
     }, []);
 
     const handleAccept = async (taskId) => {
@@ -373,8 +413,14 @@ const Dashboard = () => {
                                         to={`/tasks/${task.id}`}
                                         className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100 group"
                                     >
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${task.status === 'completed' ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'}`}>
-                                            <i className={`fas ${task.status === 'completed' ? 'fa-check' : 'fa-clock'} text-sm`}></i>
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${task.status === 'completed' ? 'bg-emerald-50 text-emerald-500' :
+                                            task.is_overdue ? 'bg-red-50 text-red-500' :
+                                                'bg-amber-50 text-amber-500'
+                                            }`}>
+                                            <i className={`fas ${task.status === 'completed' ? 'fa-check' :
+                                                task.is_overdue ? 'fa-exclamation-circle' :
+                                                    'fa-clock'
+                                                } text-sm`}></i>
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h4 className="text-sm font-bold text-gray-800 truncate group-hover:text-emerald-600 transition-colors">

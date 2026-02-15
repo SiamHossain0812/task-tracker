@@ -21,16 +21,28 @@ export const NotificationProvider = ({ children }) => {
     const fetchNotifications = useCallback(async () => {
         if (!isAuthenticated) return;
         try {
-            const response = await apiClient.get('notifications/');
+            // Default to recent (24h) for bell
+            const response = await apiClient.get('notifications/?filter=recent');
             const notificationsData = Array.isArray(response.data)
                 ? response.data
                 : (response.data?.results || []);
             setNotifications(notificationsData);
 
-            const countResponse = await apiClient.get('notifications/unread_count/');
+            const countResponse = await apiClient.get('notifications/unread_count/?filter=recent');
             setUnreadCount(countResponse.data.count);
         } catch (error) {
             console.error('Failed to fetch notifications', error);
+        }
+    }, [isAuthenticated]);
+
+    const fetchArchivedNotifications = useCallback(async () => {
+        if (!isAuthenticated) return [];
+        try {
+            const response = await apiClient.get('notifications/?filter=archived');
+            return Array.isArray(response.data) ? response.data : (response.data?.results || []);
+        } catch (error) {
+            console.error('Failed to fetch archived notifications', error);
+            return [];
         }
     }, [isAuthenticated]);
 
@@ -160,6 +172,31 @@ export const NotificationProvider = ({ children }) => {
         }
     };
 
+    const deleteNotification = async (id) => {
+        try {
+            await apiClient.delete(`notifications/${id}/`);
+            // Optimistically update lists
+            setNotifications(prev => prev.filter(n => n.id !== id));
+            // We might need to update unread count if we deleted an unread one
+            // But usually we delete archived ones which are read. 
+            // If strictly needed, we could fetch count again or track is_read.
+        } catch (error) {
+            console.error('Failed to delete notification', error);
+            throw error;
+        }
+    };
+
+    const clearArchivedNotifications = async () => {
+        try {
+            await apiClient.post('notifications/clear_archived/');
+            // No local state update needed for archive list as it's fetched on demand in the page
+            // But good to have function available
+        } catch (error) {
+            console.error('Failed to clear archived notifications', error);
+            throw error;
+        }
+    };
+
     const value = {
         notifications,
         unreadCount,
@@ -167,7 +204,11 @@ export const NotificationProvider = ({ children }) => {
         markAllAsRead,
         refresh: fetchNotifications,
         showToast,
-        registerPush
+        showToast,
+        registerPush,
+        fetchArchivedNotifications,
+        deleteNotification,
+        clearArchivedNotifications
     };
 
     return (

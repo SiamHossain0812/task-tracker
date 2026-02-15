@@ -433,8 +433,143 @@ class AlertCheckView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        result = check_and_create_alerts(request.user)
+        result = check_and_create_alerts(request.user, emit_websocket=False, loud_types=['deadline_warning'])
         return Response(result)
+
+
+class ExtendTaskTimeView(APIView):
+    """
+    Endpoint to extend the deadline of an overdue/missed task.
+    Can only be used once per task.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        agenda = get_object_or_404(Agenda, pk=pk)
+        user = request.user
+        
+        # Determine Role
+        is_approver = False
+        is_requester = False
+        
+        if user.is_superuser:
+            is_approver = True
+        elif agenda.team_leader and agenda.team_leader.user == user:
+            is_approver = True
+            
+        # Check if user is an assigned collaborator (if not approver)
+        if not is_approver and hasattr(user, 'collaborator_profile'):
+            collaborator = user.collaborator_profile
+            # Check if assigned (pending or accepted)
+            if agenda.assignments.filter(collaborator=collaborator).exists():
+                is_requester = True
+
+        if not (is_approver or is_requester):
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Check existing extension count (Max 1)
+        if agenda.extension_count >= 1:
+            return Response({'error': 'Time has already been extended once. Cannot extend further.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        action = request.data.get('action') # 'approve', 'reject', 'request', or None (direct)
+        
+        # --- APPROVER LOGIC ---
+        if is_approver:
+            if action == 'reject':
+                agenda.extension_status = 'rejected'
+                agenda.requested_finish_date = None
+                agenda.requested_finish_time = None
+                agenda.save()
+                return Response({'message': 'Extension request rejected', 'status': 'rejected'})
+                
+            elif action == 'approve':
+                if agenda.extension_status != 'pending' or not agenda.requested_finish_date:
+                    return Response({'error': 'No pending request to approve'}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Apply requested to actual
+                self._apply_extension(agenda, agenda.requested_finish_date, agenda.requested_finish_time)
+                agenda.extension_status = 'approved'
+                agenda.requested_finish_date = None
+                agenda.requested_finish_time = None
+                agenda.save()
+                return Response({'message': 'Extension request approved', 'status': 'approved'})
+                
+            else:
+                # Direct Extension (Force)
+                new_date_str = request.data.get('date')
+                new_time_str = request.data.get('time')
+                
+                if not new_date_str:
+                    return Response({'error': 'New date is required for direct extension'}, status=status.HTTP_400_BAD_REQUEST)
+                
+                try:
+                    new_finish_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
+                    new_finish_time = None
+                    if new_time_str:
+                        new_finish_time = datetime.strptime(new_time_str, '%H:%M').time()
+                        
+                    self._apply_extension(agenda, new_finish_date, new_finish_time)
+                    agenda.save()
+                    return Response({'message': 'Task time extended successfully'})
+                except ValueError:
+                    return Response({'error': 'Invalid date/time format'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # --- REQUESTER LOGIC ---
+        if is_requester:
+            try:
+                new_date_str = request.data.get('date')
+                new_time_str = request.data.get('time')
+                reason = request.data.get('reason', '')
+                
+                if not new_date_str:
+                    return Response({'error': 'New date is required'}, status=status.HTTP_400_BAD_REQUEST)
+                    
+                new_finish_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
+                new_finish_time = None
+                if new_time_str:
+                    new_finish_time = datetime.strptime(new_time_str, '%H:%M').time()
+                
+                # Update Request Fields
+                agenda.requested_finish_date = new_finish_date
+                agenda.requested_finish_time = new_finish_time
+                agenda.extension_reason = reason
+                agenda.extension_status = 'pending'
+                
+                # We know user has a collaborator profile because of the check above
+                agenda.extension_requested_by = user.collaborator_profile
+                agenda.save()
+                
+                # Notify Leader
+                if agenda.team_leader:
+                    Notification.objects.create(
+                        user=agenda.team_leader.user,
+                        title="Extension Requested",
+                        message=f"{user.first_name} requested more time for: {agenda.title}",
+                        notification_type='deadline_warning', 
+                        related_agenda=agenda
+                    )
+                
+                return Response({'message': 'Extension request submitted', 'status': 'pending'})
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _apply_extension(self, agenda, new_date, new_time):
+        """Helper to apply extension logic"""
+        # Save original deadline if not already saved
+        if not agenda.original_deadline_date:
+            agenda.original_deadline_date = agenda.expected_finish_date or agenda.date
+            agenda.original_deadline_time = agenda.expected_finish_time or agenda.time
+    
+        # Update to new deadline
+        agenda.expected_finish_date = new_date
+        agenda.expected_finish_time = new_time
+        
+        # Mark as missed and increment extension count
+        agenda.was_missed = True
+        agenda.extension_count += 1
+
 
 
 class CollaboratorViewSet(viewsets.ModelViewSet):
