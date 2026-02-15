@@ -21,9 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-change-this-in-production-abc123xyz789'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
 # Application definition
 INSTALLED_APPS = [
@@ -152,18 +150,14 @@ SIMPLE_JWT = {
 }
 
 # CORS Settings (for React development)
-CORS_ALLOW_ALL_ORIGINS = True # Allow all origins for local network testing (phone access)
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',  # Vite default port
-    'http://localhost:3000',  # Alternative React port
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:3000',
-]
+CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True').lower() == 'true'
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 
+    'http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000'
+).split(',')
 
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-]
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 
+    'http://localhost:5173,http://127.0.0.1:5173'
+).split(',')
 
 CORS_ALLOW_CREDENTIALS = True
 

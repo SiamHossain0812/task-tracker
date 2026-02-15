@@ -1,8 +1,27 @@
 import axios from 'axios';
 
-// Dynamically determine API URL based on current hostname
-// This allows the app to work on both localhost and local network IP (e.g. from phone)
-const API_BASE_URL = `http://${window.location.hostname}:8000/api/v1/`;
+// Dynamically determine API URL based on current environment
+const getBaseUrl = () => {
+    // 1. Check for explicit environment variable first
+    if (import.meta.env.VITE_API_URL) {
+        return import.meta.env.VITE_API_URL;
+    }
+
+    const { hostname, protocol, port } = window.location;
+
+    // 2. Handle local development (localhost or common local IPs)
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
+        return `http://${hostname}:8000/api/v1/`;
+    }
+
+    // 3. Production/Deployment environment
+    // Use the current protocol and hostname. 
+    // If the frontend is on HTTPS, the API will be requested via HTTPS.
+    // This assumes the production server (Nginx/etc) is configured to proxy /api/v1/ to the backend service.
+    return `${protocol}//${hostname}/api/v1/`;
+};
+
+const API_BASE_URL = getBaseUrl();
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
