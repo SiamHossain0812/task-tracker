@@ -20,6 +20,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-change-this-in-production-abc123xyz789'
 
+# Handle HTTPS correctly behind reverse proxy
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # SECURITY WARNING: don't run with debug turned on in production!
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,task.brri.gov.bd,180.211.163.243').split(',')
 
