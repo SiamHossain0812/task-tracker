@@ -24,7 +24,7 @@ SECRET_KEY = 'django-insecure-change-this-in-production-abc123xyz789'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,task.brri.gov.bd,180.211.163.243').split(',')
+ALLOWED_HOSTS = ['task.brri.gov.bd', '180.211.163.243', 'localhost', '127.0.0.1']
 
 # Application definition
 INSTALLED_APPS = [
@@ -80,10 +80,18 @@ ASGI_APPLICATION = 'agenda_project.asgi.application'
 
 # Database
 # Database
+# Database Configuration for MySQL
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'task_tracker',
+        'USER': 'root',
+        'PASSWORD': 'DB@root',
+        'HOST': 'localhost',
+        'PORT': '3306',
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
 
@@ -110,8 +118,16 @@ USE_I18N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
+# --- STATIC FILES CONFIGURATION ---
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# This is the critical line for the error you are seeing
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+    BASE_DIR / 'frontend' / 'dist',
+]
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

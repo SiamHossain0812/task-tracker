@@ -142,7 +142,7 @@ export const NotificationProvider = ({ children }) => {
 
     // Construct WebSocket URL with JWT token
     const wsUrl = isAuthenticated && user
-        ? `ws://${window.location.hostname}:8000/ws/notifications/?token=${localStorage.getItem('access_token')}`
+        ? `wss://${window.location.hostname}/ws/notifications/?token=${localStorage.getItem('access_token')}`
         : null;
 
     const { send } = useWebSocket(wsUrl, handleWebSocketMessage);
