@@ -204,7 +204,6 @@ export const NotificationProvider = ({ children }) => {
         markAllAsRead,
         refresh: fetchNotifications,
         showToast,
-        showToast,
         registerPush,
         fetchArchivedNotifications,
         deleteNotification,

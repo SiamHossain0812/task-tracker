@@ -81,17 +81,11 @@ ASGI_APPLICATION = 'agenda_project.asgi.application'
 # Database
 # Database
 # Database Configuration for MySQL
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'task_tracker',
-        'USER': 'root',
-        'PASSWORD': 'DB@root',
-        'HOST': 'localhost',
-        'PORT': '3306',
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -229,4 +223,13 @@ CHANNEL_LAYERS = {
 VAPID_PUBLIC_KEY = 'BPatCliCZSYI7aZuvBB29XJ43S4Y6_fT3mYpI6r9F0Jm6XzpLvc94QDqLQhtMcUf08z1nc7R6b2bU-8yY8oN87Y'
 VAPID_PRIVATE_KEY = '-OSgp6p_DwDyQGcXOdQsMI-JR-kSOfq8vJ5L_8fH-4E'
 VAPID_ADMIN_EMAIL = 'admin@example.com'
+
+# Email Configuration
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Agenda Tracker <agrometlabagendatracker@gmail.com>')
 

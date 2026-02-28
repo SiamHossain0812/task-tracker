@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db import transaction
 from django.contrib.auth.models import User
 from .models import Project, Agenda, Collaborator, Notification, ProjectRequest, AgendaAssignment, PersonalNote
 
@@ -116,7 +117,7 @@ class AgendaAssignmentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = AgendaAssignment
-        fields = ['id', 'collaborator', 'collaborator_name', 'collaborator_image', 'status', 'rejection_reason', 'created_at']
+        fields = ['id', 'collaborator', 'collaborator_name', 'collaborator_image', 'status', 'rejection_reason', 'duties', 'created_at']
         read_only_fields = ['id', 'status', 'created_at']
 
     def get_collaborator_image(self, obj):
@@ -232,6 +233,7 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
             return obj.attachment.url
         return None
     
+    @transaction.atomic
     def create(self, validated_data):
         """Handle creating agenda with collaborators and auto-assignments"""
         request = self.context.get('request')
@@ -264,39 +266,30 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
                 collaborator=agenda.team_leader,
                 defaults={'status': 'pending'}
             )
-            Notification.objects.create(
-                user=agenda.team_leader.user,
-                title="Leadership Request",
-                message=f"You have been assigned as Team Leader for: {agenda.title}",
-                notification_type='collaborator_added',
-                related_agenda=agenda
-            )
 
-        # 3. Create assignments for other collaborators
+        # 3. Create assignments for other collaborators with duties if provided
+        collaborator_duties_map = self.context.get('collaborator_duties', {})
+        if not isinstance(collaborator_duties_map, dict):
+            collaborator_duties_map = {}
+        
         for collaborator in collaborators:
             # Skip if already handled (creator/leader)
             if collaborator == creator_collab or collaborator == agenda.team_leader:
                 continue
                 
+            duties = collaborator_duties_map.get(str(collaborator.id), "")
+            
             AgendaAssignment.objects.get_or_create(
                 agenda=agenda,
                 collaborator=collaborator,
-                defaults={'status': 'pending'}
-            )
-            
-            # Notify collaborator
-            Notification.objects.create(
-                user=collaborator.user,
-                title="New Task Invitation",
-                message=f"You have been invited to join the task: {agenda.title}",
-                notification_type='collaborator_added',
-                related_agenda=agenda
+                defaults={'status': 'pending', 'duties': duties}
             )
             
         if actual_participants:
             agenda.actual_participants.set(actual_participants)
         return agenda
 
+    @transaction.atomic
     def update(self, instance, validated_data):
         """Handle updating agenda with collaborators and leader changes"""
         new_collaborators = validated_data.pop('collaborators', None)
@@ -330,12 +323,14 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
                 collaborator__in=collabs_to_remove
             ).delete()
             
-            # Add new collaborators as pending
+            # Add new collaborators as pending with duties if provided
+            collaborator_duties_map = self.context.get('collaborator_duties', {})
             for collaborator in target_collaborators - current_collaborators:
+                duties = collaborator_duties_map.get(str(collaborator.id), "")
                 AgendaAssignment.objects.get_or_create(
                     agenda=instance,
                     collaborator=collaborator,
-                    defaults={'status': 'pending'}
+                    defaults={'status': 'pending', 'duties': duties}
                 )
                 # Notify new collaborator
                 Notification.objects.create(
@@ -345,6 +340,15 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
                     notification_type='collaborator_added',
                     related_agenda=instance
                 )
+            
+            # Update duties for existing collaborators if changed
+            for collaborator in target_collaborators & current_collaborators:
+                new_duties = collaborator_duties_map.get(str(collaborator.id))
+                if new_duties is not None:
+                    AgendaAssignment.objects.filter(
+                        agenda=instance,
+                        collaborator=collaborator
+                    ).update(duties=new_duties)
         
         if actual_participants is not None:
             instance.actual_participants.set(actual_participants)

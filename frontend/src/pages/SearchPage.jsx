@@ -122,13 +122,13 @@ const SearchPage = () => {
                                                     )}
                                                     <div className="mt-auto flex items-center justify-between">
                                                         <span className="text-xs font-semibold text-gray-400 bg-gray-50 px-2 py-1 rounded-lg">
-                                                            {project.agendas_count} tasks
+                                                            {project.total_agendas} tasks
                                                         </span>
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                                <div className={`h-full bg-${project.color || 'indigo'}-500 rounded-full`} style={{ width: `${project.progress}%` }}></div>
+                                                                <div className={`h-full bg-${project.color || 'indigo'}-500 rounded-full`} style={{ width: `${project.progress_percent}%` }}></div>
                                                             </div>
-                                                            <span className={`text-xs font-bold text-${project.color || 'indigo'}-600`}>{Math.round(project.progress)}%</span>
+                                                            <span className={`text-xs font-bold text-${project.color || 'indigo'}-600`}>{Math.round(project.progress_percent)}%</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -191,7 +191,7 @@ const SearchPage = () => {
                                                             </td>
                                                             <td className="px-6 py-4">
                                                                 <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider ${task.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : task.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                                    {task.status_display || task.status}
+                                                                    {task.status.replace('-', ' ')}
                                                                 </span>
                                                             </td>
                                                             <td className="px-6 py-4 text-right">

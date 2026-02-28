@@ -1,3 +1,5 @@
+import os
+import json
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status, filters
@@ -38,7 +40,7 @@ from .serializers import (
     ProjectSerializer, AgendaListSerializer, AgendaDetailSerializer,
     CollaboratorSerializer, UserSerializer, ProjectRequestSerializer, PersonalNoteSerializer
 )
-from .utils import check_and_create_alerts
+from .utils import check_and_create_alerts, send_notification_email
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
@@ -185,6 +187,25 @@ class AgendaViewSet(viewsets.ModelViewSet):
         
         return queryset
     
+    def get_serializer(self, *args, **kwargs):
+        """Pass collaborator_duties from request to serializer context"""
+        if self.action in ['create', 'update', 'partial_update']:
+            kwargs['context'] = self.get_serializer_context()
+            # Extract collaborator_duties if present in request data
+            # Format expected: {"collab_id": "duty description"}
+            duties = self.request.data.get('collaborator_duties')
+            kwargs['context']['collaborator_duties'] = {} # Initialize
+            
+            if duties:
+                if isinstance(duties, str):
+                    try:
+                        kwargs['context']['collaborator_duties'] = json.loads(duties)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                elif isinstance(duties, dict):
+                    kwargs['context']['collaborator_duties'] = duties
+        return super().get_serializer(*args, **kwargs)
+
     def get_serializer_class(self):
         """Use different serializers for list vs detail"""
         if self.action == 'list':
@@ -208,6 +229,7 @@ class AgendaViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied("You must have a collaborator profile to create tasks in projects.")
 
         collaborator = getattr(user, 'collaborator_profile', None)
+        # The serializer.save() will use context['collaborator_duties'] if provided
         agenda = serializer.save(created_by=user, team_leader=collaborator)
         self.notify_collaborators(agenda, is_new=True)
 
@@ -297,9 +319,6 @@ class AgendaViewSet(viewsets.ModelViewSet):
 
     def notify_collaborators(self, agenda, is_new=True):
         """Helper to send instant notifications to collaborators"""
-        # Only if current user is admin? User asked: "if admin creates a task"
-        if not self.request.user.is_superuser:
-            return
 
         from .models import Notification
         from channels.layers import get_channel_layer
@@ -309,9 +328,6 @@ class AgendaViewSet(viewsets.ModelViewSet):
             channel_layer = get_channel_layer()
 
             for collaborator in agenda.collaborators.all():
-                if not collaborator.user:
-                    continue
-                    
                 if agenda.type == 'meeting':
                     title = "New Meeting Invite" if is_new else "Meeting Updated"
                     message = f"You have been invited to the meeting: '{agenda.title}'." if is_new else f"Details for '{agenda.title}' have been recently updated."
@@ -321,57 +337,66 @@ class AgendaViewSet(viewsets.ModelViewSet):
                     message = f"You've been assigned to the initiative: '{agenda.title}'." if is_new else f"There are new developments regarding: '{agenda.title}'."
                     notif_type = 'collaborator_added' if is_new else 'agenda_updated'
                 
-                # Avoid dupes?
-                # For "Instant", dupes might be okay if verified updates, but let's be safe.
-                notification = Notification.objects.create(
-                    user=collaborator.user,
-                    title=title,
-                    message=message,
-                    notification_type=notif_type,
-                    related_agenda=agenda,
-                    related_project=agenda.project
-                )
-                
-                try:
-                    if channel_layer:
-                        async_to_sync(channel_layer.group_send)(
-                            f'notifications_{collaborator.user.id}',
-                            {
-                                'type': 'notification_message',
-                                'notification': {
-                                    'id': notification.id,
-                                    'title': notification.title,
-                                    'message': notification.message,
-                                    'notification_type': notification.notification_type,
-                                    'related_agenda': {
-                                        'id': agenda.id,
-                                        'title': agenda.title
-                                    } if agenda else None,
-                                    'related_project': {
-                                        'id': agenda.project.id,
-                                        'name': agenda.project.name
-                                    } if agenda and agenda.project else None,
-                                    'created_at': notification.created_at.isoformat(),
-                                    'is_read': False
-                                }
-                            }
-                        )
-                except Exception:
-                    pass  # WebSocket push failed silently
-
-                # Trigger Native Push Notification
-                try:
-                    from .utils import send_push_notification
-                    send_push_notification(
+                # 1. Internal System Notification (Requires User)
+                if collaborator.user:
+                    notification = Notification.objects.create(
                         user=collaborator.user,
-                        title=notification.title,
-                        message=notification.message,
-                        url=f"/agendas/{agenda.id}/edit"
+                        title=title,
+                        message=message,
+                        notification_type=notif_type,
+                        related_agenda=agenda,
+                        related_project=agenda.project
                     )
-                except Exception:
-                    pass  # Native push failed silently
+                    
+                    # WebSocket Push
+                    try:
+                        if channel_layer:
+                            async_to_sync(channel_layer.group_send)(
+                                f'notifications_{collaborator.user.id}',
+                                {
+                                    'type': 'notification_message',
+                                    'notification': {
+                                        'id': notification.id,
+                                        'title': notification.title,
+                                        'message': notification.message,
+                                        'notification_type': notification.notification_type,
+                                        'related_agenda': {'id': agenda.id, 'title': agenda.title} if agenda else None,
+                                        'related_project': {'id': agenda.project.id, 'name': agenda.project.name} if agenda and agenda.project else None,
+                                        'created_at': notification.created_at.isoformat(),
+                                        'is_read': False
+                                    }
+                                }
+                            )
+                    except Exception: pass
+
+                    # Web Push
+                    try:
+                        from .utils import send_push_notification
+                        send_push_notification(user=collaborator.user, title=notification.title, message=notification.message, url=f"/agendas/{agenda.id}/edit")
+                    except Exception: pass
+
+                # 2. Trigger Email Notification (ONLY for new task/meeting assignments)
+                if is_new:
+                    try:
+                        from .utils import send_notification_email
+                        # Use login email (user.email) first, then fall back to profile email
+                        recipient = None
+                        if collaborator.user and collaborator.user.email:
+                            recipient = collaborator.user
+                        elif collaborator.email:
+                            recipient = collaborator
+                        
+                        if recipient:
+                            send_notification_email(
+                                recipient=recipient,
+                                title=title,
+                                message=message,
+                                agenda=agenda
+                            )
+                    except Exception:
+                        pass
         except Exception:
-            pass  # Notification logic failed silently
+            pass
 
 class TasksOverviewAPIView(APIView):
     """
@@ -727,18 +752,30 @@ class SearchAPIView(APIView):
             Q(name__icontains=query) | Q(description__icontains=query)
         )
         
-        # User Isolation
+        # User Isolation: Same as ProjectViewSet
         if not request.user.is_superuser:
-            projects = projects.filter(agendas__collaborators__user=request.user).distinct()
+            try:
+                collaborator = request.user.collaborator_profile
+                projects = projects.filter(members=collaborator).distinct()
+            except AttributeError:
+                projects = projects.none()
         
         # Search agendas
         agendas = Agenda.objects.filter(
             Q(title__icontains=query) | Q(description__icontains=query)
-        )
+        ).select_related('project')
         
-        # User Isolation
+        # User Isolation: Same as AgendaViewSet
         if not request.user.is_superuser:
-            agendas = agendas.filter(collaborators__user=request.user).distinct()
+            agendas = agendas.filter(
+                Q(assignments__collaborator__user=request.user) |
+                Q(team_leader__user=request.user) |
+                Q(created_by=request.user) |
+                Q(project__members__user=request.user)
+            ).exclude(
+                assignments__collaborator__user=request.user,
+                assignments__status='rejected'
+            ).distinct()
         
         return Response({
             'projects': ProjectSerializer(projects, many=True).data,

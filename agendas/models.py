@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from datetime import date
 
 
@@ -64,6 +64,14 @@ class Collaborator(models.Model):
     research_interests = models.TextField(blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        # Synchronize email with User object if linked
+        if self.user and self.email:
+            if self.user.email != self.email:
+                self.user.email = self.email
+                self.user.save(update_fields=['email'])
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -289,6 +297,7 @@ class AgendaAssignment(models.Model):
     collaborator = models.ForeignKey(Collaborator, on_delete=models.CASCADE, related_name='assignments')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     rejection_reason = models.TextField(blank=True, null=True)
+    duties = models.TextField(blank=True, null=True, help_text="Specific duties assigned to this collaborator for this task")
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
