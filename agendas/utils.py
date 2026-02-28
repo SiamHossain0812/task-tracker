@@ -342,6 +342,68 @@ def send_notification_email(recipient, title, message, agenda=None):
         if p == 'low':    return 'border:1px solid #6ee7b7;color:#047857;background:#f0fdf4;'
         return 'border:1px solid #d1d5db;color:#6b7280;background:#f9fafb;'
 
+    # Task Details Card Component (Refactored to avoid nested f-strings in Python < 3.12)
+    task_card_html = ""
+    if agenda:
+        project_row = ""
+        if agenda.project:
+            project_row = f'<tr><td style="padding:12px 24px;font-size:11px;color:#9ca3af;font-weight:600;letter-spacing:0.07em;vertical-align:top;">PROJECT</td><td style="padding:12px 24px;font-size:14px;font-weight:500;color:#374151;vertical-align:top;">{agenda.project.name}</td></tr><tr><td colspan="2" style="height:1px;background:#f3f4f6;padding:0;"></td></tr>'
+        
+        priority_row = ""
+        if hasattr(agenda, 'priority'):
+            priority_row = f"""<tr>
+                              <td style="padding:12px 24px;font-size:11px;color:#9ca3af;font-weight:600;letter-spacing:0.07em;vertical-align:middle;">PRIORITY</td>
+                              <td style="padding:12px 24px;vertical-align:middle;">
+                                <span style="display:inline-block;padding:3px 12px;border-radius:5px;font-size:12px;font-weight:600;letter-spacing:0.03em;{priority_style(agenda.priority)}">{(agenda.priority or "Normal").capitalize()}</span>
+                              </td>
+                            </tr>
+                            <tr><td colspan="2" style="height:1px;background:#f3f4f6;padding:0;"></td></tr>"""
+        
+        deadline_row = ""
+        if hasattr(agenda, 'expected_finish_date') and agenda.expected_finish_date:
+            deadline_row = f'<tr><td style="padding:12px 24px;font-size:11px;color:#9ca3af;font-weight:600;letter-spacing:0.07em;vertical-align:top;">DEADLINE</td><td style="padding:12px 24px;font-size:14px;font-weight:600;color:#0f172a;vertical-align:top;">{fmt_date(agenda.expected_finish_date)}</td></tr><tr ><td colspan="2" style="height:1px;background:#f3f4f6;padding:0;"></td></tr>'
+        elif agenda.date:
+            deadline_row = f'<tr><td style="padding:12px 24px;font-size:11px;color:#9ca3af;font-weight:600;letter-spacing:0.07em;vertical-align:top;">START DATE</td><td style="padding:12px 24px;font-size:14px;font-weight:600;color:#0f172a;vertical-align:top;">{fmt_date(agenda.date)}</td></tr><tr><td colspan="2" style="height:1px;background:#f3f4f6;padding:0;"></td></tr>'
+
+        duty_row = ""
+        if user_duty:
+            duty_row = f"""<tr><td colspan="2" style="height:1px;background:#f3f4f6;padding:0;"></td></tr>
+                            <tr>
+                              <td colspan="2" style="padding:16px 24px 20px;">
+                                <div style="background:#f8fffe;border-left:3px solid #059669;border-radius:0 8px 8px 0;padding:14px 18px;">
+                                  <p style="margin:0 0 5px 0;font-size:10px;font-weight:700;color:#065f46;text-transform:uppercase;letter-spacing:0.1em;">Your Responsibilities</p>
+                                  <p style="margin:0;font-size:14px;color:#374151;line-height:1.75;font-weight:400;">{user_duty}</p>
+                                </div>
+                              </td>
+                            </tr>"""
+
+        status_txt = agenda.get_status_display() if hasattr(agenda, "get_status_display") else agenda.status.capitalize()
+        status_padding = '12px' if user_duty else '18px'
+
+        task_card_html = f"""
+                          <table width="100%" cellpadding="0" cellspacing="0" style="border:1.5px solid #d1fae5;border-radius:14px;overflow:hidden;margin-bottom:36px;">
+                            <tr>
+                              <td colspan="2" style="background:#f0fdf4;padding:14px 24px 13px;border-bottom:1px solid #d1fae5;">
+                                <span style="font-size:10px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:0.12em;">Task Assignment Details</span>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding:18px 24px 10px;font-size:11px;color:#9ca3af;font-weight:600;letter-spacing:0.07em;width:110px;vertical-align:top;">TASK</td>
+                              <td style="padding:18px 24px 10px;font-size:16px;font-weight:700;color:#0f172a;vertical-align:top;letter-spacing:-0.01em;">{agenda.title}</td>
+                            </tr>
+                            <tr><td colspan="2" style="height:1px;background:#f3f4f6;padding:0;"></td></tr>
+                            {project_row}
+                            {priority_row}
+                            {deadline_row}
+                            <tr>
+                              <td style="padding:12px 24px {status_padding};font-size:11px;color:#9ca3af;font-weight:600;letter-spacing:0.07em;vertical-align:middle;">STATUS</td>
+                              <td style="padding:12px 24px {status_padding};vertical-align:middle;">
+                                <span style="display:inline-block;padding:3px 12px;border-radius:5px;font-size:12px;font-weight:600;border:1px solid #6ee7b7;color:#065f46;background:#f0fdf4;">{status_txt}</span>
+                              </td>
+                            </tr>
+                            {duty_row}
+                          </table>"""
+
     html_message = f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -416,49 +478,7 @@ def send_notification_email(recipient, title, message, agenda=None):
                           </p>
 
                           <!-- Task Details Card -->
-                          {f"""
-                          <table width="100%" cellpadding="0" cellspacing="0" style="border:1.5px solid #d1fae5;border-radius:14px;overflow:hidden;margin-bottom:36px;">
-                            <!-- Card Title -->
-                            <tr>
-                              <td colspan="2" style="background:#f0fdf4;padding:14px 24px 13px;border-bottom:1px solid #d1fae5;">
-                                <span style="font-size:10px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:0.12em;">Task Assignment Details</span>
-                              </td>
-                            </tr>
-                            <!-- Task -->
-                            <tr>
-                              <td style="padding:18px 24px 10px;font-size:11px;color:#9ca3af;font-weight:600;letter-spacing:0.07em;width:110px;vertical-align:top;">TASK</td>
-                              <td style="padding:18px 24px 10px;font-size:16px;font-weight:700;color:#0f172a;vertical-align:top;letter-spacing:-0.01em;">{agenda.title}</td>
-                            </tr>
-                            <tr><td colspan="2" style="height:1px;background:#f3f4f6;padding:0;"></td></tr>
-                            {f'<tr><td style="padding:12px 24px;font-size:11px;color:#9ca3af;font-weight:600;letter-spacing:0.07em;vertical-align:top;">PROJECT</td><td style="padding:12px 24px;font-size:14px;font-weight:500;color:#374151;vertical-align:top;">{agenda.project.name}</td></tr><tr><td colspan="2" style="height:1px;background:#f3f4f6;padding:0;"></td></tr>' if agenda.project else ''}
-                            <!-- Priority -->
-                            {f"""<tr>
-                              <td style="padding:12px 24px;font-size:11px;color:#9ca3af;font-weight:600;letter-spacing:0.07em;vertical-align:middle;">PRIORITY</td>
-                              <td style="padding:12px 24px;vertical-align:middle;">
-                                <span style="display:inline-block;padding:3px 12px;border-radius:5px;font-size:12px;font-weight:600;letter-spacing:0.03em;{priority_style(agenda.priority)}">{(agenda.priority or "Normal").capitalize()}</span>
-                              </td>
-                            </tr>
-                            <tr><td colspan="2" style="height:1px;background:#f3f4f6;padding:0;"></td></tr>""" if hasattr(agenda, 'priority') else ''}
-                            <!-- Deadline -->
-                            {f'<tr><td style="padding:12px 24px;font-size:11px;color:#9ca3af;font-weight:600;letter-spacing:0.07em;vertical-align:top;">DEADLINE</td><td style="padding:12px 24px;font-size:14px;font-weight:600;color:#0f172a;vertical-align:top;">{fmt_date(agenda.expected_finish_date)}</td></tr><tr><td colspan="2" style="height:1px;background:#f3f4f6;padding:0;"></td></tr>' if hasattr(agenda, 'expected_finish_date') and agenda.expected_finish_date else (f'<tr><td style="padding:12px 24px;font-size:11px;color:#9ca3af;font-weight:600;letter-spacing:0.07em;vertical-align:top;">START DATE</td><td style="padding:12px 24px;font-size:14px;font-weight:600;color:#0f172a;vertical-align:top;">{fmt_date(agenda.date)}</td></tr><tr><td colspan="2" style="height:1px;background:#f3f4f6;padding:0;"></td></tr>' if agenda.date else '')}
-                            <!-- Status -->
-                            <tr>
-                              <td style="padding:12px 24px {'' if user_duty else '18px'};font-size:11px;color:#9ca3af;font-weight:600;letter-spacing:0.07em;vertical-align:middle;">STATUS</td>
-                              <td style="padding:12px 24px {'' if user_duty else '18px'};vertical-align:middle;">
-                                <span style="display:inline-block;padding:3px 12px;border-radius:5px;font-size:12px;font-weight:600;border:1px solid #6ee7b7;color:#065f46;background:#f0fdf4;">{(agenda.get_status_display() if hasattr(agenda, "get_status_display") else agenda.status.capitalize())}</span>
-                              </td>
-                            </tr>
-                            {f"""<tr><td colspan="2" style="height:1px;background:#f3f4f6;padding:0;"></td></tr>
-                            <tr>
-                              <td colspan="2" style="padding:16px 24px 20px;">
-                                <div style="background:#f8fffe;border-left:3px solid #059669;border-radius:0 8px 8px 0;padding:14px 18px;">
-                                  <p style="margin:0 0 5px 0;font-size:10px;font-weight:700;color:#065f46;text-transform:uppercase;letter-spacing:0.1em;">Your Responsibilities</p>
-                                  <p style="margin:0;font-size:14px;color:#374151;line-height:1.75;font-weight:400;">{user_duty}</p>
-                                </div>
-                              </td>
-                            </tr>""" if user_duty else ''}
-                          </table>
-                          """ if agenda else ""}
+                          {task_card_html}
 
                           <p style="margin:0 0 30px 0;font-size:14px;color:#6b7280;line-height:1.8;">
                             Please log in to the Agromet Lab Research Portal to review all documents, post updates, and coordinate with your team members.
