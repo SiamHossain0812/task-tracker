@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.db import transaction
 from django.contrib.auth.models import User
-from .models import Project, Agenda, Collaborator, Notification, ProjectRequest, AgendaAssignment, PersonalNote
+from .models import Project, Agenda, Collaborator, Notification, ProjectRequest, AgendaAssignment, PersonalNote, Schedule
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -388,3 +388,12 @@ class PersonalNoteSerializer(serializers.ModelSerializer):
         model = PersonalNote
         fields = ['id', 'user', 'title', 'content', 'color', 'is_pinned', 'created_at', 'updated_at']
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+
+class ScheduleSerializer(serializers.ModelSerializer):
+    """Serializer for private schedules"""
+    user_name = serializers.CharField(source='user.username', read_only=True)
+    
+    class Meta:
+        model = Schedule
+        fields = ['id', 'user', 'user_name', 'subject', 'description', 'date', 'start_time', 'end_time', 'status', 'is_notified', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user', 'user_name', 'is_notified', 'created_at', 'updated_at']

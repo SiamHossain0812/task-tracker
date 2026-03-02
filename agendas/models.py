@@ -323,3 +323,32 @@ class PersonalNote(models.Model):
 
     def __str__(self):
         return f"Note by {self.user.username}: {self.title or self.content[:30]}"
+
+class Schedule(models.Model):
+    """Private individual schedules"""
+    STATUS_CHOICES = [
+        ('undone', 'Undone'),
+        ('done', 'Done'),
+    ]
+    
+    user = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='schedules')
+    subject = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='undone')
+    
+    # Notification tracking
+    is_notified = models.BooleanField(default=False, help_text="Flagged if 30-minute reminder was sent")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['date', 'start_time']
+        verbose_name = "Schedule"
+        verbose_name_plural = "Schedules"
+    
+    def __str__(self):
+        return f"{self.subject} ({self.date})"

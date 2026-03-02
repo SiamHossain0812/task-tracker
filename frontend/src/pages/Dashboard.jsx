@@ -19,43 +19,8 @@ const Dashboard = () => {
 
     const fetchDashboardData = async () => {
         try {
-            // Parallel fetch: Dashboard data AND Trigger alert check
-            const [dashboardRes, alertsRes] = await Promise.all([
-                apiClient.get('dashboard/'),
-                apiClient.get('alerts/check/')
-            ]);
-            setData(dashboardRes.data);
-
-            // Smart Notification Grouping
-            if (alertsRes.data?.alerts_created > 0) {
-                const alerts = alertsRes.data.alerts || [];
-
-                // 1. Show individual toasts for "Deadline Warnings" (Reminders)
-                const reminders = alerts.filter(a => a.type === 'deadline_warning');
-                reminders.forEach(alert => {
-                    showToast(alert.title + ": " + alert.message, 'info', () => navigate(`/tasks/${alert.agenda_id}`));
-                });
-
-                // 2. Group Overdue and Stagnation alerts into a single summary
-                const bulkAlerts = alerts.filter(a => a.type === 'agenda_overdue' || a.type === 'stagnation');
-                if (bulkAlerts.length > 0) {
-                    if (bulkAlerts.length === 1) {
-                        // Just one? Show it specifically
-                        const alert = bulkAlerts[0];
-                        showToast(alert.title + ": " + alert.message, 'warning', () => navigate(`/tasks/${alert.agenda_id}`));
-                    } else {
-                        // Multiple? Summarize to avoid flood
-                        showToast(
-                            `System Update: You have ${bulkAlerts.length} overdue tasks that need attention.`,
-                            'warning',
-                            () => navigate('/tasks?filter=overdue')
-                        );
-                    }
-                }
-
-                // Refresh notification center to show all new items in the list
-                refreshNotifications();
-            }
+            const response = await apiClient.get('dashboard/');
+            setData(response.data);
         } catch (error) {
             console.error('Failed to fetch dashboard data', error);
         } finally {

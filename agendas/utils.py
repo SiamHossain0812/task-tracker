@@ -5,7 +5,7 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-from .models import Agenda, Notification
+from .models import Agenda, Notification, Schedule
 
 
 def calculate_status(date_str, time_str, end_date_str, end_time_str):
@@ -229,6 +229,68 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
                     )
                 except Exception as push_e:
                     pass  # Native push failed
+
+    # --- Rule 5: Schedules (30-minute Warning) ---
+    schedules = Schedule.objects.filter(
+        user=user, 
+        status='undone', 
+        is_notified=False,
+        date=now.date()
+    )
+    
+    for schedule in schedules:
+        due_time = schedule.end_time
+        # Combine date and time to get timezone aware datetime
+        schedule_dt = timezone.make_aware(datetime.combine(schedule.date, due_time))
+        
+        # Check if it's within 30 minutes before the due time
+        if now < schedule_dt and (schedule_dt - now) <= timedelta(minutes=30):
+            # Create notification
+            notification = Notification.objects.create(
+                user=user,
+                title="Schedule Due Soon",
+                message=f"Schedule '{schedule.subject}' is reaching its due time at {due_time.strftime('%H:%M')}.",
+                notification_type='deadline_warning' # Reuse existing type for UI compatibility
+            )
+            
+            # Mark as notified to avoid repeats
+            schedule.is_notified = True
+            schedule.save()
+            
+            # WebSocket and Push
+            try:
+                channel_layer = get_channel_layer()
+                if channel_layer:
+                    async_to_sync(channel_layer.group_send)(
+                        f'notifications_{user.id}',
+                        {
+                            'type': 'notification_message',
+                            'notification': {
+                                'id': notification.id,
+                                'title': notification.title,
+                                'message': notification.message,
+                                'notification_type': notification.notification_type,
+                                'created_at': notification.created_at.isoformat(),
+                                'is_read': False
+                            }
+                        }
+                    )
+                
+                send_push_notification(
+                    user=user,
+                    title="Schedule Reminder",
+                    message=f"'{schedule.subject}' is due in 30 minutes.",
+                    url="/schedules"
+                )
+            except Exception:
+                pass
+
+            created_alerts.append({
+                'id': notification.id,
+                'type': 'schedule_reminder',
+                'title': notification.title,
+                'message': notification.message
+            })
 
     return {
         'alerts_created': len(created_alerts),

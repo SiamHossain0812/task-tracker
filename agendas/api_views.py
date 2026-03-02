@@ -35,10 +35,10 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
-from .models import Project, Agenda, Collaborator, ProjectRequest, AgendaAssignment, Notification, PersonalNote
+from .models import Project, Agenda, Collaborator, ProjectRequest, AgendaAssignment, Notification, PersonalNote, Schedule
 from .serializers import (
     ProjectSerializer, AgendaListSerializer, AgendaDetailSerializer,
-    CollaboratorSerializer, UserSerializer, ProjectRequestSerializer, PersonalNoteSerializer
+    CollaboratorSerializer, UserSerializer, ProjectRequestSerializer, PersonalNoteSerializer, ScheduleSerializer
 )
 from .utils import check_and_create_alerts, send_notification_email
 
@@ -397,6 +397,55 @@ class AgendaViewSet(viewsets.ModelViewSet):
                         pass
         except Exception:
             pass
+
+class ScheduleViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for private Schedule CRUD operations
+    """
+    serializer_class = ScheduleSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['subject', 'description']
+    ordering_fields = ['date', 'start_time']
+    ordering = ['date', 'start_time']
+    pagination_class = None
+
+    def get_queryset(self):
+        # Strictly filter by current user
+        return Schedule.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def toggle_status(self, request, pk=None):
+        """Toggle schedule status between done and undone"""
+        schedule = self.get_object()
+        schedule.status = 'done' if schedule.status == 'undone' else 'undone'
+        schedule.save()
+        return Response(self.get_serializer(schedule).data)
+
+    @action(detail=True, methods=['post'])
+    def reschedule(self, request, pk=None):
+        """Reschedule an undone item"""
+        schedule = self.get_object()
+        if schedule.status == 'done':
+            return Response({'error': 'Cannot reschedule completed items'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        new_date = request.data.get('date')
+        new_start = request.data.get('start_time')
+        new_end = request.data.get('end_time')
+        
+        if not all([new_date, new_start, new_end]):
+            return Response({'error': 'date, start_time, and end_time are required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        schedule.date = new_date
+        schedule.start_time = new_start
+        schedule.end_time = new_end
+        schedule.is_notified = False # Reset notification flag for rescheduled items
+        schedule.save()
+        
+        return Response(self.get_serializer(schedule).data)
 
 class TasksOverviewAPIView(APIView):
     """

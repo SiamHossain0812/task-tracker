@@ -91,6 +91,19 @@ export const NotificationProvider = ({ children }) => {
         if (isAuthenticated) {
             fetchNotifications();
             registerPush();
+
+            // Global Alert Polling: Trigger backend check every 30 seconds
+            const pollAlerts = async () => {
+                try {
+                    await apiClient.get('alerts/check/');
+                    // The backend emits WebSocket messages which handleToast/handleWebSocket will catch
+                } catch (error) {
+                    console.error('Alert check failed', error);
+                }
+            };
+
+            const intervalId = setInterval(pollAlerts, 30000);
+            return () => clearInterval(intervalId);
         }
     }, [isAuthenticated, fetchNotifications, registerPush]);
 
@@ -141,9 +154,24 @@ export const NotificationProvider = ({ children }) => {
     }, []);
 
     // Construct WebSocket URL with JWT token
-    const wsUrl = isAuthenticated && user
-        ? `wss://${window.location.hostname}/ws/notifications/?token=${localStorage.getItem('access_token')}`
-        : null;
+    const getWsUrl = () => {
+        if (!isAuthenticated || !user) return null;
+
+        const { hostname, protocol: locProtocol } = window.location;
+        const port = '8000'; // Django backend port
+        const wsProtocol = locProtocol === 'https:' ? 'wss:' : 'ws:';
+        const token = localStorage.getItem('access_token');
+
+        // Handle local development
+        if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
+            return `ws://${hostname}:${port}/ws/notifications/?token=${token}`;
+        }
+
+        // Production environment
+        return `${wsProtocol}//${hostname}/ws/notifications/?token=${token}`;
+    };
+
+    const wsUrl = getWsUrl();
 
     const { send } = useWebSocket(wsUrl, handleWebSocketMessage);
 

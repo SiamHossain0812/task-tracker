@@ -22,6 +22,7 @@ import ProjectForm from './components/projects/ProjectForm';
 import AgendaForm from './components/agendas/AgendaForm';
 import AgendaDetailView from './components/agendas/AgendaDetailView';
 import NotificationArchive from './pages/NotificationArchive';
+import SchedulesPage from './pages/SchedulesPage';
 import './App.css';
 
 function App() {
@@ -66,6 +67,7 @@ function App() {
               <Route element={<MainLayout><Collaborators /></MainLayout>} path="/collaborators" />
               <Route element={<MainLayout><PendingRequests /></MainLayout>} path="/auth/requests" />
               <Route element={<MainLayout><ProjectRequestsPage /></MainLayout>} path="/project-requests" />
+              <Route element={<MainLayout><SchedulesPage /></MainLayout>} path="/schedules" />
             </Route>
 
             {/* Fallback */}

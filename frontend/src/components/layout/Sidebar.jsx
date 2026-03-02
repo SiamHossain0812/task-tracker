@@ -10,6 +10,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: "/projects", icon: "fas fa-folder-open", label: "Projects", adminOnly: false, end: true },
         { to: "/tasks", icon: "fas fa-tasks", label: "Tasks", adminOnly: false },
         { to: "/calendar", icon: "far fa-calendar", label: "Calendar", adminOnly: false },
+        { to: "/schedules", icon: "fas fa-clock", label: "My Schedule", adminOnly: false },
         { to: "/meetings", icon: "fas fa-video", label: "Meetings", adminOnly: false },
         { to: "/project-requests", icon: "fas fa-file-contract", label: "Project Requests", adminOnly: false },
         { to: "/analytics", icon: "fas fa-chart-pie", label: "Analytics", adminOnly: true },

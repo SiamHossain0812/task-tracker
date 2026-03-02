@@ -14,6 +14,7 @@ router.register(r'collaborators', api_views.CollaboratorViewSet, basename='colla
 router.register(r'notifications', NotificationViewSet, basename='notification')
 router.register(r'project-requests', api_views.ProjectRequestViewSet, basename='project-request')
 router.register(r'personal-notes', api_views.PersonalNoteViewSet, basename='personal-note')
+router.register(r'schedules', api_views.ScheduleViewSet, basename='schedule')
 
 urlpatterns = [
     # Router URLs
