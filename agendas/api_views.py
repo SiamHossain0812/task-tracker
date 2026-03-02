@@ -403,16 +403,29 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     ViewSet for private Schedule CRUD operations
     """
     serializer_class = ScheduleSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsSuperUser]
+
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['subject', 'description']
     ordering_fields = ['date', 'start_time']
     ordering = ['date', 'start_time']
-    pagination_class = None
+    # pagination_class = None (removed to enable global pagination)
 
     def get_queryset(self):
         # Strictly filter by current user
-        return Schedule.objects.filter(user=self.request.user)
+        queryset = Schedule.objects.filter(user=self.request.user)
+        
+        # Smart Filter by Date
+        filter_type = self.request.query_params.get('filter')
+        today = timezone.now().date()
+        
+        if filter_type == 'today':
+            queryset = queryset.filter(date=today)
+        elif filter_type == 'week':
+            week_end = today + timedelta(days=7)
+            queryset = queryset.filter(date__range=[today, week_end])
+            
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
