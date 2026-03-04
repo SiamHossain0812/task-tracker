@@ -234,23 +234,27 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
     schedules = Schedule.objects.filter(
         user=user, 
         status='undone', 
-        is_notified=False,
-        date=now.date()
+        is_notified=False
     )
+    
+    # Check date range to avoid scanning all history (e.g. within today and tomorrow)
+    schedules = schedules.filter(date__range=[now.date(), now.date() + timedelta(days=1)])
     
     for schedule in schedules:
         due_time = schedule.end_time
-        # Combine date and time to get timezone aware datetime
+        # Combine date and time to get local aware datetime
         schedule_dt = timezone.make_aware(datetime.combine(schedule.date, due_time))
+        local_now = timezone.localtime(now)
         
         # Check if it's within 30 minutes before the due time
-        if now < schedule_dt and (schedule_dt - now) <= timedelta(minutes=30):
+        if local_now < schedule_dt and (schedule_dt - local_now) <= timedelta(minutes=30):
             # Create notification
             notification = Notification.objects.create(
                 user=user,
                 title="Schedule Due Soon",
                 message=f"Schedule '{schedule.subject}' is reaching its due time at {due_time.strftime('%H:%M')}.",
-                notification_type='deadline_warning' # Reuse existing type for UI compatibility
+                notification_type='deadline_warning',
+                related_schedule=schedule
             )
             
             # Mark as notified to avoid repeats
@@ -259,22 +263,20 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
             
             # WebSocket and Push
             try:
+                from .serializers import NotificationSerializer
+                serializer = NotificationSerializer(notification)
+                
                 channel_layer = get_channel_layer()
                 if channel_layer:
                     async_to_sync(channel_layer.group_send)(
                         f'notifications_{user.id}',
                         {
                             'type': 'notification_message',
-                            'notification': {
-                                'id': notification.id,
-                                'title': notification.title,
-                                'message': notification.message,
-                                'notification_type': notification.notification_type,
-                                'created_at': notification.created_at.isoformat(),
-                                'is_read': False
-                            }
+                            'notification': serializer.data
                         }
                     )
+                else:
+                    print(f"[agendas.utils] Warning: No channel layer found for user {user.id}")
                 
                 send_push_notification(
                     user=user,
@@ -282,8 +284,8 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
                     message=f"'{schedule.subject}' is due in 30 minutes.",
                     url="/schedules"
                 )
-            except Exception:
-                pass
+            except Exception as broadcast_e:
+                print(f"[agendas.utils] Error during broadcast for user {user.id}: {str(broadcast_e)}")
 
             created_alerts.append({
                 'id': notification.id,

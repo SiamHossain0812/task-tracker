@@ -350,24 +350,19 @@ class AgendaViewSet(viewsets.ModelViewSet):
                     
                     # WebSocket Push
                     try:
+                        from .serializers import NotificationSerializer
+                        serializer = NotificationSerializer(notification)
+                        
                         if channel_layer:
                             async_to_sync(channel_layer.group_send)(
                                 f'notifications_{collaborator.user.id}',
                                 {
                                     'type': 'notification_message',
-                                    'notification': {
-                                        'id': notification.id,
-                                        'title': notification.title,
-                                        'message': notification.message,
-                                        'notification_type': notification.notification_type,
-                                        'related_agenda': {'id': agenda.id, 'title': agenda.title} if agenda else None,
-                                        'related_project': {'id': agenda.project.id, 'name': agenda.project.name} if agenda and agenda.project else None,
-                                        'created_at': notification.created_at.isoformat(),
-                                        'is_read': False
-                                    }
+                                    'notification': serializer.data
                                 }
                             )
-                    except Exception: pass
+                    except Exception as e:
+                        print(f"[agendas.api_views] WebSocket broadcast error: {e}")
 
                     # Web Push
                     try:
@@ -429,6 +424,31 @@ class ScheduleViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+        # Immediate alert check after creation
+        try:
+            from .utils import check_and_create_alerts
+            check_and_create_alerts(self.request.user)
+        except Exception:
+            pass
+
+    def perform_update(self, serializer):
+        # Detect if rescheduled to reset notification flag
+        old_instance = self.get_object()
+        old_date = old_instance.date
+        old_end_time = old_instance.end_time
+        
+        schedule = serializer.save()
+        
+        if schedule.date != old_date or schedule.end_time != old_end_time:
+            schedule.is_notified = False
+            schedule.save(update_fields=['is_notified'])
+            
+        # Trigger immediate alert check after update
+        try:
+            from .utils import check_and_create_alerts
+            check_and_create_alerts(self.request.user)
+        except Exception:
+            pass
 
     @action(detail=True, methods=['post'])
     def toggle_status(self, request, pk=None):
@@ -522,6 +542,55 @@ class AlertCheckView(APIView):
     def get(self, request):
         result = check_and_create_alerts(request.user, emit_websocket=False, loud_types=['deadline_warning'])
         return Response(result)
+
+
+class TestPushAPIView(APIView):
+    """
+    Endpoint to send an immediate dummy notification to the current user.
+    Purely for testing WebSocket + Pop-up connectivity.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import Notification
+        from .serializers import NotificationSerializer
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+
+        user = request.user
+        
+        # 1. Create a persistent notification record
+        notification = Notification.objects.create(
+            user=user,
+            title="🔔 System Test",
+            message=f"Success! Your real-time notification system is connected at {timezone.now().strftime('%H:%M:%S')}.",
+            notification_type='deadline_warning'
+        )
+
+        # 2. Serialize and Broadcast via WebSocket
+        serializer = NotificationSerializer(notification)
+        channel_layer = get_channel_layer()
+        
+        broadcast_status = "Skipped"
+        if channel_layer:
+            async_to_sync(channel_layer.group_send)(
+                f'notifications_{user.id}',
+                {
+                    'type': 'notification_message',
+                    'notification': serializer.data
+                }
+            )
+            broadcast_status = "Successful"
+            print(f"[agendas.api_views] Test push broadcast for user {user.id}: {broadcast_status}")
+        else:
+            broadcast_status = "Failed (No Channel Layer)"
+            print(f"[agendas.api_views] Test push broadcast for user {user.id}: {broadcast_status}")
+
+        return Response({
+            'status': 'sent',
+            'broadcast': broadcast_status,
+            'notification': serializer.data
+        })
 
 
 class ExtendTaskTimeView(APIView):

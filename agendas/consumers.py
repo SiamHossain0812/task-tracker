@@ -49,6 +49,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     
     async def notification_message(self, event):
         """Send notification to WebSocket"""
+        print(f"[agendas.consumers] Relaying notification to user {self.user.id}: {event['notification'].get('title')}")
         await self.send(text_data=json.dumps({
             'type': 'notification',
             'notification': event['notification']

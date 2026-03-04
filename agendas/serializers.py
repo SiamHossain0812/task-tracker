@@ -356,16 +356,26 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
         return instance
 
 
+class ScheduleSerializer(serializers.ModelSerializer):
+    """Serializer for private schedules"""
+    user_name = serializers.CharField(source='user.username', read_only=True)
+    
+    class Meta:
+        model = Schedule
+        fields = ['id', 'user', 'user_name', 'subject', 'description', 'date', 'start_time', 'end_time', 'status', 'is_notified', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user', 'user_name', 'is_notified', 'created_at', 'updated_at']
+
 class NotificationSerializer(serializers.ModelSerializer):
     """Serializer for notifications"""
     related_agenda = AgendaListSerializer(read_only=True)
     related_project = ProjectSerializer(read_only=True)
+    related_schedule = ScheduleSerializer(read_only=True)
     
     class Meta:
         model = Notification
         fields = [
             'id', 'title', 'message', 'notification_type',
-            'is_read', 'created_at', 'related_agenda', 'related_project'
+            'is_read', 'created_at', 'related_agenda', 'related_project', 'related_schedule'
         ]
         read_only_fields = ['id', 'created_at']
 
@@ -388,12 +398,3 @@ class PersonalNoteSerializer(serializers.ModelSerializer):
         model = PersonalNote
         fields = ['id', 'user', 'title', 'content', 'color', 'is_pinned', 'created_at', 'updated_at']
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
-
-class ScheduleSerializer(serializers.ModelSerializer):
-    """Serializer for private schedules"""
-    user_name = serializers.CharField(source='user.username', read_only=True)
-    
-    class Meta:
-        model = Schedule
-        fields = ['id', 'user', 'user_name', 'subject', 'description', 'date', 'start_time', 'end_time', 'status', 'is_notified', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'user', 'user_name', 'is_notified', 'created_at', 'updated_at']

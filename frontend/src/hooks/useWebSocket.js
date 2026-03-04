@@ -10,7 +10,7 @@ const useWebSocket = (url, onMessage) => {
         ws.current = new WebSocket(url);
 
         ws.current.onopen = () => {
-            console.log('WebSocket connected');
+            console.log('[useWebSocket] Connected to:', url);
             setIsConnected(true);
         };
 
@@ -19,8 +19,8 @@ const useWebSocket = (url, onMessage) => {
             if (onMessage) onMessage(data);
         };
 
-        ws.current.onclose = () => {
-            console.log('WebSocket disconnected');
+        ws.current.onclose = (event) => {
+            console.log('[useWebSocket] Disconnected from:', url, 'Code:', event.code, 'Reason:', event.reason);
             setIsConnected(false);
             // Attempt reconnection after 3 seconds
             setTimeout(connect, 3000);

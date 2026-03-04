@@ -32,6 +32,7 @@ urlpatterns = [
     path('search/', api_views.SearchAPIView.as_view(), name='api-search'),
     path('analytics/', api_views.AnalyticsAPIView.as_view(), name='api-analytics'),
     path('alerts/check/', api_views.AlertCheckView.as_view(), name='api-alerts-check'),
+    path('alerts/test-push/', api_views.TestPushAPIView.as_view(), name='api-alerts-test'),
     path('push/subscribe/', push_views.subscribe_push, name='api-push-subscribe'),
     
     # Authentication endpoints

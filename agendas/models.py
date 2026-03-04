@@ -203,6 +203,7 @@ class Notification(models.Model):
         ('agenda_updated', 'Agenda Updated'),
         ('project_created', 'Project Created'),
         ('time_elapsed_warning', 'Time Elapsed Warning'),
+        ('deadline_warning', 'Deadline Warning'),
     ]
     
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='notifications')
@@ -211,6 +212,7 @@ class Notification(models.Model):
     notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
     related_agenda = models.ForeignKey(Agenda, on_delete=models.CASCADE, null=True, blank=True)
     related_project = models.ForeignKey(Project, on_delete=models.CASCADE, null=True, blank=True)
+    related_schedule = models.ForeignKey('Schedule', on_delete=models.CASCADE, null=True, blank=True)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     

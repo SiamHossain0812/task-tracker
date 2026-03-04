@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import useWebSocket from '../hooks/useWebSocket';
@@ -108,7 +108,7 @@ export const NotificationProvider = ({ children }) => {
     }, [isAuthenticated, fetchNotifications, registerPush]);
 
     const handleWebSocketMessage = useCallback(async (data) => {
-        console.log('WebSocket message received:', data);
+        console.log('[NotificationContext] WebSocket message arrived:', data);
 
         if (data.type === 'notification') {
             setNotifications(prev => [data.notification, ...prev]);
@@ -117,10 +117,12 @@ export const NotificationProvider = ({ children }) => {
             // Show in-app toast
             if (showToast) {
                 const targetId = data.notification.related_agenda?.id;
+                const isSchedule = !!data.notification.related_schedule;
+
                 showToast(
                     data.notification.title || 'New Notification',
                     'info',
-                    targetId ? () => navigate(`/tasks/${targetId}`) : null
+                    isSchedule ? () => navigate('/schedules') : (targetId ? () => navigate(`/tasks/${targetId}`) : null)
                 );
             }
 
@@ -128,18 +130,18 @@ export const NotificationProvider = ({ children }) => {
             if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
                 try {
                     const registration = await navigator.serviceWorker.ready;
+                    const isSchedule = !!data.notification.related_schedule;
+                    const targetUrl = isSchedule ? '/schedules' : (data.notification.related_agenda ? `/tasks/${data.notification.related_agenda.id}` : '/');
 
-                    await registration.showNotification(data.notification.title, {
-                        body: data.notification.message,
+                    await registration.showNotification(data.notification.title || 'New Reminder', {
+                        body: data.notification.message || 'You have a new update.',
                         icon: '/logo192.png',
                         badge: '/logo192.png',
                         tag: `notification-${data.notification.id}`,
-                        requireInteraction: false,
+                        requireInteraction: true,
                         vibrate: [200, 100, 200],
                         data: {
-                            url: data.notification.related_agenda
-                                ? `/tasks/${data.notification.related_agenda.id}`
-                                : '/'
+                            url: targetUrl
                         },
                         actions: [
                             { action: 'open', title: 'View' },
@@ -153,8 +155,8 @@ export const NotificationProvider = ({ children }) => {
         }
     }, []);
 
-    // Construct WebSocket URL with JWT token
-    const getWsUrl = () => {
+    // Memoize WebSocket URL to prevent unnecessary reconnections and re-render spam
+    const wsUrl = useMemo(() => {
         if (!isAuthenticated || !user) return null;
 
         const { hostname, protocol: locProtocol } = window.location;
@@ -162,16 +164,23 @@ export const NotificationProvider = ({ children }) => {
         const wsProtocol = locProtocol === 'https:' ? 'wss:' : 'ws:';
         const token = localStorage.getItem('access_token');
 
+        if (!token) {
+            console.warn('[NotificationContext] No access token found, skipping WebSocket connection');
+            return null;
+        }
+
         // Handle local development
         if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
-            return `ws://${hostname}:${port}/ws/notifications/?token=${token}`;
+            const url = `${wsProtocol}//${hostname}:${port}/ws/notifications/?token=${token}`;
+            console.log('[NotificationContext] Stable WebSocket URL generated (Local):', `${wsProtocol}//${hostname}:${port}/...`);
+            return url;
         }
 
         // Production environment
-        return `${wsProtocol}//${hostname}/ws/notifications/?token=${token}`;
-    };
-
-    const wsUrl = getWsUrl();
+        const url = `${wsProtocol}//${hostname}/ws/notifications/?token=${token}`;
+        console.log('[NotificationContext] Stable WebSocket URL generated (Production):', `${wsProtocol}//${hostname}/...`);
+        return url;
+    }, [isAuthenticated, user?.id]);
 
     const { send } = useWebSocket(wsUrl, handleWebSocketMessage);
 
