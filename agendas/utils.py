@@ -192,32 +192,20 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
             # Send Real-time WebSocket update (if not silenced, OR if explicitly loud)
             if emit_websocket or (alert_type in loud_types):
                 try:
+                    from .serializers import NotificationSerializer
+                    from channels.layers import get_channel_layer
+                    serializer_data = NotificationSerializer(notification).data
                     channel_layer = get_channel_layer()
                     if channel_layer:
                         async_to_sync(channel_layer.group_send)(
                             f'notifications_{user.id}',
                             {
                                 'type': 'notification_message',
-                                'notification': {
-                                    'id': notification.id,
-                                    'title': notification.title,
-                                    'message': notification.message,
-                                    'notification_type': notification.notification_type,
-                                    'related_agenda': {
-                                        'id': agenda.id,
-                                        'title': agenda.title
-                                    } if agenda else None,
-                                    'related_project': {
-                                        'id': agenda.project.id,
-                                        'name': agenda.project.name
-                                    } if agenda and agenda.project else None,
-                                    'created_at': notification.created_at.isoformat(),
-                                    'is_read': False
-                                }
+                                'notification': serializer_data
                             }
                         )
                 except Exception as e:
-                    pass  # WebSocket push failed
+                    print(f"[agendas.utils] Alert check - WebSocket broadcast error: {e}")
 
                 # Trigger Native Push Notification
                 try:
@@ -241,7 +229,7 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
     schedules = schedules.filter(date__range=[now.date(), now.date() + timedelta(days=1)])
     
     for schedule in schedules:
-        due_time = schedule.end_time
+        due_time = schedule.start_time
         # Combine date and time to get local aware datetime
         schedule_dt = timezone.make_aware(datetime.combine(schedule.date, due_time))
         local_now = timezone.localtime(now)
@@ -252,7 +240,7 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
             notification = Notification.objects.create(
                 user=user,
                 title="Schedule Due Soon",
-                message=f"Schedule '{schedule.subject}' is reaching its due time at {due_time.strftime('%H:%M')}.",
+                message=f"Schedule '{schedule.subject}' is starting at {due_time.strftime('%H:%M')}.",
                 notification_type='deadline_warning',
                 related_schedule=schedule
             )
@@ -264,6 +252,7 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
             # WebSocket and Push
             try:
                 from .serializers import NotificationSerializer
+                from channels.layers import get_channel_layer
                 serializer = NotificationSerializer(notification)
                 
                 channel_layer = get_channel_layer()

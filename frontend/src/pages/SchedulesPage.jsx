@@ -18,7 +18,6 @@ const SchedulesPage = () => {
     const [filter, setFilter] = useState('today'); // 'today', 'week', 'all'
     const [nextPage, setNextPage] = useState(null);
     const { showToast, registerPush } = useNotifications();
-    const [permission, setPermission] = useState(Notification.permission);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -28,39 +27,6 @@ const SchedulesPage = () => {
         }
     }, [user, navigate]);
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (Notification.permission !== permission) {
-                setPermission(Notification.permission);
-            }
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [permission]);
-
-    const handleTestNotification = async () => {
-        if (permission !== 'granted') {
-            const result = await Notification.requestPermission();
-            setPermission(result);
-            if (result !== 'granted') {
-                toast.error('Permission denied. Please enable notifications in browser settings.');
-                return;
-            }
-            registerPush();
-        }
-
-        // Send a request to the backend to trigger a real end-to-end notification
-        try {
-            const response = await agendaService.testPush();
-            if (response.data.status === 'sent') {
-                toast.success('Real-time test triggered! Wait for the pop-up...');
-            } else {
-                toast.error('Failed to trigger backend test.');
-            }
-        } catch (err) {
-            console.error('Test push failed', err);
-            toast.error('Failed to trigger background test');
-        }
-    };
 
     const fetchSchedules = async (isLoadMore = false, isFilterChange = false) => {
         if (isLoadMore) setLoadingMore(true);
@@ -170,34 +136,6 @@ const SchedulesPage = () => {
                 </div>
             </div>
 
-            {/* Notification Status Banner */}
-            <div className={`mb-8 p-4 rounded-3xl border flex flex-col md:flex-row items-center justify-between gap-4 transition-all ${permission === 'granted' ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
-                <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl ${permission === 'granted' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
-                        <i className={`fas ${permission === 'granted' ? 'fa-bell' : 'fa-bell-slash'}`}></i>
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-gray-800">
-                            {permission === 'granted' ? 'Notifications Active' : 'Notifications limited'}
-                        </h4>
-                        <p className="text-xs text-gray-500 font-medium font-outfit">
-                            {permission === 'granted'
-                                ? 'You will receive real-time pop-up alerts for your schedules.'
-                                : 'Enable browser notifications to get real-time pop-up alerts.'}
-                        </p>
-                    </div>
-                </div>
-                <button
-                    onClick={handleTestNotification}
-                    className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center gap-2 ${permission === 'granted'
-                        ? 'bg-white text-emerald-600 border border-emerald-100 hover:bg-emerald-100 shadow-sm'
-                        : 'bg-amber-600 text-white hover:bg-amber-700 shadow-lg shadow-amber-100'
-                        }`}
-                >
-                    <i className="fas fa-vial"></i>
-                    <span>{permission === 'granted' ? 'Send Test Pop-up' : 'Enable & Test'}</span>
-                </button>
-            </div>
 
             <div className={`relative bg-white rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-50/50 overflow-hidden transition-opacity duration-300 ${filtering ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                 {filtering && (

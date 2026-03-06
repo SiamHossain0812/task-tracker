@@ -88,11 +88,16 @@ const NotificationCenter = () => {
                                         className={`notification-item ${n.is_read ? 'read' : 'unread'} cursor-pointer hover:bg-gray-50`}
                                         onClick={() => {
                                             if (!n.is_read) markAsRead(n.id);
-                                            if (n.related_agenda) {
-                                                navigate(`/tasks/${n.related_agenda.id || n.related_agenda}`);
+                                            if (n.notification_type === 'deadline_warning' && n.related_schedule) {
+                                                navigate('/schedules');
+                                                setIsOpen(false);
+                                            } else if (n.related_agenda) {
+                                                const targetId = n.related_agenda.id || n.related_agenda;
+                                                navigate(`/tasks/${targetId}`);
                                                 setIsOpen(false);
                                             } else if (n.related_project) {
-                                                navigate(`/projects/${n.related_project.id || n.related_project}/edit`);
+                                                const projectId = n.related_project.id || n.related_project;
+                                                navigate(`/projects/${projectId}/edit`);
                                                 setIsOpen(false);
                                             }
                                         }}

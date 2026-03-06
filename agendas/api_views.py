@@ -423,13 +423,39 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-        # Immediate alert check after creation
+        schedule = serializer.save(user=self.request.user)
+        
+        # 1. Internal System Notification
+        notification = Notification.objects.create(
+            user=self.request.user,
+            title="Schedule Created",
+            message=f"New schedule '{schedule.subject}' has been successfully added.",
+            notification_type='agenda_created',
+            related_schedule=schedule
+        )
+
+        # 2. WebSocket Push for immediate popup
         try:
-            from .utils import check_and_create_alerts
-            check_and_create_alerts(self.request.user)
-        except Exception:
-            pass
+            from .serializers import NotificationSerializer
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            
+            serializer_data = NotificationSerializer(notification).data
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                async_to_sync(channel_layer.group_send)(
+                    f'notifications_{self.request.user.id}',
+                    {
+                        'type': 'notification_message',
+                        'notification': serializer_data
+                    }
+                )
+        except Exception as e:
+            print(f"[agendas.api_views] Schedule created - WebSocket broadcast error: {e}")
+
+        # Notification is already sent above for creation. 
+        # Background polling will handle the 30min reminder.
+        pass
 
     def perform_update(self, serializer):
         # Detect if rescheduled to reset notification flag
@@ -540,7 +566,7 @@ class AlertCheckView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        result = check_and_create_alerts(request.user, emit_websocket=False, loud_types=['deadline_warning'])
+        result = check_and_create_alerts(request.user, emit_websocket=True, loud_types=['deadline_warning'])
         return Response(result)
 
 

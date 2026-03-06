@@ -28,8 +28,12 @@ class NotificationViewSet(viewsets.ModelViewSet):
         filter_type = self.request.query_params.get('filter', 'all')
         
         if filter_type == 'recent':
+            # return last 24h OR the 10 most recent if 24h is empty (to avoid empty feel)
             threshold = timezone.now() - timedelta(hours=24)
-            queryset = queryset.filter(created_at__gte=threshold)
+            recent = queryset.filter(created_at__gte=threshold)
+            if recent.exists():
+                return recent.order_by('-created_at')
+            return queryset.order_by('-created_at')[:10]
         elif filter_type == 'archived':
             threshold = timezone.now() - timedelta(hours=24)
             queryset = queryset.filter(created_at__lt=threshold)

@@ -14,8 +14,8 @@ export const NotificationProvider = ({ children }) => {
     const [unreadCount, setUnreadCount] = useState(0);
     const [toast, setToast] = useState(null);
 
-    const showToast = useCallback((message, type = 'info', onClick = null) => {
-        setToast({ message, type, onClick });
+    const showToast = useCallback((message, type = 'info', onClick = null, duration = 4000, submessage = null) => {
+        setToast({ message, submessage, type, onClick, duration });
     }, []);
 
     const fetchNotifications = useCallback(async () => {
@@ -110,23 +110,35 @@ export const NotificationProvider = ({ children }) => {
     const handleWebSocketMessage = useCallback(async (data) => {
         console.log('[NotificationContext] WebSocket message arrived:', data);
 
-        if (data.type === 'notification') {
-            setNotifications(prev => [data.notification, ...prev]);
-            setUnreadCount(prev => prev + 1);
-
-            // Show in-app toast
+        if (data.type === 'notification' && data.notification) {
+            // 1. Show in-app toast for immediate feedback
             if (showToast) {
                 const targetId = data.notification.related_agenda?.id;
                 const isSchedule = !!data.notification.related_schedule;
 
-                showToast(
-                    data.notification.title || 'New Notification',
-                    'info',
-                    isSchedule ? () => navigate('/schedules') : (targetId ? () => navigate(`/tasks/${targetId}`) : null)
-                );
+                if (isSchedule) {
+                    // Schedule reminders: amber warning, 8s, show message body
+                    showToast(
+                        data.notification.title || 'Schedule Reminder',
+                        'warning',
+                        () => navigate('/schedules'),
+                        8000,
+                        data.notification.message || null
+                    );
+                } else {
+                    showToast(
+                        data.notification.title || 'New Notification',
+                        'info',
+                        targetId ? () => navigate(`/tasks/${targetId}`) : null
+                    );
+                }
             }
 
-            // Show native push notification via Service Worker
+            // 2. Refresh the notification list and count from server to ensure consistency
+            console.log('[NotificationContext] Syncing notification list from server...');
+            fetchNotifications();
+
+            // 3. Show native push notification
             if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
                 try {
                     const registration = await navigator.serviceWorker.ready;
@@ -139,21 +151,14 @@ export const NotificationProvider = ({ children }) => {
                         badge: '/logo192.png',
                         tag: `notification-${data.notification.id}`,
                         requireInteraction: true,
-                        vibrate: [200, 100, 200],
-                        data: {
-                            url: targetUrl
-                        },
-                        actions: [
-                            { action: 'open', title: 'View' },
-                            { action: 'close', title: 'Dismiss' }
-                        ]
+                        data: { url: targetUrl }
                     });
                 } catch (error) {
-                    console.error('Failed to show notification:', error);
+                    console.error('Failed to show native notification:', error);
                 }
             }
         }
-    }, []);
+    }, [fetchNotifications, showToast, navigate]);
 
     // Memoize WebSocket URL to prevent unnecessary reconnections and re-render spam
     const wsUrl = useMemo(() => {
@@ -253,7 +258,9 @@ export const NotificationProvider = ({ children }) => {
             {toast && (
                 <Toast
                     message={toast.message}
+                    submessage={toast.submessage}
                     type={toast.type}
+                    duration={toast.duration}
                     onClose={() => setToast(null)}
                     onClick={() => {
                         if (toast.onClick) toast.onClick();
