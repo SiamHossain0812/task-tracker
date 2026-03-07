@@ -172,6 +172,18 @@ const SchedulesPage = () => {
                                                     {item.description}
                                                 </span>
                                             )}
+                                            {item.place && (
+                                                <span className="text-[10px] text-emerald-500/80 font-bold flex items-center gap-1.5 mt-1">
+                                                    <i className="fas fa-map-marker-alt text-[8px]"></i>
+                                                    {item.place}
+                                                </span>
+                                            )}
+                                            {item.remarks && (
+                                                <span className="text-[10px] text-amber-600/80 font-medium flex items-center gap-1.5 mt-1 truncate max-w-sm">
+                                                    <i className="fas fa-sticky-note text-[8px]"></i>
+                                                    {item.remarks}
+                                                </span>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="px-6 py-5 text-sm font-semibold text-gray-500 text-center">

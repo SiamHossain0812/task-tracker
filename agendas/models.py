@@ -340,6 +340,8 @@ class Schedule(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='undone')
+    place = models.CharField(max_length=255, blank=True, null=True)
+    remarks = models.TextField(blank=True, null=True)
     
     # Notification tracking
     is_notified = models.BooleanField(default=False, help_text="Flagged if 30-minute reminder was sent")

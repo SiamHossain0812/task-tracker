@@ -362,7 +362,7 @@ class ScheduleSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Schedule
-        fields = ['id', 'user', 'user_name', 'subject', 'description', 'date', 'start_time', 'end_time', 'status', 'is_notified', 'created_at', 'updated_at']
+        fields = ['id', 'user', 'user_name', 'subject', 'description', 'place', 'remarks', 'date', 'start_time', 'end_time', 'status', 'is_notified', 'created_at', 'updated_at']
         read_only_fields = ['id', 'user', 'user_name', 'is_notified', 'created_at', 'updated_at']
 
 class NotificationSerializer(serializers.ModelSerializer):

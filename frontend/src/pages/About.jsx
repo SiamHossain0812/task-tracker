@@ -103,8 +103,8 @@ const About = () => {
                     <div className="flex gap-3 w-full md:w-auto">
                         {(authUser?.id === user?.id) && (
                             <Link to="/settings" className="flex-1 md:flex-none px-6 py-3.5 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold transition-all shadow-xl shadow-gray-200 flex items-center justify-center gap-2">
-                                <i className="fas fa-user-edit"></i>
-                                <span>Edit Profile</span>
+                                <i className="fas fa-shield-alt"></i>
+                                <span>Change Password</span>
                             </Link>
                         )}
                         {id && authUser?.is_superuser && authUser?.id !== user?.id && (
