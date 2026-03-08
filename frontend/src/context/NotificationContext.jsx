@@ -162,6 +162,16 @@ export const NotificationProvider = ({ children }) => {
                 }
             }
         }
+
+        // Cross-tab mark-read sync: when another tab marks a notification read,
+        // the server broadcasts mark_read_ack which arrives here as type 'mark_read'.
+        // Update local state so the badge and item read-state stay in sync without a refetch.
+        if (data.type === 'mark_read' && data.notification_id) {
+            setNotifications(prev =>
+                prev.map(n => n.id === data.notification_id ? { ...n, is_read: true } : n)
+            );
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        }
     }, [fetchNotifications, showToast, navigate]);
 
     // Memoize WebSocket URL to prevent unnecessary reconnections and re-render spam

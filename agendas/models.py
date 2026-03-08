@@ -201,9 +201,12 @@ class Notification(models.Model):
         ('collaborator_added', 'Collaborator Added'),
         ('agenda_created', 'Agenda Created'),
         ('agenda_updated', 'Agenda Updated'),
+        ('meeting_invite', 'Meeting Invitation'),
+        ('meeting_updated', 'Meeting Updated'),
         ('project_created', 'Project Created'),
         ('time_elapsed_warning', 'Time Elapsed Warning'),
         ('deadline_warning', 'Deadline Warning'),
+        ('stagnation', 'Task Stagnant'),
     ]
     
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='notifications')

@@ -233,6 +233,25 @@ class AgendaViewSet(viewsets.ModelViewSet):
         agenda = serializer.save(created_by=user, team_leader=collaborator)
         self.notify_collaborators(agenda, is_new=True)
 
+    @staticmethod
+    def _broadcast_notification(notification):
+        """Fire-and-forget WebSocket broadcast for a saved Notification instance."""
+        try:
+            from .serializers import NotificationSerializer
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                async_to_sync(channel_layer.group_send)(
+                    f'notifications_{notification.user.id}',
+                    {
+                        'type': 'notification_message',
+                        'notification': NotificationSerializer(notification).data
+                    }
+                )
+        except Exception as e:
+            print(f'[agendas.api_views] WS broadcast error: {e}')
+
     @action(detail=True, methods=['post'])
     def accept(self, request, pk=None):
         """Accept a task invitation"""
@@ -247,14 +266,15 @@ class AgendaViewSet(viewsets.ModelViewSet):
         
         # Notify leader
         if agenda.team_leader and agenda.team_leader.user:
-            Notification.objects.create(
+            notification = Notification.objects.create(
                 user=agenda.team_leader.user,
                 title="Invitation Accepted",
                 message=f"{request.user.get_full_name() or request.user.username} has accepted your invitation to: {agenda.title}",
                 notification_type='status_change',
                 related_agenda=agenda
             )
-            
+            # Real-time WS toast for leader
+            self._broadcast_notification(notification)
             # Email notification for leader
             try:
                 from .utils import send_notification_email
@@ -285,14 +305,15 @@ class AgendaViewSet(viewsets.ModelViewSet):
         
         # Notify leader
         if agenda.team_leader and agenda.team_leader.user:
-            Notification.objects.create(
+            notification = Notification.objects.create(
                 user=agenda.team_leader.user,
                 title="Invitation Rejected",
                 message=f"{request.user.get_full_name() or request.user.username} rejected your invitation to: {agenda.title}. Reason: {rejection_reason}",
                 notification_type='status_change',
                 related_agenda=agenda
             )
-            
+            # Real-time WS toast for leader
+            self._broadcast_notification(notification)
             # Email notification for leader
             try:
                 from .utils import send_notification_email
@@ -390,10 +411,16 @@ class AgendaViewSet(viewsets.ModelViewSet):
                 else:
                     print(f"[agendas.api_views] Skipping system notification for collaborator {collaborator.id} (no user linked)")
 
-                    # Web Push
+                # Native push — outside the if/else so it runs for valid users
+                if collaborator.user:
                     try:
                         from .utils import send_push_notification
-                        send_push_notification(user=collaborator.user, title=notification.title, message=notification.message, url=f"/agendas/{agenda.id}/edit")
+                        send_push_notification(
+                            user=collaborator.user,
+                            title=title,
+                            message=message,
+                            url=f"/tasks/{agenda.id}"
+                        )
                     except Exception: pass
 
                 # 2. Trigger Email Notification (For all updates/assignments as requested)
@@ -755,14 +782,29 @@ class ExtendTaskTimeView(APIView):
                 
                 # Notify Leader
                 if agenda.team_leader:
-                    Notification.objects.create(
+                    ext_notification = Notification.objects.create(
                         user=agenda.team_leader.user,
                         title="Extension Requested",
                         message=f"{user.first_name} requested more time for: {agenda.title}",
                         notification_type='deadline_warning', 
                         related_agenda=agenda
                     )
-                    
+                    # Real-time WS toast for leader
+                    try:
+                        from .serializers import NotificationSerializer
+                        from channels.layers import get_channel_layer
+                        from asgiref.sync import async_to_sync
+                        channel_layer = get_channel_layer()
+                        if channel_layer:
+                            async_to_sync(channel_layer.group_send)(
+                                f'notifications_{agenda.team_leader.user.id}',
+                                {
+                                    'type': 'notification_message',
+                                    'notification': NotificationSerializer(ext_notification).data
+                                }
+                            )
+                    except Exception as e:
+                        print(f'[agendas.api_views] ExtendTask WS error: {e}')
                     # Email Notification for Leader
                     try:
                         send_notification_email(
@@ -1505,13 +1547,29 @@ class ProjectRequestViewSet(viewsets.ModelViewSet):
         
         # Notify user
         from .models import Notification
-        Notification.objects.create(
+        from .serializers import NotificationSerializer
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        approve_notification = Notification.objects.create(
             user=project_request.user,
             title="Project Request Approved",
             message=f"Your request for project '{project.name}' has been approved.",
             notification_type='project_created',
             related_project=project
         )
+        # Real-time WS toast for the requestor
+        try:
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                async_to_sync(channel_layer.group_send)(
+                    f'notifications_{project_request.user.id}',
+                    {
+                        'type': 'notification_message',
+                        'notification': NotificationSerializer(approve_notification).data
+                    }
+                )
+        except Exception as e:
+            print(f'[agendas.api_views] Project approve WS error: {e}')
         
         return Response({'message': 'Project approved and created', 'project_id': project.id})
     
@@ -1527,12 +1585,28 @@ class ProjectRequestViewSet(viewsets.ModelViewSet):
         
         # Notify user
         from .models import Notification
-        Notification.objects.create(
+        from .serializers import NotificationSerializer
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        reject_notification = Notification.objects.create(
             user=project_request.user,
             title="Project Request Rejected",
             message=f"Your request for project '{project_request.name}' was rejected: {project_request.admin_comment}",
             notification_type='status_change'
         )
+        # Real-time WS toast for the requestor
+        try:
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                async_to_sync(channel_layer.group_send)(
+                    f'notifications_{project_request.user.id}',
+                    {
+                        'type': 'notification_message',
+                        'notification': NotificationSerializer(reject_notification).data
+                    }
+                )
+        except Exception as e:
+            print(f'[agendas.api_views] Project reject WS error: {e}')
         
         return Response({'message': 'Project request rejected'})
 

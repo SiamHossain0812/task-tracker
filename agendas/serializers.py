@@ -364,13 +364,41 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
                 )
                 # Notify new collaborator (only if they have a linked user)
                 if collaborator.user:
-                    Notification.objects.create(
+                    new_collab_notif = Notification.objects.create(
                         user=collaborator.user,
                         title="New Task Invitation",
                         message=f"You have been invited to join the task: {instance.title}",
                         notification_type='collaborator_added',
                         related_agenda=instance
                     )
+                    # Real-time WS toast for the new collaborator
+                    try:
+                        from channels.layers import get_channel_layer
+                        from asgiref.sync import async_to_sync
+                        channel_layer = get_channel_layer()
+                        if channel_layer:
+                            async_to_sync(channel_layer.group_send)(
+                                f'notifications_{collaborator.user.id}',
+                                {
+                                    'type': 'notification_message',
+                                    'notification': NotificationSerializer(new_collab_notif).data
+                                }
+                            )
+                    except Exception as ws_err:
+                        print(f'[agendas.serializers] Collab-added WS error: {ws_err}')
+
+                    # Email the newly added collaborator
+                    try:
+                        from .utils import send_notification_email
+                        send_notification_email(
+                            recipient=collaborator.user,
+                            title="New Task Invitation",
+                            message=f"You have been invited to join the task: {instance.title}",
+                            agenda=instance
+                        )
+                    except Exception:
+                        pass
+
             
             # Update duties for existing collaborators if changed
             for collaborator in target_collaborators & current_collaborators:

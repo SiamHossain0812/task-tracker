@@ -9,13 +9,11 @@ import pymysql
 pymysql.version_info = (2, 2, 2, "final", 0)
 pymysql.install_as_MySQLdb()
 
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+load_dotenv(BASE_DIR / '.env')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-change-this-in-production-abc123xyz789'

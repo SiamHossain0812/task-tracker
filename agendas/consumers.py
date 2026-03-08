@@ -44,8 +44,18 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             if action == 'mark_read':
                 notification_id = data.get('notification_id')
                 await self.mark_notification_read(notification_id)
+                # Broadcast to all open tabs for this user so badge counts
+                # and read-states stay in sync without a full refetch.
+                await self.channel_layer.group_send(
+                    self.notification_group_name,
+                    {
+                        'type': 'mark_read_ack',
+                        'notification_id': notification_id
+                    }
+                )
         except json.JSONDecodeError:
             pass
+
     
     async def notification_message(self, event):
         """Send notification to WebSocket"""
@@ -54,6 +64,14 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             'type': 'notification',
             'notification': event['notification']
         }))
+
+    async def mark_read_ack(self, event):
+        """Relay mark-read confirmation to all open tabs for this user."""
+        await self.send(text_data=json.dumps({
+            'type': 'mark_read',
+            'notification_id': event['notification_id']
+        }))
+
     
     @database_sync_to_async
     def mark_notification_read(self, notification_id):
