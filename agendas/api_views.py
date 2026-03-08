@@ -62,7 +62,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         """
         # All authenticated users can create projects
         if self.action == 'create':
-            return [IsAuthenticated(), IsSuperUser()]
+            return [IsAuthenticated()]
         # Only admins can update/delete projects
         if self.action in ['update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), IsSuperUser()]
@@ -363,6 +363,8 @@ class AgendaViewSet(viewsets.ModelViewSet):
                             )
                     except Exception as e:
                         print(f"[agendas.api_views] WebSocket broadcast error: {e}")
+                else:
+                    print(f"[agendas.api_views] Skipping system notification for collaborator {collaborator.id} (no user linked)")
 
                     # Web Push
                     try:

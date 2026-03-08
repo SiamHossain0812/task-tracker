@@ -7,12 +7,17 @@ from .models import Project, Agenda, Collaborator, Notification, ProjectRequest,
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for User model"""
     image_url = serializers.SerializerMethodField()
-    collaborator_id = serializers.IntegerField(source='collaborator_profile.id', read_only=True)
+    collaborator_id = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_superuser', 'is_staff', 'date_joined', 'image_url', 'collaborator_id']
         read_only_fields = ['id']
+
+    def get_collaborator_id(self, obj):
+        if hasattr(obj, 'collaborator_profile'):
+            return obj.collaborator_profile.id
+        return None
 
     def get_image_url(self, obj):
         try:
@@ -74,7 +79,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
-    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    created_by_name = serializers.SerializerMethodField()
     
     class Meta:
         model = Project
@@ -87,14 +92,14 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def get_user_agendas(self, obj):
         """Helper to get agendas visible to current user"""
-        try:
-            user = self.context['request'].user
-            if user.is_superuser:
-                return obj.agendas.all()
-            return obj.agendas.filter(collaborators__user=user)
-        except (KeyError, AttributeError):
-            # Fallback if no request context (e.g., nested serialization)
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user') or not request.user.is_authenticated:
             return obj.agendas.all()
+        
+        user = request.user
+        if user.is_superuser:
+            return obj.agendas.all()
+        return obj.agendas.filter(collaborators__user=user)
 
     def get_total_agendas(self, obj):
         return self.get_user_agendas(obj).count()
@@ -108,6 +113,11 @@ class ProjectSerializer(serializers.ModelSerializer):
             return 0
         completed = self.get_completed_agendas(obj)
         return int((completed / total) * 100)
+
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return obj.created_by.get_full_name() or obj.created_by.username
+        return 'Administrator'
 
 
 class AgendaAssignmentSerializer(serializers.ModelSerializer):
@@ -131,14 +141,14 @@ class AgendaAssignmentSerializer(serializers.ModelSerializer):
 
 class AgendaListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for agenda lists"""
-    project_name = serializers.CharField(source='project.name', read_only=True)
-    project_color = serializers.CharField(source='project.color', read_only=True)
+    project_name = serializers.SerializerMethodField()
+    project_color = serializers.SerializerMethodField()
     is_overdue = serializers.BooleanField(read_only=True)
     calculated_category = serializers.CharField(read_only=True)
     collaborator_count = serializers.SerializerMethodField()
     project_info = serializers.SerializerMethodField()
-    creator_name = serializers.CharField(source='created_by.get_full_name', read_only=True, default='Administrator')
-    team_leader_name = serializers.CharField(source='team_leader.name', read_only=True)
+    creator_name = serializers.SerializerMethodField()
+    team_leader_name = serializers.SerializerMethodField()
     
     class Meta:
         model = Agenda
@@ -150,6 +160,26 @@ class AgendaListSerializer(serializers.ModelSerializer):
             'actual_participants', 'extension_status', 'created_at', 'extension_count'
         ]
         read_only_fields = ['id', 'created_at', 'created_by', 'team_leader', 'extension_status', 'extension_count']
+
+    def get_project_name(self, obj):
+        if obj.project:
+            return obj.project.name
+        return None
+
+    def get_project_color(self, obj):
+        if obj.project:
+            return obj.project.color
+        return 'slate'
+
+    def get_creator_name(self, obj):
+        if obj.created_by:
+            return obj.created_by.get_full_name() or obj.created_by.username
+        return 'Administrator'
+
+    def get_team_leader_name(self, obj):
+        if obj.team_leader:
+            return obj.team_leader.name
+        return None
 
     def get_collaborator_count(self, obj):
         return obj.collaborators.count()
@@ -332,14 +362,15 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
                     collaborator=collaborator,
                     defaults={'status': 'pending', 'duties': duties}
                 )
-                # Notify new collaborator
-                Notification.objects.create(
-                    user=collaborator.user,
-                    title="New Task Invitation",
-                    message=f"You have been invited to join the task: {instance.title}",
-                    notification_type='collaborator_added',
-                    related_agenda=instance
-                )
+                # Notify new collaborator (only if they have a linked user)
+                if collaborator.user:
+                    Notification.objects.create(
+                        user=collaborator.user,
+                        title="New Task Invitation",
+                        message=f"You have been invited to join the task: {instance.title}",
+                        notification_type='collaborator_added',
+                        related_agenda=instance
+                    )
             
             # Update duties for existing collaborators if changed
             for collaborator in target_collaborators & current_collaborators:
@@ -358,12 +389,17 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
 
 class ScheduleSerializer(serializers.ModelSerializer):
     """Serializer for private schedules"""
-    user_name = serializers.CharField(source='user.username', read_only=True)
+    user_name = serializers.SerializerMethodField()
     
     class Meta:
         model = Schedule
         fields = ['id', 'user', 'user_name', 'subject', 'description', 'date', 'start_time', 'end_time', 'status', 'is_notified', 'created_at', 'updated_at']
         read_only_fields = ['id', 'user', 'user_name', 'is_notified', 'created_at', 'updated_at']
+
+    def get_user_name(self, obj):
+        if obj.user:
+            return obj.user.get_full_name() or obj.user.username
+        return 'Unknown User'
 
 class NotificationSerializer(serializers.ModelSerializer):
     """Serializer for notifications"""
@@ -381,7 +417,7 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class ProjectRequestSerializer(serializers.ModelSerializer):
     """Serializer for project creation requests"""
-    user_name = serializers.CharField(source='user.username', read_only=True)
+    user_name = serializers.SerializerMethodField()
     
     class Meta:
         model = ProjectRequest
@@ -390,6 +426,11 @@ class ProjectRequestSerializer(serializers.ModelSerializer):
             'color', 'status', 'admin_comment', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'user', 'status', 'created_at', 'updated_at']
+
+    def get_user_name(self, obj):
+        if obj.user:
+            return obj.user.get_full_name() or obj.user.username
+        return 'Unknown User'
 
 class PersonalNoteSerializer(serializers.ModelSerializer):
     """Serializer for personal notes"""
