@@ -5,6 +5,7 @@ Django settings for agenda_project project.
 from pathlib import Path
 import os
 import pymysql
+from dotenv import load_dotenv
 
 pymysql.version_info = (2, 2, 2, "final", 0)
 pymysql.install_as_MySQLdb()
