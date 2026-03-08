@@ -255,6 +255,18 @@ class AgendaViewSet(viewsets.ModelViewSet):
                 related_agenda=agenda
             )
             
+            # Email notification for leader
+            try:
+                from .utils import send_notification_email
+                send_notification_email(
+                    recipient=agenda.team_leader.user,
+                    title="Invitation Accepted",
+                    message=f"{request.user.get_full_name() or request.user.username} has accepted your invitation to: {agenda.title}",
+                    agenda=agenda
+                )
+            except Exception:
+                pass
+            
         return Response({'message': 'Invitation accepted'})
 
     @action(detail=True, methods=['post'])
@@ -280,6 +292,18 @@ class AgendaViewSet(viewsets.ModelViewSet):
                 notification_type='status_change',
                 related_agenda=agenda
             )
+            
+            # Email notification for leader
+            try:
+                from .utils import send_notification_email
+                send_notification_email(
+                    recipient=agenda.team_leader.user,
+                    title="Invitation Rejected",
+                    message=f"{request.user.get_full_name() or request.user.username} rejected your invitation to: {agenda.title}. Reason: {rejection_reason}",
+                    agenda=agenda
+                )
+            except Exception:
+                pass
             
         return Response({'message': 'Invitation rejected'})
     
@@ -372,8 +396,8 @@ class AgendaViewSet(viewsets.ModelViewSet):
                         send_push_notification(user=collaborator.user, title=notification.title, message=notification.message, url=f"/agendas/{agenda.id}/edit")
                     except Exception: pass
 
-                # 2. Trigger Email Notification (ONLY for new task/meeting assignments)
-                if is_new:
+                # 2. Trigger Email Notification (For all updates/assignments as requested)
+                if True: # enabled for all
                     try:
                         from .utils import send_notification_email
                         # Use login email (user.email) first, then fall back to profile email
@@ -539,7 +563,7 @@ class TasksOverviewAPIView(APIView):
             ).select_related('project').distinct()
 
         # Undone tasks (pending + in-progress)
-        all_undone = agendas.filter(status__in=['pending', 'in-progress']).order_by('date', 'time')
+        all_undone = agendas.filter(status__in=['pending', 'in-progress']).order_by('-date', '-time', '-id')
         
         # Today's completed tasks
         today = timezone.now().date()
@@ -732,6 +756,17 @@ class ExtendTaskTimeView(APIView):
                         notification_type='deadline_warning', 
                         related_agenda=agenda
                     )
+                    
+                    # Email Notification for Leader
+                    try:
+                        send_notification_email(
+                            recipient=agenda.team_leader.user,
+                            title="Extension Requested",
+                            message=f"{user.get_full_name() or user.username} requested more time for: {agenda.title}",
+                            agenda=agenda
+                        )
+                    except Exception:
+                        pass
                 
                 return Response({'message': 'Extension request submitted', 'status': 'pending'})
             except Exception as e:
@@ -1020,9 +1055,7 @@ class AnalyticsAPIView(APIView):
                 performance = 'Low'
                 
             # Get distinct collaborators for this project
-            # Efficiently gather collaborators from agendas without N+1 if possible, 
-            # otherwise just iterate. Since we prefetched agendas__collaborators, iterating is safe.
-            collaborators_set = set()
+            collaborators_set = set(project.members.all())
             for agenda in p_agendas:
                 for collaborator in agenda.collaborators.all():
                     collaborators_set.add(collaborator)

@@ -12,7 +12,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: "/calendar", icon: "far fa-calendar", label: "Calendar", adminOnly: false },
         { to: "/schedules", icon: "fas fa-clock", label: "My Schedule", adminOnly: true },
         { to: "/meetings", icon: "fas fa-video", label: "Meetings", adminOnly: false },
-        { to: "/project-requests", icon: "fas fa-file-contract", label: "Project Requests", adminOnly: false },
+        { to: "/project-requests", icon: "fas fa-file-contract", label: user?.is_superuser ? "Requested Projects" : "Project Requests", adminOnly: false },
         { to: "/analytics", icon: "fas fa-chart-pie", label: "Analytics", adminOnly: true },
         { to: "/collaborators", icon: "fas fa-users", label: "Team", adminOnly: true },
         { to: "/auth/requests", icon: "fas fa-user-plus", label: "Access Requests", adminOnly: true },

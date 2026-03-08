@@ -174,8 +174,11 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
                 related_project=agenda.project
             )
             
-            # Send Email Notification - DISABLED for reminders as per request
-            # send_notification_email(user, title, message, agenda)
+            # Send Email Notification
+            try:
+                send_notification_email(user, title, message, agenda)
+            except Exception:
+                pass
             
             # Store structured info for the return value
             alert_info = {

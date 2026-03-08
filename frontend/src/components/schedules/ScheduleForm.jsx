@@ -11,6 +11,8 @@ const ScheduleForm = ({ schedule, onClose, onSuccess }) => {
         date: new Date().toISOString().split('T')[0],
         start_time: '',
         end_time: '',
+        place: '',
+        remarks: '',
         status: 'undone'
     });
 
@@ -22,6 +24,8 @@ const ScheduleForm = ({ schedule, onClose, onSuccess }) => {
                 date: schedule.date || '',
                 start_time: schedule.start_time ? schedule.start_time.substring(0, 5) : '',
                 end_time: schedule.end_time ? schedule.end_time.substring(0, 5) : '',
+                place: schedule.place || '',
+                remarks: schedule.remarks || '',
                 status: schedule.status || 'undone'
             });
         }
@@ -83,6 +87,27 @@ const ScheduleForm = ({ schedule, onClose, onSuccess }) => {
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                             className="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium h-24 resize-none"
                             placeholder="Add details (optional)..."
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Place</label>
+                        <input
+                            type="text"
+                            value={formData.place}
+                            onChange={(e) => setFormData({ ...formData, place: e.target.value })}
+                            className="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                            placeholder="Where is this happening?"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Remarks</label>
+                        <textarea
+                            value={formData.remarks}
+                            onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                            className="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium h-20 resize-none"
+                            placeholder="Any additional remarks..."
                         />
                     </div>
 
