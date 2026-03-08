@@ -408,14 +408,20 @@ class AgendaViewSet(viewsets.ModelViewSet):
                             recipient = collaborator
                         
                         if recipient:
+                            print(f"[agendas.api_views] Attempting to send email to: {getattr(recipient, 'email', 'unknown')}")
                             send_notification_email(
                                 recipient=recipient,
                                 title=title,
                                 message=message,
                                 agenda=agenda
                             )
-                    except Exception:
-                        pass
+                            print(f"[agendas.api_views] Email send call completed for: {getattr(recipient, 'email', 'unknown')}")
+                        else:
+                            print(f"[agendas.api_views] No recipient email found for collaborator: {collaborator.id}")
+                    except Exception as email_err:
+                        print(f"[agendas.api_views] Critical failure in send_notification_email: {email_err}")
+                        import traceback
+                        traceback.print_exc()
         except Exception:
             pass
 
@@ -892,22 +898,30 @@ class CalendarAPIView(APIView):
         start_date = request.query_params.get('start')
         end_date = request.query_params.get('end')
         
-        queryset = Agenda.objects.all()
-        
-        # User Isolation
+        # 1. Fetch Agendas
+        agenda_queryset = Agenda.objects.all()
         if not request.user.is_superuser:
-            queryset = queryset.filter(collaborators__user=request.user).distinct()
+            agenda_queryset = agenda_queryset.filter(collaborators__user=request.user).distinct()
         
         if start_date:
-            queryset = queryset.filter(date__gte=start_date)
+            agenda_queryset = agenda_queryset.filter(date__gte=start_date)
         if end_date:
-            queryset = queryset.filter(date__lte=end_date)
+            agenda_queryset = agenda_queryset.filter(date__lte=end_date)
+            
+        # 2. Fetch Private Schedules
+        schedule_queryset = Schedule.objects.filter(user=request.user)
+        if start_date:
+            schedule_queryset = schedule_queryset.filter(date__gte=start_date)
+        if end_date:
+            schedule_queryset = schedule_queryset.filter(date__lte=end_date)
         
-        # Format for calendar component
         events = []
-        for agenda in queryset:
+        
+        # Format Agendas
+        for agenda in agenda_queryset:
             event = {
                 'id': agenda.id,
+                'type': 'agenda',
                 'title': agenda.title,
                 'start': str(agenda.date),
                 'end': str(agenda.expected_finish_date or agenda.date),
@@ -916,13 +930,26 @@ class CalendarAPIView(APIView):
                 'priority': agenda.priority,
                 'is_overdue': agenda.is_overdue,
             }
-            
-            # Add time if available
             if agenda.time:
                 event['start'] += f'T{agenda.time}'
             if agenda.expected_finish_time:
                 event['end'] += f'T{agenda.expected_finish_time}'
+            events.append(event)
             
+        # Format Schedules
+        for schedule in schedule_queryset:
+            event = {
+                'id': schedule.id,
+                'type': 'schedule',
+                'title': schedule.subject,
+                'start': f"{schedule.date}T{schedule.start_time}",
+                'end': f"{schedule.date}T{schedule.end_time}",
+                'color': 'rose', # Distinct color for private schedules
+                'status': schedule.status,
+                'priority': 'medium', # Default priority for schedules
+                'place': schedule.place,
+                'remarks': schedule.remarks
+            }
             events.append(event)
         
         return Response(events)

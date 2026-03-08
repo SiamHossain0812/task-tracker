@@ -67,15 +67,7 @@ const CalendarView = () => {
         const startDate = startOfWeek(monthStart);
         const endDate = endOfWeek(monthEnd);
 
-        const dateFormat = "d";
-        const rows = [];
-        let days = [];
-        let day = startDate;
-        let formattedDate = "";
-
         const allDays = eachDayOfInterval({ start: startDate, end: endDate });
-
-        // Ensure we always have enough padding at the bottom by enforcing a min-height via CSS or check
 
         return (
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col">
@@ -142,13 +134,22 @@ const CalendarView = () => {
                                         )}
                                     </div>
                                     <div className="space-y-0.5 sm:space-y-1 overflow-hidden flex-1 pointer-events-none">
-                                        {dayEvents.slice(0, 2).map(event => (
-                                            <div key={event.id} className={`px-1 py-0.5 rounded-md text-[8px] sm:text-[9px] font-medium truncate ${event.priority === 'high' ? 'bg-red-50 text-red-700' : event.priority === 'medium' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                                                {event.title}
-                                            </div>
-                                        ))}
-                                        {dayEvents.length > 2 && (
-                                            <div className="text-[8px] text-gray-400 font-bold ml-1">+{dayEvents.length - 2}</div>
+                                        {dayEvents.slice(0, 3).map(event => {
+                                            const isSchedule = event.type === 'schedule';
+                                            const bgColorClass = isSchedule ? 'bg-rose-50 text-rose-700 border-rose-100' :
+                                                (event.priority === 'high' ? 'bg-red-50 text-red-700' :
+                                                    event.priority === 'medium' ? 'bg-amber-50 text-amber-700' :
+                                                        'bg-emerald-50 text-emerald-700');
+
+                                            return (
+                                                <div key={`${event.type}-${event.id}`} className={`px-1 py-0.5 rounded-md text-[8px] sm:text-[9px] font-medium truncate border-l-2 ${bgColorClass}`}>
+                                                    {isSchedule && <i className="fas fa-lock text-[6px] mr-1 opacity-50"></i>}
+                                                    {event.title}
+                                                </div>
+                                            );
+                                        })}
+                                        {dayEvents.length > 3 && (
+                                            <div className="text-[8px] text-gray-400 font-bold ml-1">+{dayEvents.length - 3} more</div>
                                         )}
                                     </div>
                                 </div>
@@ -161,7 +162,7 @@ const CalendarView = () => {
     };
 
     const renderLegend = () => (
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-sm">
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm">
             <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-red-500 shadow-sm"></div>
                 <span className="text-gray-500 font-medium">High Priority</span>
@@ -173,6 +174,10 @@ const CalendarView = () => {
             <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm"></div>
                 <span className="text-gray-500 font-medium">Low Priority</span>
+            </div>
+            <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-rose-500 shadow-sm"></div>
+                <span className="text-gray-500 font-medium">Private Schedule</span>
             </div>
         </div>
     );
@@ -204,47 +209,77 @@ const CalendarView = () => {
                     <div className="p-6">
                         <div className="mb-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-xs font-black uppercase tracking-wider text-gray-400">Scheduled Tasks</h4>
+                                <h4 className="text-xs font-black uppercase tracking-wider text-gray-400">Activities</h4>
                                 <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[10px] font-bold">
                                     {dayEvents.length}
                                 </span>
                             </div>
-                            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                                 {dayEvents.length === 0 ? (
                                     <div className="py-12 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
                                         <i className="fas fa-calendar-day text-gray-200 text-3xl mb-3 block"></i>
                                         <p className="text-gray-400 font-medium text-sm">No tasks for this day</p>
                                     </div>
                                 ) : (
-                                    dayEvents.map(event => (
-                                        <div key={event.id} className="flex items-center gap-3 p-3 rounded-2xl border border-gray-100 hover:border-emerald-200 transition-all group bg-white shadow-sm hover:shadow-md">
-                                            <div className={`w-1.5 h-10 rounded-full ${event.priority === 'high' ? 'bg-red-500' : (event.priority === 'medium' ? 'bg-amber-500' : 'bg-emerald-500')}`}></div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-sm font-bold text-gray-800 leading-snug truncate">
-                                                    {event.title}
+                                    dayEvents.map(event => {
+                                        const isSchedule = event.type === 'schedule';
+                                        const color = isSchedule ? 'bg-rose-500' :
+                                            (event.priority === 'high' ? 'bg-red-500' :
+                                                (event.priority === 'medium' ? 'bg-amber-500' : 'bg-emerald-500'));
+
+                                        return (
+                                            <div key={`${event.type}-${event.id}`} className="flex items-center gap-3 p-3 rounded-2xl border border-gray-100 hover:border-emerald-200 transition-all group bg-white shadow-sm hover:shadow-md">
+                                                <div className={`w-1.5 h-10 rounded-full ${color}`}></div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-sm font-bold text-gray-800 leading-snug truncate flex items-center gap-1.5">
+                                                        {isSchedule && <i className="fas fa-lock text-[10px] text-gray-300"></i>}
+                                                        {event.title}
+                                                    </div>
+                                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                                                        <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1">
+                                                            <i className="far fa-clock"></i>
+                                                            {isSchedule ? format(parseISO(event.start), 'HH:mm') : event.time || 'All day'}
+                                                        </span>
+                                                        {isSchedule && event.place && (
+                                                            <span className="text-[10px] font-bold text-emerald-600/80 flex items-center gap-1">
+                                                                <i className="fas fa-map-marker-alt text-[8px]"></i> {event.place}
+                                                            </span>
+                                                        )}
+                                                        {!isSchedule && event.project_name && (
+                                                            <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-tighter">{event.project_name}</span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-3 mt-1">
-                                                    {event.time && <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1"><i className="far fa-clock"></i> {event.time}</span>}
-                                                    {event.project_name && <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-tighter">{event.project_name}</span>}
-                                                </div>
+                                                <NavLink
+                                                    to={isSchedule ? '/schedules' : `/tasks/${event.id}`}
+                                                    className="w-9 h-9 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                                >
+                                                    <i className={`fas ${isSchedule ? 'fa-external-link-alt' : 'fa-eye'} text-xs`}></i>
+                                                </NavLink>
                                             </div>
-                                            <NavLink to={`/tasks/${event.id}`} className="w-9 h-9 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
-                                                <i className="fas fa-eye text-xs"></i>
-                                            </NavLink>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </div>
                         </div>
 
                         {user?.is_superuser && (
-                            <NavLink
-                                to={`/tasks/new?date=${format(selectedDate, "yyyy-MM-dd")}`}
-                                className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-xl shadow-gray-200"
-                            >
-                                <i className="fas fa-plus text-xs"></i>
-                                Add New Task
-                            </NavLink>
+                            <div className="flex gap-3">
+                                <NavLink
+                                    to={`/tasks/new?date=${format(selectedDate, "yyyy-MM-dd")}`}
+                                    className="flex-1 py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-xl shadow-gray-200 text-sm"
+                                >
+                                    <i className="fas fa-plus text-[10px]"></i>
+                                    Task
+                                </NavLink>
+                                <NavLink
+                                    to="/schedules"
+                                    className="flex-1 py-4 bg-white border border-gray-200 hover:border-rose-200 text-gray-700 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-sm text-sm"
+                                >
+                                    <i className="fas fa-calendar-alt text-[10px] text-rose-500"></i>
+                                    Schedule
+                                </NavLink>
+                            </div>
                         )}
                     </div>
                 </div>

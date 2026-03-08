@@ -83,7 +83,11 @@ export const NotificationProvider = ({ children }) => {
                 }
             });
         } catch (error) {
-            console.error('Push notification setup failed', error);
+            if (error.name === 'AbortError') {
+                console.warn('Push notification subscription aborted. This usually happens due to low storage, private browsing mode, or the user closing the prompt quickly.', error);
+            } else {
+                console.error('Push notification setup failed', error);
+            }
         }
     }, [isAuthenticated]);
 

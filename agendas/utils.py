@@ -591,8 +591,9 @@ def send_notification_email(recipient, title, message, agenda=None):
     """
     plain_message = strip_tags(html_message)
 
+    print(f"[agendas.utils] Preparing to send_mail to {email} with subject: {subject}")
     try:
-        send_mail(
+        sent_count = send_mail(
             subject,
             plain_message,
             settings.DEFAULT_FROM_EMAIL,
@@ -600,5 +601,7 @@ def send_notification_email(recipient, title, message, agenda=None):
             html_message=html_message,
             fail_silently=False,
         )
+        print(f"[agendas.utils] send_mail reported {sent_count} email(s) sent to {email}")
     except Exception as e:
+        print(f"[agendas.utils] SMTP Error sending to {email}: {str(e)}")
         raise e
