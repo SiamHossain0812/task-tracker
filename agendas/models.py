@@ -1,4 +1,5 @@
 from django.db import models, transaction
+from django.contrib.auth.models import User
 from datetime import date
 
 
@@ -162,9 +163,6 @@ class Agenda(models.Model):
             return 'short'
         elif duration <= 10:
             return 'mid'
-        else:
-            return 'long'
-    
     @property
     def is_overdue(self):
         if self.status == 'completed':
@@ -190,6 +188,27 @@ class Agenda(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class AgendaUpdate(models.Model):
+    """
+    Logs a progress update provided by a collaborator on a specific task.
+    The time elapsed percentage is automatically calculated on creation.
+    """
+    agenda = models.ForeignKey(Agenda, on_delete=models.CASCADE, related_name='updates')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='agenda_updates')
+    text = models.TextField()
+    time_elapsed_percentage = models.IntegerField(
+        help_text="Auto-calculated percentage of total time elapsed when this was posted"
+    )
+    attachment = models.FileField(upload_to='agenda_updates/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Update on {self.agenda.title} by {self.author.username}"
 
 
 class Notification(models.Model):

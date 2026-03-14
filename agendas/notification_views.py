@@ -33,7 +33,11 @@ class NotificationViewSet(viewsets.ModelViewSet):
             recent = queryset.filter(created_at__gte=threshold)
             if recent.exists():
                 return recent.order_by('-created_at')
-            return queryset.order_by('-created_at')[:10]
+            # Fix TypeError: "Cannot filter a query once a slice has been taken."
+            # We cannot return a sliced queryset here because other methods like unread_count
+            # need to call .filter() on it. We will just return the first 10 IDs.
+            fallback_ids = list(queryset.order_by('-created_at').values_list('id', flat=True)[:10])
+            return queryset.filter(id__in=fallback_ids).order_by('-created_at')
         elif filter_type == 'archived':
             threshold = timezone.now() - timedelta(hours=24)
             queryset = queryset.filter(created_at__lt=threshold)

@@ -452,6 +452,91 @@ class AgendaViewSet(viewsets.ModelViewSet):
         except Exception:
             pass
 
+    @action(detail=True, methods=['post'], url_path='add-update')
+    def add_update(self, request, pk=None):
+        """Allows a collaborator to post a progress update."""
+        from django.utils import timezone
+        from datetime import datetime
+        agenda = self.get_object()
+        user = request.user
+        
+        # Security: ensure user is a collaborator, creator, or admin
+        # (Relaxing the "accepted only" check as it was blocking valid contributors)
+        is_creator = (agenda.created_by == user)
+        is_collab = False
+        try:
+            if hasattr(user, 'collaborator_profile') and agenda.collaborators.filter(id=user.collaborator_profile.id).exists():
+                is_collab = True
+        except Exception:
+            pass
+            
+        if not (is_creator or is_collab or user.is_superuser):
+            return Response({'error': 'Only assigned collaborators, the task creator, or admins can post updates.'}, status=status.HTTP_403_FORBIDDEN)
+
+
+            
+        text = request.data.get('text')
+        if not text:
+            return Response({'error': 'Update text is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Auto-calculate time_elapsed_percentage
+        time_elapsed_percentage = 0
+        now_dt = timezone.now()
+        
+        if agenda.date and agenda.expected_finish_date:
+            try:
+                # Combine date + time for starting point (fallback to midnight if missing time)
+                start_time_obj = agenda.time or datetime.min.time()
+                start_dt = timezone.make_aware(datetime.combine(agenda.date, start_time_obj))
+                
+                # Combine expected finish date + time (fallback to 23:59:59 if missing)
+                finish_time_obj = agenda.expected_finish_time or datetime.max.time()
+                end_dt = timezone.make_aware(datetime.combine(agenda.expected_finish_date, finish_time_obj))
+                
+                total_duration = (end_dt - start_dt).total_seconds()
+                
+                if total_duration > 0:
+                    elapsed = (now_dt - start_dt).total_seconds()
+                    
+                    if elapsed <= 0:
+                        time_elapsed_percentage = 0
+                    elif elapsed >= total_duration:
+                        time_elapsed_percentage = 100
+                    else:
+                        time_elapsed_percentage = int((elapsed / total_duration) * 100)
+            except Exception as e:
+                print(f"Error calculating time elapsed: {e}")
+                time_elapsed_percentage = 0
+
+        # Save Update
+        from .models import AgendaUpdate
+        update_obj = AgendaUpdate.objects.create(
+            agenda=agenda,
+            author=user,
+            text=text,
+            time_elapsed_percentage=time_elapsed_percentage
+        )
+        
+        # Check for attachment
+        attachment = request.FILES.get('attachment')
+        if attachment:
+            update_obj.attachment = attachment
+            update_obj.save()
+            
+        # Notify Team Leader
+        if agenda.team_leader and agenda.team_leader.user and agenda.team_leader.user != user:
+            notification = Notification.objects.create(
+                user=agenda.team_leader.user,
+                title="New Task Update",
+                message=f"{user.get_full_name() or user.username} posted an update on: {agenda.title}",
+                notification_type='agenda_updated',
+                related_agenda=agenda
+            )
+            self._broadcast_notification(notification)
+            
+        from .serializers import AgendaUpdateSerializer
+        return Response(AgendaUpdateSerializer(update_obj).data, status=status.HTTP_201_CREATED)
+
 class ScheduleViewSet(viewsets.ModelViewSet):
     """
     ViewSet for private Schedule CRUD operations

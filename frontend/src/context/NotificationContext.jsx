@@ -95,19 +95,6 @@ export const NotificationProvider = ({ children }) => {
         if (isAuthenticated) {
             fetchNotifications();
             registerPush();
-
-            // Global Alert Polling: Trigger backend check every 30 seconds
-            const pollAlerts = async () => {
-                try {
-                    await apiClient.get('alerts/check/');
-                    // The backend emits WebSocket messages which handleToast/handleWebSocket will catch
-                } catch (error) {
-                    console.error('Alert check failed', error);
-                }
-            };
-
-            const intervalId = setInterval(pollAlerts, 30000);
-            return () => clearInterval(intervalId);
         }
     }, [isAuthenticated, fetchNotifications, registerPush]);
 

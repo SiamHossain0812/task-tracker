@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import ConfirmModal from '../common/ConfirmModal';
 import ExtendTaskModal from './ExtendTaskModal';
+import TaskUpdatesList from './TaskUpdatesList';
 
 const AgendaDetailView = () => {
     const { id } = useParams();
@@ -368,6 +369,9 @@ const AgendaDetailView = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* Task Updates Timeline */}
+                        <TaskUpdatesList task={task} onUpdatePosted={fetchTaskDetails} />
                     </div>
 
                     {/* Right Panel: Sidebar (1/3) */}

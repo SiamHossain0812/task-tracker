@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.db import transaction
 from django.contrib.auth.models import User
-from .models import Project, Agenda, Collaborator, Notification, ProjectRequest, AgendaAssignment, PersonalNote, Schedule
+from .models import Project, Agenda, Collaborator, Notification, ProjectRequest, AgendaAssignment, PersonalNote, Schedule, AgendaUpdate
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -139,6 +139,22 @@ class AgendaAssignmentSerializer(serializers.ModelSerializer):
         return None
 
 
+class AgendaUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for progress updates on a task"""
+    author_name = serializers.CharField(source='author.get_full_name', read_only=True)
+    author_username = serializers.CharField(source='author.username', read_only=True)
+    
+    class Meta:
+        model = AgendaUpdate
+        fields = [
+            'id', 'agenda', 'author', 'author_name', 'author_username',
+            'text', 'time_elapsed_percentage', 'attachment', 'created_at'
+        ]
+        read_only_fields = ['id', 'author', 'time_elapsed_percentage', 'created_at']
+
+
+
+
 class AgendaListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for agenda lists"""
     project_name = serializers.SerializerMethodField()
@@ -226,6 +242,7 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
         allow_null=True
     )
     extension_requested_by = CollaboratorSerializer(read_only=True)
+    updates = AgendaUpdateSerializer(many=True, read_only=True)
     
     can_approve_extension = serializers.SerializerMethodField()
     
@@ -238,7 +255,7 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
             'collaborators', 'collaborator_ids', 'assignments', 'actual_participants', 'team_leader', 'team_leader_id', 'is_overdue', 'calculated_category',
             'meeting_link', 'google_event_id', 'created_by',
             'extension_status', 'requested_finish_date', 'requested_finish_time', 'extension_reason', 'extension_requested_by', 'can_approve_extension',
-            'created_at', 'updated_at', 'extension_count'
+            'created_at', 'updated_at', 'extension_count', 'updates'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'extension_status', 'requested_finish_date', 'requested_finish_time', 'extension_reason', 'extension_requested_by', 'extension_count']
     
