@@ -6,4 +6,5 @@ export const collaboratorService = {
     create: (data) => apiClient.post('collaborators/', data),
     update: (id, data) => apiClient.put(`collaborators/${id}/`, data),
     delete: (id) => apiClient.delete(`collaborators/${id}/`),
+    getPerformance: (id) => apiClient.get(`collaborators/${id}/performance/`),
 };

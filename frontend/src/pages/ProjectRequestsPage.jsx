@@ -63,8 +63,8 @@ const ProjectRequestsPage = () => {
         <div className="h-full flex flex-col p-4 sm:p-8 animate-fade-in">
             <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800 mb-2">Project Requests</h1>
-                    <p className="text-gray-500 font-medium">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight mb-1">Project Requests</h1>
+                    <p className="text-sm sm:text-base text-gray-400 font-medium leading-relaxed">
                         {user?.is_superuser
                             ? "Review and manage project proposals from your team members."
                             : "Submit and track your project creation requests."}

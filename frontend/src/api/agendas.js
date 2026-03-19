@@ -6,7 +6,7 @@ export const agendaService = {
     create: (data) => apiClient.post('agendas/', data),
     update: (id, data) => apiClient.put(`agendas/${id}/`, data),
     delete: (id) => apiClient.delete(`agendas/${id}/`),
-    toggleStatus: (id) => apiClient.post(`agendas/${id}/toggle_status/`),
+    toggleStatus: (id, qualityScores = {}) => apiClient.post(`agendas/${id}/toggle/`, { quality_scores: qualityScores }),
     checkAlerts: () => apiClient.get('alerts/check/'),
     testPush: () => apiClient.get('alerts/test-push/'),
 };

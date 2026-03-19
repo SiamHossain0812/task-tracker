@@ -120,8 +120,8 @@ const MeetingsPage = () => {
             {/* Page Header */}
             <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
                 <div>
-                    <h2 className="text-3xl font-bold text-gray-800 tracking-tight mb-1">Scheduled Meetings</h2>
-                    <p className="text-gray-400 font-medium font-mono text-sm">Agromet Lab Coordination Hub</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight mb-1">Scheduled Meetings</h1>
+                    <p className="text-sm sm:text-base text-gray-400 font-medium">Agromet Lab Coordination Hub</p>
                 </div>
                 {user?.is_superuser && (
                     <NavLink

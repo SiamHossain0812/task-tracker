@@ -145,6 +145,12 @@ class Agenda(models.Model):
     extension_reason = models.TextField(null=True, blank=True)
     extension_requested_by = models.ForeignKey(Collaborator, on_delete=models.SET_NULL, null=True, blank=True, related_name='requested_extensions')
     
+    # Performance KPIs
+    estimated_hours = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, help_text="Estimated time to complete this task (for Efficiency Score)")
+    actual_hours = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, help_text="Actual time taken to complete this task")
+    rework_count = models.IntegerField(default=0, help_text="Number of times task was sent back for rework (for Reliability Score)")
+    missed_updates = models.IntegerField(default=0, help_text="Number of missed scheduled updates (for Reliability Score)")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -322,6 +328,13 @@ class AgendaAssignment(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     rejection_reason = models.TextField(blank=True, null=True)
     duties = models.TextField(blank=True, null=True, help_text="Specific duties assigned to this collaborator for this task")
+    
+    # Performance Metric Scores
+    quality_score = models.IntegerField(null=True, blank=True, help_text="1-5 rating provided by reviewer")
+    timeliness_score = models.IntegerField(null=True, blank=True, help_text="TS: 0-100 calculated based on delay penalty")
+    efficiency_score = models.IntegerField(null=True, blank=True, help_text="ES: 0-100 calculated from estimated vs actual time")
+    reliability_score = models.IntegerField(null=True, blank=True, help_text="RS: 0-100 calculated from reworks and missed updates")
+    composite_score = models.IntegerField(null=True, blank=True, help_text="Overall weighted performance score (0-100)")
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

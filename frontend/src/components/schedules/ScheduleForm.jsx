@@ -67,95 +67,99 @@ const ScheduleForm = ({ schedule, onClose, onSuccess }) => {
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-5">
-                    <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Subject *</label>
-                        <input
-                            type="text"
-                            required
-                            value={formData.subject}
-                            onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                            className="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
-                            placeholder="What's the plan?"
-                        />
-                    </div>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Subject *</label>
+                            <input
+                                type="text"
+                                required
+                                value={formData.subject}
+                                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium text-sm"
+                                placeholder="What's the plan?"
+                            />
+                        </div>
 
-                    <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Description</label>
-                        <textarea
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            className="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium h-24 resize-none"
-                            placeholder="Add details (optional)..."
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Place</label>
-                        <input
-                            type="text"
-                            value={formData.place}
-                            onChange={(e) => setFormData({ ...formData, place: e.target.value })}
-                            className="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
-                            placeholder="Where is this happening?"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Remarks</label>
-                        <textarea
-                            value={formData.remarks}
-                            onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                            className="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium h-20 resize-none"
-                            placeholder="Any additional remarks..."
-                        />
+                        <div>
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Place</label>
+                            <input
+                                type="text"
+                                value={formData.place}
+                                onChange={(e) => setFormData({ ...formData, place: e.target.value })}
+                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium text-sm"
+                                placeholder="Where?"
+                            />
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="sm:col-span-2">
-                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Date *</label>
+                        <div>
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Description</label>
+                            <textarea
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium h-16 resize-none text-sm"
+                                placeholder="Add details..."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Remarks</label>
+                            <textarea
+                                value={formData.remarks}
+                                onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium h-16 resize-none text-sm"
+                                placeholder="Any remarks..."
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        <div className="col-span-2 sm:col-span-1">
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Date *</label>
                             <input
                                 type="date"
                                 required
                                 value={formData.date}
                                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                className="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium text-sm"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Start Time *</label>
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Start *</label>
                             <input
                                 type="time"
                                 required
                                 value={formData.start_time}
                                 onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                                className="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium text-sm"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">End Time *</label>
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">End *</label>
                             <input
                                 type="time"
                                 required
                                 value={formData.end_time}
                                 onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                                className="w-full px-5 py-3 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium text-sm"
                             />
                         </div>
                     </div>
 
-                    <div className="pt-4 flex gap-3">
+                    <div className="pt-2 flex gap-3">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-2xl transition-all"
+                            className="flex-1 px-6 py-3 bg-gray-50 hover:bg-gray-100 text-gray-500 font-bold rounded-2xl transition-all text-sm"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-[2] px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 transition-all disabled:opacity-50"
+                            className="flex-[2] px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 transition-all disabled:opacity-50 text-sm"
                         >
                             {loading ? <i className="fas fa-spinner fa-spin mr-2"></i> : null}
                             {isEdit ? 'Save Changes' : 'Create Schedule'}

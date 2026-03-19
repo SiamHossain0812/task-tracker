@@ -57,8 +57,8 @@ const Settings = () => {
         <div className="max-w-2xl mx-auto animate-fade-in pb-20">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 px-4 md:px-0">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800">Account Security</h1>
-                    <p className="text-gray-500 text-sm mt-1">Manage your password and secure your account</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight mb-1">Account Security</h1>
+                    <p className="text-sm sm:text-base text-gray-400 font-medium">Manage your password and secure your account</p>
                 </div>
                 <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold uppercase tracking-wider self-start md:self-center">
                     <i className="fas fa-shield-alt"></i>

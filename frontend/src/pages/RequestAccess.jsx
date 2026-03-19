@@ -102,175 +102,181 @@ const RequestAccess = () => {
 
             {/* Right Panel - Form */}
             <div className="flex-1 bg-white flex items-center justify-center p-8 md:p-16 relative z-10 shadow-[-20px_0_50px_-20px_rgba(0,0,0,0.05)] overflow-y-auto">
-                <div className="w-full max-w-[440px] py-8">
+                <div className="w-full max-w-[460px] py-4">
                     {/* Brand Identity Section */}
-                    <div className="flex flex-col items-center lg:items-start mb-10 group cursor-pointer" onClick={() => navigate('/')}>
+                    <div className="flex flex-col items-center lg:items-start mb-6 group cursor-pointer" onClick={() => navigate('/')}>
                         <div className="flex items-center gap-4 mb-4">
-                            <img src="/images/brri-logo.png" alt="BRRI Logo" className="w-16 h-16 object-contain drop-shadow-sm group-hover:scale-110 transition-transform duration-500" />
+                            <img src="/images/brri-logo.png" alt="BRRI Logo" className="w-12 h-12 object-contain drop-shadow-sm group-hover:scale-110 transition-transform duration-500" />
                             <div className="flex flex-col">
-                                <h2 className="text-xl font-black text-gray-900 leading-none tracking-tight uppercase">
+                                <h2 className="text-lg font-black text-gray-900 leading-none tracking-tight uppercase">
                                     Agromet Lab
                                 </h2>
-                                <p className="text-sm text-emerald-600 font-bold tracking-[0.2em] uppercase mt-1">
+                                <p className="text-[10px] text-emerald-600 font-bold tracking-[0.2em] uppercase mt-1">
                                     Task Tracker
                                 </p>
                             </div>
                         </div>
-                        <div className="w-20 h-1 bg-emerald-500 rounded-full opacity-20 group-hover:w-full transition-all duration-700"></div>
+                        <div className="w-16 h-0.5 bg-emerald-500 rounded-full opacity-20 group-hover:w-full transition-all duration-700"></div>
                     </div>
 
                     {/* Header */}
-                    <div className="mb-8">
-                        <Link to="/login" className="inline-flex items-center gap-2 text-gray-400 hover:text-emerald-600 transition-colors font-bold text-sm mb-6">
+                    <div className="mb-6">
+                        <Link to="/login" className="inline-flex items-center gap-2 text-gray-400 hover:text-emerald-600 transition-colors font-bold text-xs mb-4">
                             <i className="fas fa-arrow-left"></i> Back to Login
                         </Link>
-                        <h1 className="text-4xl font-black text-gray-900 mb-3 tracking-tighter leading-none">Request Access</h1>
-                        <p className="text-gray-500 text-base font-medium">Create an account to join the workspace.</p>
+                        <h1 className="text-2xl font-bold text-gray-800 tracking-tight mb-1">Request Access</h1>
+                        <p className="text-xs text-gray-400 font-medium">Create an account to join the workspace.</p>
                     </div>
 
                     {/* Error Alerts */}
                     {error && (
-                        <div className="bg-red-50 border border-red-100 text-red-600 p-5 rounded-2xl mb-8 flex items-center gap-4 text-sm font-bold animate-shake shadow-sm">
-                            <i className="fas fa-exclamation-circle text-lg"></i>
+                        <div className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-xl mb-6 flex items-center gap-4 text-xs font-bold animate-shake shadow-sm">
+                            <i className="fas fa-exclamation-circle text-base"></i>
                             {error}
                         </div>
                     )}
 
                     {/* Registration Form */}
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-gray-700 ml-1 uppercase tracking-wider">First Name</label>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-700 ml-1 uppercase tracking-wider">First Name</label>
                                 <input
                                     type="text"
                                     name="first_name"
                                     value={formData.first_name}
                                     onChange={handleChange}
-                                    className="w-full h-12 px-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
+                                    className="w-full h-11 px-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
                                     placeholder="John"
                                     required
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-gray-700 ml-1 uppercase tracking-wider">Last Name</label>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-700 ml-1 uppercase tracking-wider">Last Name</label>
                                 <input
                                     type="text"
                                     name="last_name"
                                     value={formData.last_name}
                                     onChange={handleChange}
-                                    className="w-full h-12 px-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
+                                    className="w-full h-11 px-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
                                     placeholder="Doe"
                                     required
                                 />
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-gray-700 ml-1 uppercase tracking-wider">Phone Number (Username)</label>
-                            <div className="relative group">
-                                <input
-                                    type="text"
-                                    name="username"
-                                    value={formData.username}
-                                    onChange={handleChange}
-                                    className="w-full h-12 pl-10 pr-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
-                                    placeholder="017xxxxxxxx"
-                                    required
-                                />
-                                <i className="fas fa-phone absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors text-sm"></i>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-700 ml-1 uppercase tracking-wider">Phone</label>
+                                <div className="relative group">
+                                    <input
+                                        type="text"
+                                        name="username"
+                                        value={formData.username}
+                                        onChange={handleChange}
+                                        className="w-full h-11 pl-10 pr-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
+                                        placeholder="017xxxxxxxx"
+                                        required
+                                    />
+                                    <i className="fas fa-phone absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors text-xs"></i>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-700 ml-1 uppercase tracking-wider">Email</label>
+                                <div className="relative group">
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        className="w-full h-11 pl-10 pr-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
+                                        placeholder="john@example.com"
+                                        required
+                                    />
+                                    <i className="far fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors text-xs"></i>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-gray-700 ml-1 uppercase tracking-wider">Email Address</label>
-                            <div className="relative group">
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    className="w-full h-12 pl-10 pr-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
-                                    placeholder="john@example.com"
-                                    required
-                                />
-                                <i className="far fa-envelope absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors text-sm"></i>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-700 ml-1 uppercase tracking-wider">Designation</label>
+                                <div className="relative group">
+                                    <input
+                                        type="text"
+                                        name="designation"
+                                        value={formData.designation}
+                                        onChange={handleChange}
+                                        className="w-full h-11 pl-10 pr-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
+                                        placeholder="Senior Researcher"
+                                        required
+                                    />
+                                    <i className="fas fa-briefcase absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors text-xs"></i>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-700 ml-1 uppercase tracking-wider">Division</label>
+                                <div className="relative group">
+                                    <input
+                                        type="text"
+                                        name="division"
+                                        value={formData.division}
+                                        onChange={handleChange}
+                                        className="w-full h-11 pl-10 pr-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
+                                        placeholder="Computer Science"
+                                    />
+                                    <i className="fas fa-building absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors text-xs"></i>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-gray-700 ml-1 uppercase tracking-wider">Designation <span className="text-red-500">*</span></label>
-                            <div className="relative group">
-                                <input
-                                    type="text"
-                                    name="designation"
-                                    value={formData.designation}
-                                    onChange={handleChange}
-                                    className="w-full h-12 pl-10 pr-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
-                                    placeholder="e.g. Senior Researcher"
-                                    required
-                                />
-                                <i className="fas fa-briefcase absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors text-sm"></i>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-700 ml-1 uppercase tracking-wider">Password</label>
+                                <div className="relative group">
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        className="w-full h-11 pl-10 pr-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
+                                        placeholder="••••••••"
+                                        required
+                                    />
+                                    <i className="fas fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors text-xs"></i>
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-gray-700 ml-1 uppercase tracking-wider">Division / Department</label>
-                            <div className="relative group">
-                                <input
-                                    type="text"
-                                    name="division"
-                                    value={formData.division}
-                                    onChange={handleChange}
-                                    className="w-full h-12 pl-10 pr-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
-                                    placeholder="e.g. Computer Science"
-                                />
-                                <i className="fas fa-building absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors text-sm"></i>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-gray-700 ml-1 uppercase tracking-wider">Password</label>
-                            <div className="relative group">
-                                <input
-                                    type="password"
-                                    name="password"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    className="w-full h-12 pl-10 pr-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
-                                    placeholder="••••••••"
-                                    required
-                                />
-                                <i className="fas fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors text-sm"></i>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-xs font-black text-gray-700 ml-1 uppercase tracking-wider">Confirm Password</label>
-                            <div className="relative group">
-                                <input
-                                    type="password"
-                                    name="confirm_password"
-                                    value={formData.confirm_password}
-                                    onChange={handleChange}
-                                    className="w-full h-12 pl-10 pr-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
-                                    placeholder="••••••••"
-                                    required
-                                />
-                                <i className="fas fa-check-circle absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors text-sm"></i>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-700 ml-1 uppercase tracking-wider">Confirm</label>
+                                <div className="relative group">
+                                    <input
+                                        type="password"
+                                        name="confirm_password"
+                                        value={formData.confirm_password}
+                                        onChange={handleChange}
+                                        className="w-full h-11 pl-10 pr-4 bg-gray-50 border-2 border-gray-50 rounded-xl focus:bg-white focus:border-emerald-500 outline-none font-bold text-gray-800 transition-all text-sm"
+                                        placeholder="••••••••"
+                                        required
+                                    />
+                                    <i className="fas fa-check-circle absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-emerald-500 transition-colors text-xs"></i>
+                                </div>
                             </div>
                         </div>
 
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black transition-all shadow-lg shadow-emerald-200/50 transform active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none mt-6 flex items-center justify-center gap-3 uppercase tracking-widest text-sm"
+                            className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black transition-all shadow-lg shadow-emerald-200/50 transform active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none mt-4 flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
                         >
                             {isLoading ? (
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                             ) : (
                                 <>
                                     <span>Send Request</span>
-                                    <i className="fas fa-paper-plane text-xs"></i>
+                                    <i className="fas fa-paper-plane text-[10px]"></i>
                                 </>
                             )}
                         </button>

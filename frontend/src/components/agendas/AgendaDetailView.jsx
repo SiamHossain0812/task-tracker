@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import ConfirmModal from '../common/ConfirmModal';
 import ExtendTaskModal from './ExtendTaskModal';
 import TaskUpdatesList from './TaskUpdatesList';
+import CompleteTaskModal from './CompleteTaskModal';
 
 const AgendaDetailView = () => {
     const { id } = useParams();
@@ -20,6 +21,8 @@ const AgendaDetailView = () => {
     const [rejectModal, setRejectModal] = useState({ show: false, reason: '' });
     const [deleteModal, setDeleteModal] = useState(false);
     const [extendModal, setExtendModal] = useState(false);
+    const [completeModalOpen, setCompleteModalOpen] = useState(false);
+    const [localRatings, setLocalRatings] = useState({});
 
     const fetchTaskDetails = async () => {
         try {
@@ -37,6 +40,12 @@ const AgendaDetailView = () => {
                 const assignment = agendaData.assignments?.find(a => a.collaborator == me.id);
                 setMyAssignment(assignment);
             }
+            // Initialize local ratings
+            const initialRatings = {};
+            agendaData.assignments?.forEach(a => {
+                if (a.quality_score) initialRatings[a.collaborator] = a.quality_score;
+            });
+            setLocalRatings(initialRatings);
         } catch (err) {
             console.error('Failed to fetch task details', err);
             setError('Failed to load task details');
@@ -45,11 +54,41 @@ const AgendaDetailView = () => {
         }
     };
 
+    const handleRate = async (collaboratorId, score) => {
+        // Prevent rating if not creator/admin or if same score
+        if (!canEdit || localRatings[collaboratorId] === score) return;
+
+        // Optimistic update
+        setLocalRatings(prev => ({ ...prev, [collaboratorId]: score }));
+        
+        try {
+            await apiClient.post(`agendas/${id}/rate/`, {
+                quality_scores: { [collaboratorId]: score }
+            });
+            toast.success('Rating updated');
+            // Optionally refresh to get updated composite scores if already completed
+            if (task.status === 'completed') {
+                fetchTaskDetails();
+            }
+        } catch (err) {
+            console.error('Failed to update rating', err);
+            toast.error('Failed to update rating');
+            // Revert on failure
+            fetchTaskDetails();
+        }
+    };
+
     useEffect(() => {
         fetchTaskDetails();
     }, [id]);
 
     const handleStatusToggle = async () => {
+        // If moving from in-progress to completed, show rating modal
+        if (task.status === 'in-progress' && task.team_leader?.id === user?.id) {
+             setCompleteModalOpen(true);
+             return;
+        }
+
         setResponding(true);
         try {
             await apiClient.post(`agendas/${id}/toggle/`);
@@ -58,6 +97,22 @@ const AgendaDetailView = () => {
         } catch (err) {
             console.error('Status update failed', err);
             toast.error('Failed to update status');
+        } finally {
+            setResponding(false);
+        }
+    };
+
+    const handleCompleteWithRatings = async (ratings) => {
+        setResponding(true);
+        try {
+            // Pass quality_scores parameter expected by the extended toggle endpoint
+            await apiClient.post(`agendas/${id}/toggle/`, { quality_scores: ratings });
+            toast.success('Task completed and team evaluated!');
+            await fetchTaskDetails();
+        } catch (err) {
+            console.error('Task completion failed', err);
+            toast.error('Failed to complete task');
+            throw err; // Rethrow to let modal handle loading state
         } finally {
             setResponding(false);
         }
@@ -503,20 +558,44 @@ const AgendaDetailView = () => {
                                 )}
 
                                 {task.assignments?.filter(a => a.collaborator !== task.team_leader?.id).map((assignment, idx) => (
-                                    <div key={idx} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white transition-colors">
-                                        <img
-                                            src={assignment.collaborator_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(assignment.collaborator_name)}&background=f3f4f6&color=4b5563`}
-                                            alt={assignment.collaborator_name}
-                                            className={`w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm ${assignment.status === 'rejected' ? 'grayscale opacity-50' : ''}`}
-                                        />
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-bold text-gray-900 truncate">{assignment.collaborator_name}</div>
-                                            <div className={`text-[10px] font-bold uppercase tracking-wider ${assignment.status === 'accepted' ? 'text-emerald-600' :
-                                                assignment.status === 'rejected' ? 'text-red-500' : 'text-amber-500'
-                                                }`}>
-                                                {assignment.status}
+                                    <div key={idx} className="flex flex-col gap-2 p-2 rounded-lg hover:bg-white transition-colors group">
+                                        <div className="flex items-center gap-3">
+                                            <img
+                                                src={assignment.collaborator_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(assignment.collaborator_name)}&background=f3f4f6&color=4b5563`}
+                                                alt={assignment.collaborator_name}
+                                                className={`w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm ${assignment.status === 'rejected' ? 'grayscale opacity-50' : ''}`}
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-sm font-bold text-gray-900 truncate">{assignment.collaborator_name}</div>
+                                                <div className={`text-[10px] font-bold uppercase tracking-wider ${assignment.status === 'accepted' ? 'text-emerald-600' :
+                                                    assignment.status === 'rejected' ? 'text-red-500' : 'text-amber-500'
+                                                    }`}>
+                                                    {assignment.status}
+                                                </div>
                                             </div>
                                         </div>
+                                        
+                                        {/* Quality Score Stars (Visible to Admins/Leaders) */}
+                                        {canEdit && assignment.status === 'accepted' && (task.status === 'in-progress' || task.status === 'completed') && (
+                                            <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-50 opacity-60 group-hover:opacity-100 transition-opacity">
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Quality Score</span>
+                                                <div className="flex gap-1">
+                                                    {[1, 2, 3, 4, 5].map((star) => (
+                                                        <button
+                                                            key={star}
+                                                            onClick={() => handleRate(assignment.collaborator, star)}
+                                                            className={`text-sm transition-all hover:scale-125 ${
+                                                                (localRatings[assignment.collaborator] || 0) >= star
+                                                                ? 'text-amber-400'
+                                                                : 'text-gray-200 hover:text-amber-200'
+                                                            }`}
+                                                        >
+                                                            <i className="fas fa-star"></i>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -562,6 +641,13 @@ const AgendaDetailView = () => {
                     onClose={() => setExtendModal(false)}
                     onUpdate={fetchTaskDetails}
                     isApprover={isApprover}
+                />
+
+                <CompleteTaskModal
+                    task={task}
+                    isOpen={completeModalOpen}
+                    onClose={() => setCompleteModalOpen(false)}
+                    onConfirm={handleCompleteWithRatings}
                 />
             </div>
 

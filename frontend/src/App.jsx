@@ -23,6 +23,8 @@ import AgendaForm from './components/agendas/AgendaForm';
 import AgendaDetailView from './components/agendas/AgendaDetailView';
 import NotificationArchive from './pages/NotificationArchive';
 import SchedulesPage from './pages/SchedulesPage';
+import PerformanceDashboard from './pages/agendas/PerformanceDashboard';
+import PerformanceOverview from './pages/agendas/PerformanceOverview';
 import './App.css';
 
 function App() {
@@ -61,7 +63,8 @@ function App() {
               <Route element={<MainLayout><SearchPage /></MainLayout>} path="/search" />
               <Route element={<MainLayout><NotificationArchive /></MainLayout>} path="/notifications/archive" />
               <Route element={<MainLayout><About /></MainLayout>} path="/about" />
-              <Route element={<MainLayout><About /></MainLayout>} path="/profile/:id" />
+              <Route element={<MainLayout><PerformanceDashboard /></MainLayout>} path="/profile/:id" />
+              <Route element={<MainLayout><PerformanceOverview /></MainLayout>} path="/performance" />
               <Route element={<MainLayout><Settings /></MainLayout>} path="/settings" />
               <Route element={<MainLayout><Calendar /></MainLayout>} path="/calendar" />
               <Route element={<MainLayout><Collaborators /></MainLayout>} path="/collaborators" />

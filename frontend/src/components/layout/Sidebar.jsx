@@ -16,6 +16,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         { to: "/analytics", icon: "fas fa-chart-pie", label: "Analytics", adminOnly: true },
         { to: "/collaborators", icon: "fas fa-users", label: "Team", adminOnly: true },
         { to: "/auth/requests", icon: "fas fa-user-plus", label: "Access Requests", adminOnly: true },
+        { to: "/performance", icon: "fas fa-tachometer-alt", label: "Performance", adminOnly: true },
         { to: "/about", icon: "fas fa-user-circle", label: "My Profile", adminOnly: false },
     ];
 

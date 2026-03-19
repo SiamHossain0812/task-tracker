@@ -75,8 +75,8 @@ const PendingRequests = () => {
             />
 
             <div className="mb-8">
-                <h2 className="text-3xl font-bold text-gray-800 tracking-tight mb-1">Access Requests</h2>
-                <p className="text-gray-400 font-medium">Review and approve new user registrations</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight mb-1">Access Requests</h1>
+                <p className="text-sm sm:text-base text-gray-400 font-medium">Review and approve new user registrations</p>
             </div>
 
             {error && <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 font-medium">{error}</div>}

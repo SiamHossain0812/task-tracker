@@ -328,6 +328,41 @@ class AgendaViewSet(viewsets.ModelViewSet):
             
         return Response({'message': 'Invitation rejected'})
     
+    @action(detail=True, methods=['post'], url_path='rate')
+    def rate(self, request, pk=None):
+        """Allows a leader or admin to rate collaborators without toggling status."""
+        agenda = self.get_object()
+        
+        # Permission: Only team leader, creator, or superuser
+        is_leader = (agenda.team_leader and agenda.team_leader.user == request.user)
+        is_creator = (agenda.created_by == request.user)
+        
+        if not (is_leader or is_creator or request.user.is_superuser):
+            return Response({'error': 'Only the team leader or an admin can rate collaborators.'}, status=status.HTTP_403_FORBIDDEN)
+            
+        quality_scores = request.data.get('quality_scores', {})
+        if not quality_scores:
+            return Response({'error': 'Quality scores are required.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        from .utils import calculate_assignment_performance
+        
+        updated_count = 0
+        for assignment in agenda.assignments.all():
+            collab_id_str = str(assignment.collaborator.id)
+            if collab_id_str in quality_scores:
+                try:
+                    score = int(quality_scores[collab_id_str])
+                    if 1 <= score <= 5:
+                        assignment.quality_score = score
+                        assignment.save()
+                        # Recalculate if task is completed
+                        calculate_assignment_performance(assignment)
+                        updated_count += 1
+                except (ValueError, TypeError):
+                    pass
+        
+        return Response({'message': f'Successfully updated {updated_count} ratings.'})
+
     @action(detail=True, methods=['post'], url_path='toggle')
     def toggle_status(self, request, pk=None):
         """Toggle agenda status between pending, in-progress, and completed"""
@@ -341,8 +376,33 @@ class AgendaViewSet(viewsets.ModelViewSet):
             'completed': 'pending'
         }
         
-        agenda.status = status_cycle.get(current_status, 'pending')
+        new_status = status_cycle.get(current_status, 'pending')
+        agenda.status = new_status
         agenda.save()
+
+        # KPIs Calculation on Completion
+        if new_status == 'completed':
+            from .utils import calculate_assignment_performance
+            # Handle Quality Scores passed from Frontend Modal
+            quality_scores = request.data.get('quality_scores', {})
+            
+            for assignment in agenda.assignments.all():
+                # If a score was provided for this collaborator, save it first
+                if str(assignment.collaborator.id) in quality_scores:
+                    try:
+                        assignment.quality_score = int(quality_scores[str(assignment.collaborator.id)])
+                        assignment.save()
+                    except ValueError:
+                        pass
+                        
+                # Trigger the composite performance calculation
+                calculate_assignment_performance(assignment)
+        else:
+             # Reset scores if moved out of completed
+             agenda.assignments.update(
+                 quality_score=None, timeliness_score=None, efficiency_score=None,
+                 reliability_score=None, composite_score=None
+             )
         
         serializer = self.get_serializer(agenda)
         return Response(serializer.data)
@@ -936,6 +996,45 @@ class CollaboratorViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'name']
     ordering = ['name']
     pagination_class = None
+
+    @action(detail=True, methods=['get'])
+    def performance(self, request, pk=None):
+        """
+        Get aggregated performance metrics for a collaborator based on completed tasks
+        """
+        if not request.user.is_superuser:
+             return Response({"detail": "Access Denied: Performance metrics are for Admin review only."}, status=status.HTTP_403_FORBIDDEN)
+
+        from django.db.models import Avg, Count
+        collaborator = self.get_object()
+        
+        # Only aggregate scores from accepted AND completed assignments
+        completed_assignments = collaborator.assignments.filter(
+            status='accepted', 
+            agenda__status='completed',
+            composite_score__isnull=False
+        )
+
+        metrics = completed_assignments.aggregate(
+            avg_quality=Avg('quality_score'),
+            avg_timeliness=Avg('timeliness_score'),
+            avg_efficiency=Avg('efficiency_score'),
+            avg_reliability=Avg('reliability_score'),
+            avg_composite=Avg('composite_score'),
+            total_completed_tasks=Count('id')
+        )
+
+        # Return the aggregated metrics, formatting to 1 decimal place if applicable
+        return Response({
+            'collaborator_id': collaborator.id,
+            'collaborator_name': collaborator.name,
+            'total_completed_tasks': metrics['total_completed_tasks'],
+            'quality': round(metrics['avg_quality'] or 0, 1),
+            'timeliness': round(metrics['avg_timeliness'] or 0, 1),
+            'efficiency': round(metrics['avg_efficiency'] or 0, 1),
+            'reliability': round(metrics['avg_reliability'] or 0, 1),
+            'composite_score': round(metrics['avg_composite'] or 0, 1),
+        })
 
 
 class DashboardAPIView(APIView):

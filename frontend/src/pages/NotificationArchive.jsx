@@ -99,8 +99,8 @@ const NotificationArchive = () => {
                             <ArrowLeft size={20} />
                         </button>
                         <div>
-                            <h1 className="text-2xl font-black text-gray-800 tracking-tight">Notification Archive</h1>
-                            <p className="text-gray-500 font-medium">History of your past alerts and updates</p>
+                            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight mb-1">Notification Archive</h1>
+                            <p className="text-sm sm:text-base text-gray-400 font-medium">History of your past alerts and updates</p>
                         </div>
                     </div>
 

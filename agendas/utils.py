@@ -605,3 +605,74 @@ def send_notification_email(recipient, title, message, agenda=None):
     except Exception as e:
         print(f"[agendas.utils] SMTP Error sending to {email}: {str(e)}")
         raise e
+
+from datetime import datetime
+from django.utils import timezone
+from decimal import Decimal
+
+def calculate_assignment_performance(assignment):
+    '''
+    Calculates the 4 performance KPIs (Timeliness, Quality, Efficiency, Reliability)
+    and the final composite score for a specific AgendaAssignment.
+    '''
+    agenda = assignment.agenda
+    
+    # Ensure task is actually completed before full calculation
+    if agenda.status != 'completed':
+        return
+        
+    # --- 1. Timeliness Score (TS) ---
+    ts_score = 100
+    if agenda.expected_finish_date and agenda.updated_at:
+        finish_deadline = agenda.expected_finish_date
+        actual_finish = agenda.updated_at.date()
+        
+        if actual_finish <= finish_deadline:
+            if actual_finish < finish_deadline:
+                ts_score = 100 # Early
+            else:
+                ts_score = 90  # On Time
+        else:
+            delay_days = (actual_finish - finish_deadline).days
+            ts_score = max(0, 90 - (delay_days * 10)) # 1st day late = 80, 2nd day = 70, etc.
+    else:
+        ts_score = 90
+
+    assignment.timeliness_score = ts_score
+
+    # --- 2. Quality Score (QS) ---
+    qs_score = 0
+    if assignment.quality_score:
+        qs_score = int((assignment.quality_score / 5.0) * 100)
+
+    # --- 3. Efficiency Score (ES) ---
+    es_score = 0
+    if agenda.estimated_hours and agenda.actual_hours and agenda.actual_hours > 0:
+        ratio = float(agenda.estimated_hours / agenda.actual_hours)
+        if ratio >= 1.2:
+            es_score = 100
+        elif ratio >= 1.0:
+            es_score = 90
+        elif ratio >= 0.8:
+            es_score = 70
+        else:
+            es_score = 50
+    elif not agenda.estimated_hours and not agenda.actual_hours:
+         es_score = 90
+         
+    assignment.efficiency_score = es_score
+
+    # --- 4. Reliability Score (RS) ---
+    rs_score = 100 - (agenda.rework_count * 10) - (agenda.missed_updates * 5)
+    assignment.reliability_score = max(0, rs_score)
+
+    # --- Composite Score ---
+    composite = (
+        (ts_score * 0.30) +
+        (qs_score * 0.40) +
+        (es_score * 0.20) +
+        (assignment.reliability_score * 0.10)
+    )
+    assignment.composite_score = int(composite)
+    assignment.save()
+

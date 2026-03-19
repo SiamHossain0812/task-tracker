@@ -86,9 +86,9 @@ const ProjectAnalytics = () => {
             {/* Header */}
             <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 shrink-0">
                 <div>
-                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight mb-1">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight mb-1">
                         Projects & Analytics
-                    </h2>
+                    </h1>
                     <p className="text-sm sm:text-base text-gray-400 font-medium">Manage your workspaces and track performance</p>
                 </div>
                 {user?.is_superuser && (

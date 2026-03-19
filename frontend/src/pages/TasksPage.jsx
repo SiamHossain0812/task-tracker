@@ -128,8 +128,8 @@ const TasksPage = () => {
             {/* Page Header */}
             <div className="mb-8 flex flex-col sm:flex-row items-end justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold text-gray-800 tracking-tight mb-1">Tasks Overview</h2>
-                    <p className="text-gray-400 font-medium">Manage your progress and research agendas</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight mb-1">Tasks Overview</h1>
+                    <p className="text-sm sm:text-base text-gray-400 font-medium">Manage your progress and research agendas</p>
                 </div>
                 <NavLink
                     to="/tasks/new"

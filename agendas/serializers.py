@@ -127,8 +127,11 @@ class AgendaAssignmentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = AgendaAssignment
-        fields = ['id', 'collaborator', 'collaborator_name', 'collaborator_image', 'status', 'rejection_reason', 'duties', 'created_at']
-        read_only_fields = ['id', 'status', 'created_at']
+        fields = [
+            'id', 'collaborator', 'collaborator_name', 'collaborator_image', 'status', 'rejection_reason', 'duties', 'created_at',
+            'quality_score', 'timeliness_score', 'efficiency_score', 'reliability_score', 'composite_score'
+        ]
+        read_only_fields = ['id', 'status', 'created_at', 'timeliness_score', 'efficiency_score', 'reliability_score', 'composite_score']
 
     def get_collaborator_image(self, obj):
         if obj.collaborator.image:
@@ -255,9 +258,10 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
             'collaborators', 'collaborator_ids', 'assignments', 'actual_participants', 'team_leader', 'team_leader_id', 'is_overdue', 'calculated_category',
             'meeting_link', 'google_event_id', 'created_by',
             'extension_status', 'requested_finish_date', 'requested_finish_time', 'extension_reason', 'extension_requested_by', 'can_approve_extension',
-            'created_at', 'updated_at', 'extension_count', 'updates'
+            'created_at', 'updated_at', 'extension_count', 'updates',
+            'estimated_hours', 'actual_hours', 'rework_count', 'missed_updates'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'extension_status', 'requested_finish_date', 'requested_finish_time', 'extension_reason', 'extension_requested_by', 'extension_count']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'extension_status', 'requested_finish_date', 'requested_finish_time', 'extension_reason', 'extension_requested_by', 'extension_count', 'actual_hours', 'rework_count', 'missed_updates']
     
     def get_can_approve_extension(self, obj):
         request = self.context.get('request')

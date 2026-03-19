@@ -94,7 +94,7 @@ const Dashboard = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">Dashboard</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight mb-1">Dashboard</h1>
                     <p className="text-sm sm:text-base text-gray-400 font-medium">
                         Plan, prioritize, and accomplish your tasks.
                     </p>

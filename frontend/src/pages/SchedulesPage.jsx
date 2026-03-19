@@ -101,8 +101,8 @@ const SchedulesPage = () => {
         <div className="animate-fade-in pb-20 md:pb-8 w-full">
             <div className="mb-8 flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6">
                 <div>
-                    <h2 className="text-3xl font-bold text-gray-800 tracking-tight mb-2">My Schedule</h2>
-                    <p className="text-gray-400 font-medium font-outfit">Your private time-blocks and personal plans</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight mb-1">My Schedule</h1>
+                    <p className="text-sm sm:text-base text-gray-400 font-medium font-outfit">Your private time-blocks and personal plans</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">

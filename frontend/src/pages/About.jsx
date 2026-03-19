@@ -85,7 +85,7 @@ const About = () => {
 
                 <div className="pt-20 pb-10 px-8 sm:px-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                     <div className="space-y-2">
-                        <h1 className="text-4xl font-black text-gray-900 tracking-tight">{displayData.name}</h1>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight mb-1">{displayData.name}</h1>
                         <div className="flex flex-wrap items-center gap-3">
                             <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-black uppercase tracking-widest rounded-lg">
                                 {displayData.designation}

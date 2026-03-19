@@ -290,72 +290,93 @@ const AgendaForm = () => {
                     </div>
                     <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-800 hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-200"><i className="fas fa-times text-lg"></i></button>
                 </div>
-                <div className="p-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="p-6 max-h-[85vh] overflow-y-auto custom-scrollbar">
+                    <form onSubmit={handleSubmit} className="space-y-4">
                         {error && <div className="bg-red-50 border border-red-100 p-4 rounded-2xl text-red-600 text-xs font-bold animate-shake"><i className="fas fa-exclamation-triangle mr-2"></i>{error}</div>}
                         {validationError && <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl animate-fade-in mb-4 text-amber-700 text-sm font-bold"><i className="fas fa-clock mr-2"></i>{validationError}</div>}
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1.5">Task Title <span className="text-red-500">*</span></label>
-                            <input type="text" required disabled={isReadOnly} value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="w-full px-5 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all placeholder-gray-400 font-medium text-lg disabled:bg-gray-50 disabled:text-gray-500" placeholder="What needs to be done?" />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="md:col-span-2">
+                                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Task Title <span className="text-red-500">*</span></label>
+                                <input type="text" required disabled={isReadOnly} value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all placeholder-gray-400 font-bold text-base disabled:bg-gray-50 disabled:text-gray-500" placeholder="What needs to be done?" />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Project</label>
+                                <select value={formData.project} disabled={isReadOnly} onChange={(e) => setFormData({ ...formData, project: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-700 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all disabled:bg-gray-50 text-sm font-bold"><option value="">No Project</option>{projects.map(p => (<option key={p.id} value={p.id}>{p.name}</option>))}</select>
+                            </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1.5">Description</label>
+                            <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Description</label>
                             {isReadOnly ? (
-                                <div className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium whitespace-pre-wrap min-h-[5rem]">{formData.description || 'No description provided.'}</div>
+                                <div className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium whitespace-pre-wrap min-h-[4rem] text-sm">{formData.description || 'No description provided.'}</div>
                             ) : (
-                                <textarea rows="4" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-5 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all placeholder-gray-400 font-medium resize-none" placeholder="Add details and activities..."></textarea>
+                                <textarea rows="2" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all placeholder-gray-400 font-medium resize-none text-sm" placeholder="Add details and activities..."></textarea>
                             )}
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
-                                <label className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-2 font-mono tracking-widest"><i className="far fa-clock"></i> {isMeeting ? 'Meeting Time' : 'Start'}</label>
-                                <input type="date" required disabled={isReadOnly} value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="w-full mb-3 px-4 py-2.5 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-sm font-medium disabled:bg-gray-50" />
-                                <input type="time" disabled={isReadOnly} value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-sm font-medium disabled:bg-gray-50" />
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+                            <div className="col-span-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 flex items-center gap-2 font-mono tracking-widest"><i className="far fa-calendar"></i> {isMeeting ? 'Date' : 'Start Date'}</label>
+                                <input type="date" required disabled={isReadOnly} value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-xs font-bold disabled:bg-gray-50" />
+                            </div>
+                            <div className="col-span-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 flex items-center gap-2 font-mono tracking-widest"><i className="far fa-clock"></i> Time</label>
+                                <input type="time" disabled={isReadOnly} value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-xs font-bold disabled:bg-gray-50" />
                             </div>
                             {!isMeeting && (
-                                <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
-                                    <label className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-2 font-mono tracking-widest"><i className="fas fa-flag-checkered"></i> Expected Finish</label>
-                                    <input type="date" disabled={isReadOnly} value={formData.expected_finish_date} onChange={(e) => setFormData({ ...formData, expected_finish_date: e.target.value })} className="w-full mb-3 px-4 py-2.5 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-sm font-medium disabled:bg-gray-50" />
-                                    <input type="time" disabled={isReadOnly} value={formData.expected_finish_time} onChange={(e) => setFormData({ ...formData, expected_finish_time: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-sm font-medium disabled:bg-gray-50" />
-                                </div>
+                                <>
+                                    <div className="col-span-1">
+                                        <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 flex items-center gap-2 font-mono tracking-widest"><i className="fas fa-flag-checkered"></i> Finish Date</label>
+                                        <input type="date" disabled={isReadOnly} value={formData.expected_finish_date} onChange={(e) => setFormData({ ...formData, expected_finish_date: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-xs font-bold disabled:bg-gray-50" />
+                                    </div>
+                                    <div className="col-span-1">
+                                        <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 flex items-center gap-2 font-mono tracking-widest"><i className="fas fa-hourglass-end"></i> Finish Time</label>
+                                        <input type="time" disabled={isReadOnly} value={formData.expected_finish_time} onChange={(e) => setFormData({ ...formData, expected_finish_time: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-xl bg-white focus:border-emerald-500 outline-none text-xs font-bold disabled:bg-gray-50" />
+                                    </div>
+                                </>
                             )}
                         </div>
-                        {!isMeeting && (
+
+                        <div className="grid grid-cols-2 gap-4">
+                            {!isMeeting && (
+                                <div>
+                                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Task Category</label>
+                                    <select value={formData.category} disabled={isReadOnly} onChange={(e) => { const newCategory = e.target.value; setIsManualCategory(newCategory !== ''); setFormData(prev => ({ ...prev, category: newCategory })); }} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all font-bold text-sm disabled:bg-gray-50">
+                                        <option value="">Auto (based on dates)</option>
+                                        <option value="short">🔵 Short-term</option>
+                                        <option value="mid">🟠 Mid-term</option>
+                                        <option value="long">🟣 Long-term</option>
+                                    </select>
+                                </div>
+                            )}
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Task Category</label>
-                                <select value={formData.category} disabled={isReadOnly} onChange={(e) => { const newCategory = e.target.value; setIsManualCategory(newCategory !== ''); setFormData(prev => ({ ...prev, category: newCategory })); }} className="w-full px-5 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all font-medium disabled:bg-gray-50">
-                                    <option value="">Auto (based on dates)</option>
-                                    <option value="short">🔵 Short-term (≤3 days)</option>
-                                    <option value="mid">🟠 Mid-term (4-10 days)</option>
-                                    <option value="long">🟣 Long-term (&gt;10 days)</option>
-                                </select>
+                                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Priority</label>
+                                <div className="relative"><select value={formData.priority} disabled={isReadOnly} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-700 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all appearance-none disabled:bg-gray-50 text-sm font-bold"><option value="low">Low Priority</option><option value="medium">Medium Priority</option><option value="high">High Priority</option></select><div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-400"><i className="fas fa-chevron-down text-[10px]"></i></div></div>
                             </div>
-                        )}
-                        <div className="bg-gray-50/50 rounded-2xl p-5 border border-gray-100 space-y-4">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2"><i className="fas fa-paperclip"></i> Resources & Attachments</h3>
+                        </div>
+                        <div className="bg-gray-50/50 rounded-2xl p-4 border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <h3 className="md:col-span-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-1"><i className="fas fa-paperclip"></i> Resources & Attachments</h3>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Attachments</label>
+                                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Attachments</label>
                                 {isReadOnly ? (
                                     formData.attachment ? (
-                                        <a href={formData.attachment} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between w-full px-5 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 transition-colors">
-                                            <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center"><i className="fas fa-file-alt"></i></div><span className="truncate max-w-[200px] sm:max-w-xs">{typeof formData.attachment === 'string' ? formData.attachment.split('/').pop() : 'Attached File'}</span></div>
-                                            <i className="fas fa-download text-gray-400"></i>
+                                        <a href={formData.attachment} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-700 font-bold text-xs hover:bg-gray-50 transition-colors">
+                                            <div className="flex items-center gap-2"><i className="fas fa-file-alt text-emerald-500"></i><span className="truncate max-w-[120px]">{typeof formData.attachment === 'string' ? formData.attachment.split('/').pop() : 'File'}</span></div>
+                                            <i className="fas fa-download text-[10px] opacity-40"></i>
                                         </a>
-                                    ) : <div className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-400 font-medium italic">No attachment</div>
-                                ) : <input type="file" onChange={(e) => setFormData({ ...formData, attachment: e.target.files[0] })} className="block w-full text-sm text-gray-500 bg-white border border-gray-200 rounded-xl file:mr-4 file:py-2.5 file:px-4 file:rounded-l-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer transition-colors" />}
+                                    ) : <div className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white/50 text-gray-400 font-medium italic text-xs">No attachment</div>
+                                ) : <input type="file" onChange={(e) => setFormData({ ...formData, attachment: e.target.files[0] })} className="block w-full text-[10px] text-gray-500 bg-white border border-gray-200 rounded-xl file:mr-3 file:py-2 file:px-3 file:rounded-l-xl file:border-0 file:text-[10px] file:font-black file:bg-gray-100 file:text-gray-600 hover:file:bg-gray-200 cursor-pointer transition-colors" />}
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1.5">External Link</label>
+                                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">External Link</label>
                                 <div className="relative group">
-                                    <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400 group-focus-within:text-emerald-500 transition-colors"><i className="fas fa-link"></i></span>
+                                    <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 group-focus-within:text-emerald-500 transition-colors text-xs"><i className="fas fa-link"></i></span>
                                     {isReadOnly ? (
-                                        formData.external_link ? <a href={formData.external_link} target="_blank" rel="noopener noreferrer" className="block w-full pl-11 pr-5 py-3 border border-gray-200 rounded-xl bg-gray-50 text-emerald-600 font-medium hover:text-emerald-700 hover:bg-gray-100 transition-colors truncate">{formData.external_link}</a> : <div className="w-full pl-11 pr-5 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-400 font-medium italic">No external link</div>
-                                    ) : <input type="url" value={formData.external_link} onChange={(e) => setFormData({ ...formData, external_link: e.target.value })} className="w-full pl-11 pr-5 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all placeholder-gray-400 font-medium bg-white" placeholder="https://example.com/doc" />}
+                                        formData.external_link ? <a href={formData.external_link} target="_blank" rel="noopener noreferrer" className="block w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl bg-white text-emerald-600 font-bold text-xs hover:bg-gray-50 transition-colors truncate">{formData.external_link}</a> : <div className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl bg-white/50 text-gray-400 font-medium italic text-xs">No link</div>
+                                    ) : <input type="url" value={formData.external_link} onChange={(e) => setFormData({ ...formData, external_link: e.target.value })} className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all placeholder-gray-400 font-bold text-xs bg-white" placeholder="https://..." />}
                                 </div>
                             </div>
                         </div>
-                        <div className="bg-gray-50/50 rounded-2xl p-5 border border-gray-100 space-y-4">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2"><i className="fas fa-users"></i> Team & Collaborators</h3>
+                        <div className="bg-gray-50/50 rounded-2xl p-4 border border-gray-100 space-y-3">
+                            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2"><i className="fas fa-users"></i> Team & Collaborators</h3>
                             <div className="relative" ref={dropdownRef}>
                                 <div className="flex items-center justify-between mb-2">
                                     <label className="block text-sm font-bold text-gray-700">Collaborators</label>
@@ -390,16 +411,6 @@ const AgendaForm = () => {
                                         ))}
                                     </div></div>
                                 )}
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Project</label>
-                                <select value={formData.project} disabled={isReadOnly} onChange={(e) => setFormData({ ...formData, project: e.target.value })} className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-700 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all disabled:bg-gray-50"><option value="">No Project (Inbox)</option>{projects.map(p => (<option key={p.id} value={p.id}>{p.name}</option>))}</select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Priority</label>
-                                <div className="relative"><select value={formData.priority} disabled={isReadOnly} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="w-full px-5 py-3 border border-gray-200 rounded-xl bg-white text-gray-700 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all appearance-none disabled:bg-gray-50"><option value="low">Low Priority</option><option value="medium">Medium Priority</option><option value="high">High Priority</option></select><div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500"><i className="fas fa-chevron-down text-xs"></i></div></div>
                             </div>
                         </div>
                         {isMeeting && (

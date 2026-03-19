@@ -39,9 +39,10 @@ const SearchPage = () => {
         <div className="animate-fade-in h-full flex flex-col pb-8">
             {/* Search Header */}
             <div className="mb-8 shrink-0">
-                <h2 className="text-3xl font-bold text-gray-800 tracking-tight mb-4">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight mb-1">
                     Search Results
-                </h2>
+                </h1>
+                <p className="text-sm sm:text-base text-gray-400 font-medium mb-4">Find projects, tasks, and members across the workspace</p>
 
                 {/* Search Form */}
                 <form onSubmit={handleSearch} className="mb-6 relative z-10">

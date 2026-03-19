@@ -126,8 +126,8 @@ const CollaboratorList = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Team Members</h1>
-                    <p className="text-gray-500 mt-1 font-medium">Manage collaborators and shared research efforts</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight mb-1">Team Members</h1>
+                    <p className="text-sm sm:text-base text-gray-400 font-medium">Manage collaborators and shared research efforts</p>
                 </div>
                 {user?.is_superuser && (
                     <button
@@ -150,7 +150,7 @@ const CollaboratorList = () => {
                         {/* ... content ... */}
 
 
-                        <Link to={`/profile/${collaborator.id}`} className="flex items-center gap-4 mb-5 relative z-10 hover:-translate-y-0.5 transition-transform cursor-pointer">
+                        <div className="flex items-center gap-4 mb-5 relative z-10">
                             <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-black text-2xl overflow-hidden border-4 border-white shadow-sm shrink-0 uppercase">
                                 {collaborator.image ? (
                                     <img src={collaborator.image} className="w-full h-full object-cover" alt={collaborator.name} />
@@ -162,7 +162,7 @@ const CollaboratorList = () => {
                                 <h3 className="font-bold text-gray-800 group-hover:text-emerald-600 transition-colors truncate">{collaborator.name}</h3>
                                 <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{collaborator.designation || collaborator.institute || "Collaborator"}</div>
                             </div>
-                        </Link>
+                        </div>
 
                         <div className="space-y-3 text-sm text-gray-600 relative z-10">
                             {collaborator.whatsapp_number && (
@@ -192,6 +192,13 @@ const CollaboratorList = () => {
                         {/* Actions */}
                         {user?.is_superuser && (
                             <div className="mt-6 pt-4 border-t border-gray-50 flex justify-end gap-2 relative z-10">
+                                <Link
+                                    to={`/profile/${collaborator.id}`}
+                                    className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 hover:text-white hover:bg-indigo-500 flex items-center justify-center transition-all shadow-sm"
+                                    title="View Performance"
+                                >
+                                    <i className="fas fa-chart-line text-sm"></i>
+                                </Link>
                                 <button
                                     onClick={() => handleOpenModal(collaborator)}
                                     className="w-10 h-10 rounded-xl bg-gray-100 text-gray-600 hover:text-white hover:bg-emerald-500 flex items-center justify-center transition-all shadow-sm"
