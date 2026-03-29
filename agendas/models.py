@@ -169,6 +169,8 @@ class Agenda(models.Model):
             return 'short'
         elif duration <= 10:
             return 'mid'
+        else:
+            return 'long'
     @property
     def is_overdue(self):
         if self.status == 'completed':
