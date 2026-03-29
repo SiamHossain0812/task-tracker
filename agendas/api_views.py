@@ -21,7 +21,8 @@ class IsCreatorOrSuperUser(BasePermission):
             return True
         return False
 
-from django.db.models import Q, Count
+from django.db.models import Q, Count, F
+from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -170,20 +171,39 @@ class AgendaViewSet(viewsets.ModelViewSet):
         overdue = self.request.query_params.get('overdue')
         if overdue == 'true':
             now = timezone.now()
-            queryset = [agenda for agenda in queryset if agenda.is_overdue]
+            today = now.date()
+            now_time = now.time()
+            queryset = queryset.exclude(status='completed').annotate(
+                deadline_date=Coalesce('expected_finish_date', 'date'),
+                deadline_time=Coalesce('expected_finish_time', 'time')
+            ).filter(
+                Q(deadline_date__lt=today) |
+                Q(deadline_date=today, deadline_time__isnull=False, deadline_time__lt=now_time)
+            )
         
         # Filter by category (uses calculated_category if manual category not set)
         category = self.request.query_params.get('category')
         if category:
-            queryset = [agenda for agenda in queryset if (agenda.category or agenda.calculated_category) == category]
+            if category == 'short':
+                queryset = queryset.filter(
+                    Q(category='short') |
+                    (Q(category__isnull=True) & (Q(expected_finish_date__isnull=True) | Q(expected_finish_date__lte=F('date') + timedelta(days=3))))
+                )
+            elif category == 'mid':
+                queryset = queryset.filter(
+                    Q(category='mid') |
+                    (Q(category__isnull=True) & Q(expected_finish_date__gt=F('date') + timedelta(days=3)) & Q(expected_finish_date__lte=F('date') + timedelta(days=10)))
+                )
+            elif category == 'long':
+                queryset = queryset.filter(
+                    Q(category='long') |
+                    (Q(category__isnull=True) & Q(expected_finish_date__gt=F('date') + timedelta(days=10)))
+                )
             
         # Filter by type
         type_filter = self.request.query_params.get('type')
         if type_filter:
-            if isinstance(queryset, list):
-                queryset = [agenda for agenda in queryset if agenda.type == type_filter]
-            else:
-                queryset = queryset.filter(type=type_filter)
+            queryset = queryset.filter(type=type_filter)
         
         return queryset
     
@@ -602,7 +622,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     ViewSet for private Schedule CRUD operations
     """
     serializer_class = ScheduleSerializer
-    permission_classes = [IsAuthenticated, IsSuperUser]
+    permission_classes = [IsAuthenticated]
 
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['subject', 'description']

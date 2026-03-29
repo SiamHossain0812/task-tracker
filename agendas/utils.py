@@ -2,6 +2,7 @@ from django.conf import settings
 import logging
 import os
 from datetime import datetime
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ def calculate_status(date_str, time_str, end_date_str, end_time_str):
     if not date_str:
         return 'pending'
 
-    now = datetime.now()
+    now = timezone.now()
     
     # Construct Start Datetime
     start_dt_str = f"{date_str} {time_str}" if time_str else f"{date_str} 00:00"
@@ -26,6 +27,7 @@ def calculate_status(date_str, time_str, end_date_str, end_time_str):
              start_dt = datetime.strptime(start_dt_str, '%Y-%m-%d %H:%M:%S')
         except:
              return 'pending'
+    start_dt = timezone.make_aware(start_dt)
 
     # Construct End Datetime
     if end_date_str:
@@ -37,6 +39,8 @@ def calculate_status(date_str, time_str, end_date_str, end_time_str):
                 end_dt = datetime.strptime(end_dt_str, '%Y-%m-%d %H:%M:%S')
              except:
                 end_dt = None
+        if end_dt:
+            end_dt = timezone.make_aware(end_dt)
     else:
         end_dt = None
 
