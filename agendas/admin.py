@@ -40,8 +40,9 @@ admin.site.register(User, CustomUserAdmin)
 
 @admin.register(Collaborator)
 class CollaboratorAdmin(admin.ModelAdmin):
-    list_display = ['name', 'institute', 'email', 'whatsapp_number']
-    search_fields = ['name', 'institute', 'email']
+    list_display = ['name', 'user', 'institute', 'email', 'whatsapp_number']
+    list_filter = [('user', admin.EmptyFieldListFilter), 'institute']
+    search_fields = ['name', 'institute', 'email', 'whatsapp_number']
 
 
 class AgendaInline(admin.TabularInline):
