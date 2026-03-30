@@ -335,6 +335,13 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
                 collaborator=collaborator,
                 defaults={'status': 'pending', 'duties': duties}
             )
+        
+        # 4. Mandatory sync: Update the collaborators many-to-many field.
+        # This is critical for the notification system and general task tracking.
+        all_collabs = set(collaborators)
+        if creator_collab: all_collabs.add(creator_collab)
+        if agenda.team_leader: all_collabs.add(agenda.team_leader)
+        agenda.collaborators.set(list(all_collabs))
             
         if actual_participants:
             agenda.actual_participants.set(actual_participants)

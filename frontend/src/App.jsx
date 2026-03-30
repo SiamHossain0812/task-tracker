@@ -22,6 +22,7 @@ import ProjectForm from './components/projects/ProjectForm';
 import AgendaForm from './components/agendas/AgendaForm';
 import AgendaDetailView from './components/agendas/AgendaDetailView';
 import NotificationArchive from './pages/NotificationArchive';
+import ArchivedTasksPage from './pages/ArchivedTasksPage';
 import SchedulesPage from './pages/SchedulesPage';
 import PerformanceDashboard from './pages/agendas/PerformanceDashboard';
 import PerformanceOverview from './pages/agendas/PerformanceOverview';
@@ -50,6 +51,7 @@ function App() {
 
               {/* Tasks / Agendas */}
               <Route element={<MainLayout><TasksPage /></MainLayout>} path="/tasks" />
+              <Route element={<MainLayout><ArchivedTasksPage /></MainLayout>} path="/tasks/archived" />
               <Route element={<MainLayout><AgendaForm /></MainLayout>} path="/tasks/new" />
               <Route element={<MainLayout><AgendaDetailView /></MainLayout>} path="/tasks/:id" />
               <Route element={<MainLayout><AgendaForm /></MainLayout>} path="/tasks/:id/edit" />

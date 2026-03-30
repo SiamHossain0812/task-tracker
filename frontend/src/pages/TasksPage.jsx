@@ -18,9 +18,11 @@ const TasksPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [modal, setModal] = useState({ show: false, task: null, nextStatus: '', statusLabel: '' });
+    const [archiveModal, setArchiveModal] = useState({ show: false, task: null });
     const [deleteModal, setDeleteModal] = useState({ show: false, task: null });
     const [rejectModal, setRejectModal] = useState({ show: false, task: null, reason: '' });
     const [toggling, setToggling] = useState(false);
+    const [archiving, setArchiving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [responding, setResponding] = useState(false);
 
@@ -100,6 +102,25 @@ const TasksPage = () => {
 
     const handleDeleteClick = (task) => {
         setDeleteModal({ show: true, task });
+    };
+
+    const handleArchiveClick = (task) => {
+        setArchiveModal({ show: true, task });
+    };
+
+    const confirmArchive = async () => {
+        if (!archiveModal.task) return;
+        setArchiving(true);
+        try {
+            await apiClient.post(`agendas/${archiveModal.task.id}/archive/`);
+            await fetchTasks();
+            setArchiveModal({ show: false, task: null });
+        } catch (err) {
+            console.error('Archive failed', err);
+            alert('Failed to archive task');
+        } finally {
+            setArchiving(false);
+        }
     };
 
     const confirmDelete = async () => {
@@ -304,12 +325,21 @@ const TasksPage = () => {
                                                             <i className="fas fa-eye text-xs"></i>
                                                         </NavLink>
                                                         {(user?.is_superuser || task.created_by === user?.id) && (
-                                                            <button
-                                                                onClick={() => handleDeleteClick(task)}
-                                                                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50"
-                                                            >
-                                                                <i className="fas fa-trash text-xs"></i>
-                                                            </button>
+                                                            <>
+                                                                <button
+                                                                    onClick={() => handleArchiveClick(task)}
+                                                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-amber-500 hover:bg-amber-50 transition-all"
+                                                                    title="Archive Task"
+                                                                >
+                                                                    <i className="fas fa-archive text-xs"></i>
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteClick(task)}
+                                                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50"
+                                                                >
+                                                                    <i className="fas fa-trash text-xs"></i>
+                                                                </button>
+                                                            </>
                                                         )}
                                                     </div>
                                                 </td>
@@ -380,12 +410,21 @@ const TasksPage = () => {
                                                             <i className="fas fa-eye text-xs"></i>
                                                         </NavLink>
                                                         {(user?.is_superuser || task.created_by === user?.id) && (
-                                                            <button
-                                                                onClick={() => handleDeleteClick(task)}
-                                                                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50"
-                                                            >
-                                                                <i className="fas fa-trash text-xs"></i>
-                                                            </button>
+                                                            <>
+                                                                <button
+                                                                    onClick={() => handleArchiveClick(task)}
+                                                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-amber-500 hover:bg-amber-50 transition-all"
+                                                                    title="Archive Task"
+                                                                >
+                                                                    <i className="fas fa-archive text-xs"></i>
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteClick(task)}
+                                                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50"
+                                                                >
+                                                                    <i className="fas fa-trash text-xs"></i>
+                                                                </button>
+                                                            </>
                                                         )}
                                                     </div>
                                                 </td>
@@ -441,7 +480,42 @@ const TasksPage = () => {
                 </div>
             )}
 
-            {/* Deletion Modal */}
+            {/* Archive Modal */}
+            {archiveModal.show && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm animate-fade-in" onClick={() => !archiving && setArchiveModal({ show: false, task: null })}></div>
+                    <div className="relative transform overflow-hidden rounded-3xl bg-white shadow-xl transition-all sm:max-w-sm w-full animate-fade-in-up z-10 p-8">
+                        <div className="text-center">
+                            <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500 text-2xl mx-auto mb-4">
+                                <i className="fas fa-archive"></i>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900">Archive Task?</h3>
+                            <p className="text-gray-500 text-sm mt-2">
+                                Tasks are hidden from daily views but retained for reference. You can unarchive them later.
+                            </p>
+                        </div>
+                        <div className="mt-8 flex gap-3">
+                            <button
+                                onClick={() => setArchiveModal({ show: false, task: null })}
+                                disabled={archiving}
+                                className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-2xl text-sm font-bold transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmArchive}
+                                disabled={archiving}
+                                className="flex-[2] px-4 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl text-sm font-bold transition-all shadow-lg shadow-amber-100"
+                            >
+                                {archiving ? <i className="fas fa-spinner fa-spin mr-2"></i> : null}
+                                Yes, Archive
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Modal */}
             {deleteModal.show && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm animate-fade-in" onClick={() => !deleting && setDeleteModal({ show: false, task: null })}></div>

@@ -8,10 +8,11 @@ const Sidebar = ({ isOpen, onClose }) => {
     const links = [
         { to: "/", icon: "fas fa-th-large", label: "Dashboard", adminOnly: false, end: true },
         { to: "/projects", icon: "fas fa-folder-open", label: "Projects", adminOnly: false, end: true },
-        { to: "/tasks", icon: "fas fa-tasks", label: "Tasks", adminOnly: false },
+        { to: "/tasks", icon: "fas fa-tasks", label: "Tasks", adminOnly: false, end: true },
         { to: "/calendar", icon: "far fa-calendar", label: "Calendar", adminOnly: false },
         { to: "/schedules", icon: "fas fa-clock", label: "My Schedule", adminOnly: true },
         { to: "/meetings", icon: "fas fa-video", label: "Meetings", adminOnly: false },
+        { to: "/tasks/archived", icon: "fas fa-archive", label: "Archived Tasks", adminOnly: false },
         { to: "/project-requests", icon: "fas fa-file-contract", label: user?.is_superuser ? "Requested Projects" : "Project Requests", adminOnly: false },
         { to: "/analytics", icon: "fas fa-chart-pie", label: "Analytics", adminOnly: true },
         { to: "/collaborators", icon: "fas fa-users", label: "Team", adminOnly: true },

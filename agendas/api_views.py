@@ -115,6 +115,7 @@ class AgendaViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'description']
     ordering_fields = ['date', 'time', 'created_at', 'priority']
     ordering = ['date', 'time']
+    pagination_class = None
 
     def get_permissions(self):
         """
@@ -128,7 +129,17 @@ class AgendaViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """Filter agendas with query parameters"""
-        queryset = Agenda.objects.all().select_related('project').prefetch_related('collaborators')
+        is_archived_param = self.request.query_params.get('archived', 'false').lower() == 'true'
+        
+        # Fixing the 404 issue: When doing actions like 'unarchive', 'retrieve', or 'destroy' on an archived task,
+        # we need to be able to find it in the queryset even if is_archived=True.
+        # So for detail actions, we don't apply the initial is_archived filter strictly based on query params.
+        is_detail = getattr(self, 'detail', False) or self.action in ['retrieve', 'update', 'partial_update', 'destroy', 'archive', 'unarchive']
+        
+        if is_detail:
+             queryset = Agenda.objects.all().select_related('project').prefetch_related('collaborators')
+        else:
+             queryset = Agenda.objects.filter(is_archived=is_archived_param).select_related('project').prefetch_related('collaborators')
         
         # User Isolation: Collaborators only see their assigned tasks OR tasks in their projects
         if not self.request.user.is_superuser:
@@ -408,6 +419,28 @@ class AgendaViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(agenda)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'])
+    def archive(self, request, pk=None):
+        """Move task to archive"""
+        agenda = self.get_object()
+        if not (request.user.is_superuser or agenda.created_by == request.user):
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            
+        agenda.is_archived = True
+        agenda.save()
+        return Response({'message': 'Task archived successfully'})
+
+    @action(detail=True, methods=['post'])
+    def unarchive(self, request, pk=None):
+        """Restore task from archive"""
+        agenda = self.get_object()
+        if not (request.user.is_superuser or agenda.created_by == request.user):
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            
+        agenda.is_archived = False
+        agenda.save()
+        return Response({'message': 'Task restored from archive successfully'})
+
 
     def perform_update(self, serializer):
         """Override to notify newly added collaborators"""
@@ -424,24 +457,44 @@ class AgendaViewSet(viewsets.ModelViewSet):
         self.notify_collaborators(agenda, is_new=False)
 
     def notify_collaborators(self, agenda, is_new=True):
-        """Helper to send instant notifications to collaborators"""
+        """Helper to send instant notifications to collaborators and team leaders"""
 
-        from .models import Notification
+        from .models import Notification, Collaborator
         from channels.layers import get_channel_layer
         from asgiref.sync import async_to_sync
+        from django.utils import timezone
 
         try:
             channel_layer = get_channel_layer()
+            
+            # 1. Gather all people who need notification: Collaborators + Team Leader
+            notif_targets = set(agenda.collaborators.all())
+            if agenda.team_leader:
+                notif_targets.add(agenda.team_leader)
+            
+            # Optional: Exclude the person who performed the action (request.user)
+            # but usually it's better to notify anyway for testing purposes.
 
-            for collaborator in agenda.collaborators.all():
+            for collaborator in notif_targets:
+                # Personalize message based on whether it's a new assignment for this specific person
+                # Even on a task update, a newly added collaborator should get a 'New Assignment' welcome.
+                local_is_new = is_new
+                if not is_new:
+                    # Check if this collaborator was added very recently (e.g. in this update)
+                    # We check if an assignment exists that was created in the last 2 minutes
+                    from .models import AgendaAssignment
+                    assignment = AgendaAssignment.objects.filter(agenda=agenda, collaborator=collaborator).first()
+                    if assignment and (timezone.now() - assignment.created_at).total_seconds() < 120:
+                        local_is_new = True
+
                 if agenda.type == 'meeting':
-                    title = "New Meeting Invite" if is_new else "Meeting Updated"
-                    message = f"You have been invited to the meeting: '{agenda.title}'." if is_new else f"Details for '{agenda.title}' have been recently updated."
-                    notif_type = 'meeting_invite' if is_new else 'meeting_updated'
+                    title = "New Meeting Invite" if local_is_new else "Meeting Updated"
+                    message = f"You have been invited to the meeting: '{agenda.title}'." if local_is_new else f"Details for '{agenda.title}' have been recently updated."
+                    notif_type = 'meeting_invite' if local_is_new else 'meeting_updated'
                 else:
-                    title = "New Assignment" if is_new else "Task Update"
-                    message = f"You've been assigned to the initiative: '{agenda.title}'." if is_new else f"There are new developments regarding: '{agenda.title}'."
-                    notif_type = 'collaborator_added' if is_new else 'agenda_updated'
+                    title = "New Assignment" if local_is_new else "Task Update"
+                    message = f"You've been assigned to the initiative: '{agenda.title}'." if local_is_new else f"There are new developments regarding: '{agenda.title}'."
+                    notif_type = 'collaborator_added' if local_is_new else 'agenda_updated'
                 
                 # 1. Internal System Notification (Requires User)
                 if collaborator.user:
@@ -468,11 +521,11 @@ class AgendaViewSet(viewsets.ModelViewSet):
                                 }
                             )
                     except Exception as e:
-                        print(f"[agendas.api_views] WebSocket broadcast error: {e}")
+                        print(f"[agendas.api_views] WebSocket broadcast error for user {collaborator.user.id}: {e}")
                 else:
                     print(f"[agendas.api_views] Skipping system notification for collaborator {collaborator.id} (no user linked)")
 
-                # Native push — outside the if/else so it runs for valid users
+                # Native push — outside the internal if so it runs for valid users
                 if collaborator.user:
                     try:
                         from .utils import send_push_notification
@@ -482,36 +535,37 @@ class AgendaViewSet(viewsets.ModelViewSet):
                             message=message,
                             url=f"/tasks/{agenda.id}"
                         )
-                    except Exception: pass
+                    except Exception as push_err:
+                        print(f"[agendas.api_views] Push notification failed for user {collaborator.user.id}: {push_err}")
 
-                # 2. Trigger Email Notification (For all updates/assignments as requested)
-                if True: # enabled for all
-                    try:
-                        from .utils import send_notification_email
-                        # Use login email (user.email) first, then fall back to profile email
-                        recipient = None
-                        if collaborator.user and collaborator.user.email:
-                            recipient = collaborator.user
-                        elif collaborator.email:
-                            recipient = collaborator
-                        
-                        if recipient:
-                            print(f"[agendas.api_views] Attempting to send email to: {getattr(recipient, 'email', 'unknown')}")
-                            send_notification_email(
-                                recipient=recipient,
-                                title=title,
-                                message=message,
-                                agenda=agenda
-                            )
-                            print(f"[agendas.api_views] Email send call completed for: {getattr(recipient, 'email', 'unknown')}")
-                        else:
-                            print(f"[agendas.api_views] No recipient email found for collaborator: {collaborator.id}")
-                    except Exception as email_err:
-                        print(f"[agendas.api_views] Critical failure in send_notification_email: {email_err}")
-                        import traceback
-                        traceback.print_exc()
-        except Exception:
-            pass
+                # 2. Trigger Email Notification (Synchronous-ish, but has try/except)
+                try:
+                    from .utils import send_notification_email
+                    # Recipient Logic: Prioritize User Email, fallback to Collaborator Email
+                    recipient = None
+                    if collaborator.user and collaborator.user.email:
+                        recipient = collaborator.user
+                    elif collaborator.email:
+                        recipient = collaborator
+                    
+                    if recipient:
+                        print(f"[agendas.api_views] Attempting to send email to: {getattr(recipient, 'email', 'unknown')}")
+                        send_notification_email(
+                            recipient=recipient,
+                            title=title,
+                            message=message,
+                            agenda=agenda
+                        )
+                        print(f"[agendas.api_views] Email sent call completed for: {getattr(recipient, 'email', 'unknown')}")
+                    else:
+                        print(f"[agendas.api_views] Missing email target for collaborator ID {collaborator.id}")
+                except Exception as email_err:
+                    print(f"[agendas.api_views] Critical email failure for {collaborator.id}: {email_err}")
+                    
+        except Exception as global_err:
+            print(f"[agendas.api_views] Global failure in notify_collaborators: {global_err}")
+            import traceback
+            traceback.print_exc()
 
     @action(detail=True, methods=['post'], url_path='add-update')
     def add_update(self, request, pk=None):
@@ -721,9 +775,10 @@ class TasksOverviewAPIView(APIView):
         user = request.user
         
         if user.is_superuser:
-            agendas = Agenda.objects.all().select_related('project')
+            agendas = Agenda.objects.filter(is_archived=False).select_related('project')
             # Superusers can also have invitations
             pending_invitations = Agenda.objects.filter(
+                is_archived=False,
                 assignments__collaborator__user=user,
                 assignments__status='pending'
             ).select_related('project').distinct()
@@ -733,10 +788,11 @@ class TasksOverviewAPIView(APIView):
                 Q(team_leader__user=user) | 
                 Q(assignments__collaborator__user=user, assignments__status='accepted') |
                 Q(created_by=user)
-            ).select_related('project').distinct()
+            ).filter(is_archived=False).select_related('project').distinct()
             
             # Tasks user is invited to
             pending_invitations = Agenda.objects.filter(
+                is_archived=False,
                 assignments__collaborator__user=user,
                 assignments__status='pending'
             ).select_related('project').distinct()
@@ -997,6 +1053,24 @@ class CollaboratorViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'name']
     ordering = ['name']
     pagination_class = None
+    
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        """Override delete to ensure associated User is also permanently removed."""
+        if not request.user.is_superuser:
+            return Response({'error': 'Only admins can delete users.'}, status=status.HTTP_403_FORBIDDEN)
+            
+        instance = self.get_object()
+        user = instance.user
+        
+        # Deleting the user will trigger CASCADE to delete this collaborator
+        if user:
+            user.delete()
+        else:
+            # If for some reason there's no user, delete the collaborator directly
+            instance.delete()
+            
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['get'])
     def performance(self, request, pk=None):
