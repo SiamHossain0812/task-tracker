@@ -33,7 +33,7 @@ def normalize_phone(phone):
     return digits
 
 def link_profiles():
-    print("--- BRRI Agenda: Collaborator-User Linking Script V2 (By WhatsApp) ---")
+    print("--- BRRI Agenda: Collaborator-User Linking Script V3 (Safety First) ---")
     
     disconnected = Collaborator.objects.filter(user__isnull=True)
     count = disconnected.count()
@@ -41,6 +41,7 @@ def link_profiles():
     
     linked_count = 0
     failed_count = 0
+    conflict_count = 0
     
     # Pre-cache all users and their normalized phone identifiers
     print("Scanning all users for phone number identifiers...")
@@ -82,16 +83,34 @@ def link_profiles():
                 break
         
         if match:
-            collab.user = match
-            collab.save()
-            print(f"  [SUCCESS] Linked {collab.name} to User: {match.username} (via {match_source})")
-            linked_count += 1
+            # SAFETY CHECK: Is this user already taken by ANOTHER collaborator?
+            try:
+                # Access the reverse side of the OneToOneField
+                existing_collab = getattr(match, 'collaborator_profile', None)
+                if existing_collab:
+                    print(f"  [CONFLICT] User '{match.username}' is already linked to profile: {existing_collab.name} (ID: {existing_collab.id})")
+                    print(f"             Skipping link for {collab.name} to avoid database error.")
+                    conflict_count += 1
+                    continue
+            except Exception:
+                pass
+            
+            # Attempt link
+            try:
+                collab.user = match
+                collab.save()
+                print(f"  [SUCCESS] Linked {collab.name} to User: {match.username} (via {match_source})")
+                linked_count += 1
+            except Exception as e:
+                print(f"  [ERROR] Database error linking {collab.name}: {e}")
+                failed_count += 1
         else:
             print(f"  [FAILED] No User found where username or profile phone matches {collab_phone}")
             failed_count += 1
             
     print("\n--- Summary ---")
     print(f"Successfully linked: {linked_count}")
+    print(f"Conflicts (already linked): {conflict_count}")
     print(f"Still disconnected: {failed_count}")
     print("----------------")
 
