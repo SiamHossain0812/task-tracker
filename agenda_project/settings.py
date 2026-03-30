@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'channels',
     
     # Local apps
-    'agendas',
+    'agendas.apps.AgendasConfig',
 ]
 
 MIDDLEWARE = [
