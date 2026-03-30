@@ -40,9 +40,14 @@ admin.site.register(User, CustomUserAdmin)
 
 @admin.register(Collaborator)
 class CollaboratorAdmin(admin.ModelAdmin):
-    list_display = ['name', 'user', 'institute', 'email', 'whatsapp_number']
-    list_filter = [('user', admin.EmptyFieldListFilter), 'institute']
-    search_fields = ['name', 'institute', 'email', 'whatsapp_number']
+    list_display = ['name', 'user', 'is_linked', 'institute', 'email', 'whatsapp_number']
+    list_filter = [('user', admin.EmptyFieldListFilter), 'institute', 'division']
+    search_fields = ['name', 'institute', 'email', 'whatsapp_number', 'user__username']
+    
+    def is_linked(self, obj):
+        return bool(obj.user)
+    is_linked.boolean = True
+    is_linked.short_description = 'User Linked'
 
 
 class AgendaInline(admin.TabularInline):

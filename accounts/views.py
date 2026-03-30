@@ -18,31 +18,26 @@ def signup_view(request):
             messages.error(request, 'Account with this phone number already exists.')
             return redirect('signup')
             
-        # Create User - INACTIVE by default
-        user = User.objects.create_user(username=phone, password=password)
-        user.first_name = name
-        user.is_active = False # Require approval
-        user.save()
-        
-        # Link or Create Collaborator Profile
+        from django.db import transaction
         try:
-            collaborator = Collaborator.objects.get(whatsapp_number=phone)
-            collaborator.user = user
-            collaborator.name = name 
-            collaborator.designation = designation
-            collaborator.division = division
-            collaborator.save()
-        except Collaborator.DoesNotExist:
-            Collaborator.objects.create(
-                user=user,
-                name=name,
-                whatsapp_number=phone,
-                designation=designation,
-                division=division
-            )
-            
-        messages.success(request, 'Account created! Please wait for Dr. Niaz to approve your account.')
-        return redirect('login')
+            with transaction.atomic():
+                # 1. Create User (Automated Signals will create UserProfile and Collaborator)
+                user = User.objects.create_user(username=phone, password=password)
+                user.first_name = name
+                user.is_active = False # Manual approval required
+                user.save()
+                
+                # 2. Update the professional profile (Signals already created it)
+                collaborator = user.collaborator_profile
+                collaborator.designation = designation
+                collaborator.division = division
+                collaborator.save()
+                
+            messages.success(request, 'Account created! Please wait for Dr. Niaz to approve your account.')
+            return redirect('login')
+        except Exception as e:
+            messages.error(request, f'An error occurred during registration: {e}')
+            return redirect('signup')
         
     return render(request, 'accounts/signup.html')
 
