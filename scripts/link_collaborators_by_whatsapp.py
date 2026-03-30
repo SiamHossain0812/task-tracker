@@ -15,6 +15,7 @@ def normalize_phone(phone):
     Remove all non-digit characters and standard Bangladesh prefixes.
     E.g., '+8801738785230' -> '1738785230'
     '01738785230' -> '1738785230'
+    '1738785230' -> '1738785230'
     """
     if not phone:
         return ""
@@ -32,7 +33,7 @@ def normalize_phone(phone):
     return digits
 
 def link_profiles():
-    print("--- BRRI Agenda: Collaborator-User Linking Script (By WhatsApp) ---")
+    print("--- BRRI Agenda: Collaborator-User Linking Script V2 (By WhatsApp) ---")
     
     disconnected = Collaborator.objects.filter(user__isnull=True)
     count = disconnected.count()
@@ -41,31 +42,52 @@ def link_profiles():
     linked_count = 0
     failed_count = 0
     
+    # Pre-cache all users and their normalized phone identifiers
+    print("Scanning all users for phone number identifiers...")
+    user_pool = []
+    for user in User.objects.all():
+        data = {
+            'user': user,
+            'norm_username': normalize_phone(user.username),
+            'norm_profile_phone': ""
+        }
+        if hasattr(user, 'profile'):
+            data['norm_profile_phone'] = normalize_phone(user.profile.phone_number)
+        user_pool.append(data)
+    print(f"Scanned {len(user_pool)} users.")
+
     for collab in disconnected:
         if not collab.whatsapp_number:
-            print(f"  [SKIPPING] {collab.name}: No WhatsApp number provided.")
+            print(f"  [SKIPPING] {collab.name}: No WhatsApp number provided in profile.")
             failed_count += 1
             continue
             
         collab_phone = normalize_phone(collab.whatsapp_number)
-        print(f"  [CHECKING] {collab.name} (WhatsApp: {collab_phone})")
+        print(f"  [CHECKING] {collab.name} (WhatsApp Normalized: {collab_phone})")
         
-        # Look for UserProfile with matching phone number
-        # We also normalize the phone numbers in the database during search
-        # or just try to match the normalized version.
         match = None
-        for profile in UserProfile.objects.all():
-            if normalize_phone(profile.phone_number) == collab_phone:
-                match = profile.user
+        match_source = ""
+        
+        for u_data in user_pool:
+            # 1. Try matching against Profile Phone Number
+            if u_data['norm_profile_phone'] == collab_phone:
+                match = u_data['user']
+                match_source = "UserProfile.phone_number"
+                break
+            
+            # 2. Try matching against Username (if username is a phone number)
+            if u_data['norm_username'] == collab_phone:
+                match = u_data['user']
+                match_source = "User.username"
                 break
         
         if match:
             collab.user = match
             collab.save()
-            print(f"  [SUCCESS] Linked {collab.name} to User: {match.username}")
+            print(f"  [SUCCESS] Linked {collab.name} to User: {match.username} (via {match_source})")
             linked_count += 1
         else:
-            print(f"  [FAILED] No UserProfile found with phone number ending in {collab_phone}")
+            print(f"  [FAILED] No User found where username or profile phone matches {collab_phone}")
             failed_count += 1
             
     print("\n--- Summary ---")
