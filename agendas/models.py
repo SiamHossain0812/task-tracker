@@ -47,7 +47,7 @@ class Project(models.Model):
 
 
 class Collaborator(models.Model):
-    user = models.OneToOneField('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='collaborator_profile')
+    user = models.OneToOneField('auth.User', on_delete=models.CASCADE, null=True, blank=True, related_name='collaborator_profile')
     name = models.CharField(max_length=200)
     institute = models.CharField(max_length=200, blank=True)
     address = models.TextField(blank=True)

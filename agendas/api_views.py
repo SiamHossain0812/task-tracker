@@ -1,6 +1,7 @@
 import os
 import json
 from django.shortcuts import render, get_object_or_404
+from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
@@ -1375,25 +1376,46 @@ def approve_user(request, user_id):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @authentication_classes([])  # Disable SessionAuth to bypass CSRF check
+@transaction.atomic
 def register_user(request):
     """Register a new user (inactive until approved)"""
-    username = request.data.get('username')
-    email = request.data.get('email')
+    username = request.data.get('username', '').strip()
+    email = request.data.get('email', '').strip()
     password = request.data.get('password')
     first_name = request.data.get('first_name', '')
     last_name = request.data.get('last_name', '')
     designation = request.data.get('designation', '')
     division = request.data.get('division', '')
     
-    if not username or not password:
+    if not username or not password or not email:
         return Response(
-            {'error': 'Username and password are required'},
+            {'error': 'Username, email, and password are required'},
             status=status.HTTP_400_BAD_REQUEST
         )
     
+    # 1. Check if Username (Phone) exists in User or Collaborator
     if User.objects.filter(username=username).exists():
         return Response(
-            {'error': 'Username already exists'},
+            {'error': f'Phone number {username} already exists as a username.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    if Collaborator.objects.filter(whatsapp_number=username).exists():
+         return Response(
+            {'error': f'Phone number {username} is already registered to a collaborator profile.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # 2. Check if Email already exists in User or Collaborator
+    if User.objects.filter(email__iexact=email).exists():
+        return Response(
+            {'error': f'Email {email} is already taken by another user.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+        
+    if Collaborator.objects.filter(email__iexact=email).exists():
+        return Response(
+            {'error': f'Email {email} is already associated with a collaborator profile.'},
             status=status.HTTP_400_BAD_REQUEST
         )
     
