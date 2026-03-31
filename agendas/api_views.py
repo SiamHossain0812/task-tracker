@@ -276,6 +276,11 @@ class AgendaViewSet(viewsets.ModelViewSet):
         assignment.status = 'accepted'
         assignment.save()
         
+        # Auto-start task if it was pending
+        if agenda.status == 'pending':
+            agenda.status = 'in-progress'
+            agenda.save()
+        
         # Notify leader
         if agenda.team_leader and agenda.team_leader.user:
             notification = Notification.objects.create(

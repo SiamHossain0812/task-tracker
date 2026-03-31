@@ -107,25 +107,29 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
         title = ""
         message = ""
 
-        # --- Rule 1: Stagnation (Pending but should have started) ---
+        # --- Rule 1: Auto-Start (Pending but should have started) ---
         if agenda.status == 'pending' and now > start_dt:
-            # Check if we already alerted this recently (e.g. today)
+            agenda.status = 'in-progress'
+            agenda.save()
+            
+            # Check if we already alerted this auto-start today
             if not Notification.objects.filter(
                 user=user, 
                 related_agenda=agenda, 
-                notification_type='stagnation',
+                notification_type='status_change',
+                message__icontains='automatically moved to',
                 created_at__date=now.date()
             ).exists():
-                alert_type = 'stagnation'
-                title = "Gentle Reminder"
-                message = f"It looks like '{agenda.title}' is awaiting your start. It was scheduled for {start_dt.strftime('%H:%M')}."
+                alert_type = 'status_change'
+                title = "Task Auto-Started"
+                message = f"'{agenda.title}' has been automatically moved to 'In Progress' as its start time reached."
 
         # --- Rule 2: 80% Time Elapsed (In Progress) ---
-        elif agenda.status == 'in-progress' and finish_dt > start_dt:
+        if agenda.status == 'in-progress' and finish_dt > start_dt:
              total_duration = (finish_dt - start_dt).total_seconds()
              elapsed_duration = (now - start_dt).total_seconds()
              
-             if total_duration > 0 and (elapsed_duration / total_duration) >= 0.8:
+             if total_duration > 0 and (elapsed_duration / total_duration) >= 0.79:
                  # Check if we already sent this specific warning
                  if not Notification.objects.filter(
                     user=user,
@@ -133,12 +137,12 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
                     notification_type='time_elapsed_warning'
                  ).exists():
                      alert_type = 'time_elapsed_warning'
-                     title = "Time Check"
+                     title = "Time Check (80%)"
                      message = f"Heads up! 80% of the allocated time for '{agenda.title}' has passed."
 
         # --- Rule 3: Deadline Approaching (Within 2 hours) ---
-        # Only check if we haven't already triggered the 80% warning (to avoid double alerts in same check)
-        elif agenda.status != 'completed' and now < finish_dt and (finish_dt - now) <= timedelta(hours=2) and not alert_type:
+        # Note: alert_type might already be set by Rule 1 or 2, but we only send one notification per loop to avoid spam.
+        if agenda.status == 'in-progress' and not alert_type and now < finish_dt and (finish_dt - now) <= timedelta(hours=2):
             # Check for recent warning
             if not Notification.objects.filter(
                 user=user, 
@@ -221,70 +225,104 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
                 except Exception as push_e:
                     pass  # Native push failed
 
-    # --- Rule 5: Schedules (30-minute Warning) ---
+    # --- Rule 5: Schedules (30-minute & 48-hour Warnings) ---
     schedules = Schedule.objects.filter(
         user=user, 
-        status='undone', 
-        is_notified=False
+        status='undone'
     )
     
-    # Check date range to avoid scanning all history (e.g. within today and tomorrow)
-    schedules = schedules.filter(date__range=[now.date(), now.date() + timedelta(days=1)])
+    # Expand date range to cover the next 3 days for the 48h warning
+    schedules = schedules.filter(date__range=[now.date(), now.date() + timedelta(days=3)])
+    local_now = timezone.localtime(now)
+    
+    from datetime import time
     
     for schedule in schedules:
-        due_time = schedule.start_time
-        # Combine date and time to get local aware datetime
-        schedule_dt = timezone.make_aware(datetime.combine(schedule.date, due_time))
-        local_now = timezone.localtime(now)
+        start_t = schedule.start_time
+        end_t = schedule.end_time
         
-        # Check if it's within 30 minutes before the due time
-        if local_now < schedule_dt and (schedule_dt - local_now) <= timedelta(minutes=30):
-            # Create notification
-            notification = Notification.objects.create(
-                user=user,
-                title="Schedule Due Soon",
-                message=f"Schedule '{schedule.subject}' is starting at {due_time.strftime('%H:%M')}.",
-                notification_type='deadline_warning',
-                related_schedule=schedule
-            )
-            
-            # Mark as notified to avoid repeats
-            schedule.is_notified = True
-            schedule.save()
-            
-            # WebSocket and Push
-            try:
-                from .serializers import NotificationSerializer
-                from channels.layers import get_channel_layer
-                serializer = NotificationSerializer(notification)
-                
-                channel_layer = get_channel_layer()
-                if channel_layer:
-                    async_to_sync(channel_layer.group_send)(
-                        f'notifications_{user.id}',
-                        {
-                            'type': 'notification_message',
-                            'notification': serializer.data
-                        }
-                    )
-                else:
-                    print(f"[agendas.utils] Warning: No channel layer found for user {user.id}")
-                
-                send_push_notification(
+        # 1. 30-minute start warning (only if start_time exists)
+        if not schedule.is_notified and start_t:
+            schedule_start_dt = timezone.make_aware(datetime.combine(schedule.date, start_t))
+            if local_now < schedule_start_dt and (schedule_start_dt - local_now) <= timedelta(minutes=30):
+                notification = Notification.objects.create(
                     user=user,
-                    title="Schedule Reminder",
-                    message=f"'{schedule.subject}' is due in 30 minutes.",
-                    url="/schedules"
+                    title="Schedule Starting Soon",
+                    message=f"Schedule '{schedule.subject}' is starting at {start_t.strftime('%H:%M')}.",
+                    notification_type='deadline_warning',
+                    related_schedule=schedule
                 )
-            except Exception as broadcast_e:
-                print(f"[agendas.utils] Error during broadcast for user {user.id}: {str(broadcast_e)}")
+                
+                schedule.is_notified = True
+                schedule.save()
+                
+                try:
+                    from .serializers import NotificationSerializer
+                    from channels.layers import get_channel_layer
+                    serializer = NotificationSerializer(notification)
+                    channel_layer = get_channel_layer()
+                    if channel_layer:
+                        async_to_sync(channel_layer.group_send)(
+                            f'notifications_{user.id}',
+                            {'type': 'notification_message', 'notification': serializer.data}
+                        )
+                    
+                    send_push_notification(
+                        user=user,
+                        title="Schedule Reminder",
+                        message=f"'{schedule.subject}' is starting in 30 minutes.",
+                        url="/schedules"
+                    )
+                except Exception as e:
+                    print(f"[agendas.utils] 30m broadcast error: {e}")
 
-            created_alerts.append({
-                'id': notification.id,
-                'type': 'schedule_reminder',
-                'title': notification.title,
-                'message': notification.message
-            })
+                created_alerts.append({
+                    'id': notification.id,
+                    'type': 'schedule_reminder',
+                    'title': notification.title,
+                    'message': notification.message
+                })
+
+        # 2. 48-hour end warning (Email)
+        # Determine end datetime (fallback to 23:59 if none provided)
+        if end_t:
+            schedule_end_dt = timezone.make_aware(datetime.combine(schedule.date, end_t))
+        else:
+            schedule_end_dt = timezone.make_aware(datetime.combine(schedule.date, time(23, 59)))
+
+        if local_now < schedule_end_dt and (schedule_end_dt - local_now) <= timedelta(hours=48):
+            # Check if 48h alert was already sent
+            if not Notification.objects.filter(
+                user=user,
+                related_schedule=schedule,
+                notification_type='schedule_48h_warning'
+            ).exists():
+                
+                notification_48h = Notification.objects.create(
+                    user=user,
+                    title="Schedule Deadline Approaching (48h)",
+                    message=f"Friendly reminder: {schedule.subject} ends in 48 hours.",
+                    notification_type='schedule_48h_warning',
+                    related_schedule=schedule
+                )
+                
+                # Send the email specifically requested by the user
+                try:
+                    send_notification_email(
+                        recipient=user, 
+                        title="Schedule Deadline Approaching (48h)", 
+                        message=f"Friendly reminder: Your schedule '{schedule.subject}' will wrap up in 48 hours.", 
+                        agenda=None
+                    )
+                except Exception as e:
+                    print(f"[agendas.utils] 48h email error: {e}")
+                
+                created_alerts.append({
+                    'id': notification_48h.id,
+                    'type': 'schedule_48h_warning',
+                    'title': notification_48h.title,
+                    'message': notification_48h.message
+                })
 
     return {
         'alerts_created': len(created_alerts),
