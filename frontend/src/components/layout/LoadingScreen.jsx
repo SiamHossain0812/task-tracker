@@ -61,7 +61,7 @@ const LoadingScreen = () => {
                 <div className="dna-progress absolute -left-full w-full h-full bg-gradient-to-r from-transparent via-amber-400 to-transparent animate-dna-scan"></div>
             </div>
             <div className="mt-6 text-emerald-300/40 text-[10px] font-mono tracking-widest uppercase">
-                Agromet Lab Task Tracker v6.1 Beta
+                Agromet Lab Task Tracker v6.2 Beta
             </div>
 
             <style>{`

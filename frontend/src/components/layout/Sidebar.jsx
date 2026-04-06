@@ -43,10 +43,10 @@ const Sidebar = ({ isOpen, onClose }) => {
             items: [
                 { to: "/about", icon: "fas fa-user-circle", label: "My Profile" },
                 { to: "/schedules", icon: "fas fa-clock", label: "My Schedule", adminOnly: true },
-                { 
-                    to: "/project-requests", 
-                    icon: "fas fa-file-contract", 
-                    label: user?.is_superuser ? "Requested Projects" : "Project Requests" 
+                {
+                    to: "/project-requests",
+                    icon: "fas fa-file-contract",
+                    label: user?.is_superuser ? "Requested Projects" : "Project Requests"
                 }
             ]
         },
@@ -55,8 +55,8 @@ const Sidebar = ({ isOpen, onClose }) => {
             id: "admin",
             items: [
                 { to: "/collaborators", icon: "fas fa-users", label: "Team Management" },
-                { 
-                    label: "Performance & Data", 
+                {
+                    label: "Performance & Data",
                     icon: "fas fa-chart-line",
                     subItems: [
                         { to: "/analytics", label: "Analytics", icon: "fas fa-chart-pie" },
@@ -72,8 +72,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         if (link.adminOnly && !user?.is_superuser) return null;
 
         const commonClasses = ({ isActive }) =>
-            `sidebar-link relative flex items-center gap-3 rounded-xl transition-all ${
-                isSubItem ? 'pl-11 pr-4 py-2 text-sm' : 'px-4 py-3'
+            `sidebar-link relative flex items-center gap-3 rounded-xl transition-all ${isSubItem ? 'pl-11 pr-4 py-2 text-sm' : 'px-4 py-3'
             } ${isActive
                 ? 'text-emerald-600 bg-emerald-50 active'
                 : 'text-gray-500 hover:text-emerald-600 hover:bg-emerald-50'
@@ -134,7 +133,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                             Agromet Lab<br />Task Tracker
                         </span>
                         <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full w-fit mt-1 uppercase tracking-wider">
-                            v5.2 BETA
+                            v6.2 BETA
                         </span>
                     </div>
                 </NavLink>
