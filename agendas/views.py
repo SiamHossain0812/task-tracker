@@ -22,6 +22,11 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 @login_required
 def dashboard(request):
     """Main dashboard view showing all agendas."""
+    # --- AUTO-HEALING: Ensure Collaborator profile exists ---
+    if not hasattr(request.user, 'collaborator_profile'):
+        from .utils import ensure_user_profile_sync
+        ensure_user_profile_sync(request.user)
+    
     today = date.today()
     filter_type = request.GET.get('filter')
     
@@ -528,7 +533,12 @@ def collaborator_edit(request, pk):
 def collaborator_delete(request, pk):
     collaborator = get_object_or_404(Collaborator, pk=pk)
     if request.method == 'POST':
+        user = collaborator.user
         collaborator.delete()
+        # Also delete the associated User to prevent "already exists" errors on re-registration
+        if user:
+            user.delete()
+        messages.success(request, "Collaborator and associated user account deleted.")
         return redirect('collaborator_list')
     return render(request, 'agendas/confirm_delete.html', {'object': collaborator, 'title': 'Delete Collaborator'}) 
 @csrf_exempt

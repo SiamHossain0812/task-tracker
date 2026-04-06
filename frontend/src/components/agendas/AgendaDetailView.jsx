@@ -491,30 +491,27 @@ const AgendaDetailView = () => {
                                     </>
                                 ) : myAssignment?.status === 'accepted' ? (
                                     <>
-                                        {task.status !== 'completed' ? (
+                                        {task.status === 'in-progress' ? (
                                             <button
                                                 onClick={handleStatusToggle}
                                                 disabled={responding}
-                                                className={`w-full py-3.5 rounded-xl font-bold text-sm shadow-lg transition-all hover:scale-[1.02] flex items-center justify-center gap-2 ${task.status === 'in-progress'
-                                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'
-                                                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'
-                                                    }`}
+                                                className="w-full py-3.5 rounded-xl font-bold text-sm shadow-lg transition-all hover:scale-[1.02] flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200"
                                             >
                                                 {responding ? <i className="fas fa-spinner fa-spin"></i> : (
                                                     <>
-                                                        <i className={`fas ${task.status === 'in-progress' ? 'fa-check' : 'fa-play'}`}></i>
-                                                        {task.status === 'in-progress' ? 'Mark Completed' : 'Start Task'}
+                                                        <i className="fas fa-check"></i>
+                                                        Mark Completed
                                                     </>
                                                 )}
                                             </button>
-                                        ) : (
+                                        ) : task.status === 'completed' ? (
                                             <button
                                                 onClick={handleStatusToggle}
                                                 className="w-full py-3 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl font-bold text-sm hover:bg-emerald-100 transition-all"
                                             >
                                                 Re-open Task
                                             </button>
-                                        )}
+                                        ) : null}
 
                                         {canExtend && task.extension_status === 'none' && task.is_overdue && task.extension_count < 1 && (
                                             <button

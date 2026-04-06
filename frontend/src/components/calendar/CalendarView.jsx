@@ -182,6 +182,41 @@ const CalendarView = () => {
         </div>
     );
 
+    const [editingNote, setEditingNote] = useState(null); // { id: agendaId, content: string }
+    const [noteLoading, setNoteLoading] = useState(false);
+
+    const handleSaveNote = async (agendaId) => {
+        if (!editingNote || !editingNote.content.trim()) return;
+        setNoteLoading(true);
+        try {
+            const existingNoteId = events.find(e => e.id === agendaId && e.type === 'agenda')?.personal_note?.id;
+            
+            if (existingNoteId) {
+                // Update
+                const response = await apiClient.patch(`personal-notes/${existingNoteId}/`, {
+                    content: editingNote.content
+                });
+                // Update local state
+                setEvents(prev => prev.map(e => (e.id === agendaId && e.type === 'agenda') ? { ...e, personal_note: response.data } : e));
+            } else {
+                // Create
+                const response = await apiClient.post('personal-notes/', {
+                    related_agenda: agendaId,
+                    content: editingNote.content,
+                    title: `Note for task: ${agendaId}`
+                });
+                // Update local state
+                setEvents(prev => prev.map(e => (e.id === agendaId && e.type === 'agenda') ? { ...e, personal_note: response.data } : e));
+            }
+            setEditingNote(null);
+        } catch (error) {
+            console.error('Failed to save note', error);
+            alert('Failed to save note');
+        } finally {
+            setNoteLoading(false);
+        }
+    };
+
     const renderModal = () => {
         if (!selectedDate || !isModalOpen) return null;
         const dayEvents = events.filter(e => isSameDay(parseISO(e.start), selectedDate));
@@ -193,12 +228,17 @@ const CalendarView = () => {
                     onClick={() => setIsModalOpen(false)}
                 ></div>
                 <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden relative z-[61] animate-modal-enter">
+                    {/* Header with improved close button */}
                     <div className="bg-emerald-600 px-6 py-6 text-white relative">
                         <button
-                            onClick={() => setIsModalOpen(false)}
-                            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/10 flex items-center justify-center hover:bg-black/20 transition-all"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsModalOpen(false);
+                            }}
+                            className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all z-[70] cursor-pointer"
+                            title="Close"
                         >
-                            <i className="fas fa-times text-sm"></i>
+                            <i className="fas fa-times text-lg"></i>
                         </button>
                         <div className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Details for</div>
                         <h3 className="text-2xl font-black leading-tight tracking-tight">
@@ -214,7 +254,7 @@ const CalendarView = () => {
                                     {dayEvents.length}
                                 </span>
                             </div>
-                            <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar pb-2">
                                 {dayEvents.length === 0 ? (
                                     <div className="py-12 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
                                         <i className="fas fa-calendar-day text-gray-200 text-3xl mb-3 block"></i>
@@ -226,36 +266,90 @@ const CalendarView = () => {
                                         const color = isSchedule ? 'bg-rose-500' :
                                             (event.priority === 'high' ? 'bg-red-500' :
                                                 (event.priority === 'medium' ? 'bg-amber-500' : 'bg-emerald-500'));
+                                        
+                                        const hasNote = event.personal_note;
+                                        const isEditingThis = editingNote?.id === event.id && !isSchedule;
 
                                         return (
-                                            <div key={`${event.type}-${event.id}`} className="flex items-center gap-3 p-3 rounded-2xl border border-gray-100 hover:border-emerald-200 transition-all group bg-white shadow-sm hover:shadow-md">
-                                                <div className={`w-1.5 h-10 rounded-full ${color}`}></div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="text-sm font-bold text-gray-800 leading-snug truncate flex items-center gap-1.5">
-                                                        {isSchedule && <i className="fas fa-lock text-[10px] text-gray-300"></i>}
-                                                        {event.title}
+                                            <div key={`${event.type}-${event.id}`} className="group relative">
+                                                <div className="flex flex-col gap-2 p-3 rounded-2xl border border-gray-100 hover:border-emerald-200 transition-all bg-white shadow-sm hover:shadow-md">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-1.5 h-10 rounded-full ${color}`}></div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-sm font-bold text-gray-800 leading-snug truncate flex items-center gap-1.5">
+                                                                {isSchedule && <i className="fas fa-lock text-[10px] text-gray-300"></i>}
+                                                                {event.title}
+                                                            </div>
+                                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                                                                <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1">
+                                                                    <i className="far fa-clock"></i>
+                                                                    {isSchedule ? format(parseISO(event.start), 'HH:mm') : event.time || 'All day'}
+                                                                </span>
+                                                                {!isSchedule && event.project_name && (
+                                                                    <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-tighter">{event.project_name}</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            {!isSchedule && (
+                                                                <button 
+                                                                    onClick={() => setEditingNote(isEditingThis ? null : { id: event.id, content: event.personal_note?.content || '' })}
+                                                                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${hasNote ? 'bg-amber-100 text-amber-600' : 'bg-gray-50 text-gray-400 hover:bg-amber-50 hover:text-amber-600'}`}
+                                                                    title="Personal Note"
+                                                                >
+                                                                    <i className={`fas ${hasNote ? 'fa-sticky-note' : 'fa-edit'} text-xs`}></i>
+                                                                </button>
+                                                            )}
+                                                            <NavLink
+                                                                to={isSchedule ? '/schedules' : `/tasks/${event.id}`}
+                                                                className="w-9 h-9 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                                            >
+                                                                <i className={`fas ${isSchedule ? 'fa-external-link-alt' : 'fa-eye'} text-xs`}></i>
+                                                            </NavLink>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
-                                                        <span className="text-[10px] font-bold text-gray-400 flex items-center gap-1">
-                                                            <i className="far fa-clock"></i>
-                                                            {isSchedule ? format(parseISO(event.start), 'HH:mm') : event.time || 'All day'}
-                                                        </span>
-                                                        {isSchedule && event.place && (
-                                                            <span className="text-[10px] font-bold text-emerald-600/80 flex items-center gap-1">
-                                                                <i className="fas fa-map-marker-alt text-[8px]"></i> {event.place}
-                                                            </span>
-                                                        )}
-                                                        {!isSchedule && event.project_name && (
-                                                            <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-tighter">{event.project_name}</span>
-                                                        )}
-                                                    </div>
+
+                                                    {/* Personal Note Area */}
+                                                    {isEditingThis ? (
+                                                        <div className="mt-2 animate-fade-in">
+                                                            <textarea
+                                                                className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all resize-none min-h-[80px]"
+                                                                placeholder="Add your personal note here..."
+                                                                value={editingNote.content}
+                                                                onChange={(e) => setEditingNote({ ...editingNote, content: e.target.value })}
+                                                            ></textarea>
+                                                            <div className="flex justify-end gap-2 mt-2">
+                                                                <button 
+                                                                    onClick={() => setEditingNote(null)}
+                                                                    className="px-3 py-1.5 text-[10px] font-bold text-gray-400 hover:text-gray-600"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => handleSaveNote(event.id)}
+                                                                    disabled={noteLoading}
+                                                                    className="px-4 py-1.5 bg-emerald-600 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-700 transition-all flex items-center gap-2"
+                                                                >
+                                                                    {noteLoading && <i className="fas fa-spinner fa-spin"></i>}
+                                                                    Save Note
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : hasNote ? (
+                                                        <div className="mt-1 px-3 py-2 bg-amber-50/50 rounded-xl border border-amber-100/50 flex flex-col gap-1">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-[8px] font-black uppercase tracking-widest text-amber-600/60">My Personal Note</span>
+                                                                <button 
+                                                                    onClick={() => setEditingNote({ id: event.id, content: event.personal_note.content })}
+                                                                    className="text-[10px] text-amber-600 opacity-60 hover:opacity-100"
+                                                                >
+                                                                    <i className="fas fa-pen text-[8px]"></i>
+                                                                </button>
+                                                            </div>
+                                                            <p className="text-[11px] font-medium text-gray-600 italic">"{event.personal_note.content}"</p>
+                                                        </div>
+                                                    ) : null}
                                                 </div>
-                                                <NavLink
-                                                    to={isSchedule ? '/schedules' : `/tasks/${event.id}`}
-                                                    className="w-9 h-9 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
-                                                >
-                                                    <i className={`fas ${isSchedule ? 'fa-external-link-alt' : 'fa-eye'} text-xs`}></i>
-                                                </NavLink>
                                             </div>
                                         );
                                     })
@@ -263,24 +357,22 @@ const CalendarView = () => {
                             </div>
                         </div>
 
-                        {user?.is_superuser && (
-                            <div className="flex gap-3">
-                                <NavLink
-                                    to={`/tasks/new?date=${format(selectedDate, "yyyy-MM-dd")}`}
-                                    className="flex-1 py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-xl shadow-gray-200 text-sm"
-                                >
-                                    <i className="fas fa-plus text-[10px]"></i>
-                                    Task
-                                </NavLink>
-                                <NavLink
-                                    to="/schedules"
-                                    className="flex-1 py-4 bg-white border border-gray-200 hover:border-rose-200 text-gray-700 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-sm text-sm"
-                                >
-                                    <i className="fas fa-calendar-alt text-[10px] text-rose-500"></i>
-                                    Schedule
-                                </NavLink>
-                            </div>
-                        )}
+                        <div className="flex gap-3">
+                            <NavLink
+                                to={`/tasks/new?date=${format(selectedDate, "yyyy-MM-dd")}`}
+                                className="flex-1 py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-xl shadow-gray-200 text-sm"
+                            >
+                                <i className="fas fa-plus text-[10px]"></i>
+                                Task
+                            </NavLink>
+                            <NavLink
+                                to="/schedules"
+                                className="flex-1 py-4 bg-white border border-gray-200 hover:border-rose-200 text-gray-700 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-sm text-sm"
+                            >
+                                <i className="fas fa-calendar-alt text-[10px] text-rose-500"></i>
+                                Schedule
+                            </NavLink>
+                        </div>
                     </div>
                 </div>
             </div>

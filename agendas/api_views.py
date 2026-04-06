@@ -44,6 +44,37 @@ from .serializers import (
 from .utils import check_and_create_alerts, send_notification_email
 
 
+
+from django.http import FileResponse, Http404
+from .models import AgendaUpdate
+
+class TaskUpdateDownloadView(APIView):
+    """
+    Secure view to download task update attachments.
+    Access restricted to Admin, Task Creator, and Team Leader.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, update_id):
+        # Using get_object_or_404 correctly
+        update = get_object_or_404(AgendaUpdate, id=update_id)
+        agenda = update.agenda
+        user = request.user
+        
+        # Access control: Admin, Creator, or Team Leader
+        is_admin = user.is_superuser
+        is_creator = (agenda.created_by == user)
+        is_leader = (agenda.team_leader and agenda.team_leader.user == user)
+        
+        if not (is_admin or is_creator or is_leader):
+            return Response({'error': 'You do not have permission to access this file.'}, status=status.HTTP_403_FORBIDDEN)
+            
+        if not update.attachment:
+            raise Http404("No attachment found for this update.")
+            
+        return FileResponse(update.attachment.open(), as_attachment=True)
+
+
 class ProjectViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Project CRUD operations
@@ -243,7 +274,26 @@ class AgendaViewSet(viewsets.ModelViewSet):
         collaborator = getattr(user, 'collaborator_profile', None)
         # The serializer.save() will use context['collaborator_duties'] if provided
         agenda = serializer.save(created_by=user, team_leader=collaborator)
+        
+        # Auto-start if start time is in the past
+        self.check_and_auto_start(agenda)
+        
         self.notify_collaborators(agenda, is_new=True)
+
+    def check_and_auto_start(self, agenda):
+        """Helper to move status to in-progress if start time has passed"""
+        from django.utils import timezone
+        from datetime import datetime
+        
+        if agenda.status == 'pending':
+            now = timezone.now()
+            start_date = agenda.date
+            start_time = agenda.time or datetime.min.time()
+            start_dt = timezone.make_aware(datetime.combine(start_date, start_time))
+            
+            if now >= start_dt:
+                agenda.status = 'in-progress'
+                agenda.save(update_fields=['status'])
 
     @staticmethod
     def _broadcast_notification(notification):
@@ -459,6 +509,10 @@ class AgendaViewSet(viewsets.ModelViewSet):
         # Or just simple 'notify all' here for now to ensure coverage.
         # Given the requirements, let's notify all current collaborators about the update.
         agenda = serializer.save()
+        
+        # Auto-start if start time is in the past
+        self.check_and_auto_start(agenda)
+        
         self.notify_collaborators(agenda, is_new=False)
 
     def notify_collaborators(self, agenda, is_new=True):
@@ -596,8 +650,13 @@ class AgendaViewSet(viewsets.ModelViewSet):
 
             
         text = request.data.get('text')
+        attachment = request.FILES.get('attachment')
+        
         if not text:
             return Response({'error': 'Update text is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if not attachment:
+            return Response({'error': 'File attachment is mandatory for updates.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Auto-calculate time_elapsed_percentage
         time_elapsed_percentage = 0
@@ -634,14 +693,9 @@ class AgendaViewSet(viewsets.ModelViewSet):
             agenda=agenda,
             author=user,
             text=text,
+            attachment=attachment,
             time_elapsed_percentage=time_elapsed_percentage
         )
-        
-        # Check for attachment
-        attachment = request.FILES.get('attachment')
-        if attachment:
-            update_obj.attachment = attachment
-            update_obj.save()
             
         # Notify Team Leader
         if agenda.team_leader and agenda.team_leader.user and agenda.team_leader.user != user:
@@ -1127,6 +1181,11 @@ class DashboardAPIView(APIView):
         """Get dashboard data"""
         user = request.user
         
+        # --- AUTO-HEALING: Ensure Collaborator profile exists ---
+        if not hasattr(user, 'collaborator_profile'):
+            from .utils import ensure_user_profile_sync
+            ensure_user_profile_sync(user)
+        
         # Base Querysets
         projects = Project.objects.all()
         all_agendas_qs = Agenda.objects.all()
@@ -1204,10 +1263,16 @@ class CalendarAPIView(APIView):
         start_date = request.query_params.get('start')
         end_date = request.query_params.get('end')
         
-        # 1. Fetch Agendas
-        agenda_queryset = Agenda.objects.all()
-        if not request.user.is_superuser:
-            agenda_queryset = agenda_queryset.filter(collaborators__user=request.user).distinct()
+        # 1. Fetch Agendas with inclusive filtering
+        if request.user.is_superuser:
+            agenda_queryset = Agenda.objects.all().select_related('project')
+        else:
+            agenda_queryset = Agenda.objects.filter(
+                Q(assignments__collaborator__user=request.user) |
+                Q(team_leader__user=request.user) |
+                Q(created_by=request.user) |
+                Q(project__members__user=request.user)
+            ).distinct().select_related('project')
         
         if start_date:
             agenda_queryset = agenda_queryset.filter(date__gte=start_date)
@@ -1221,10 +1286,19 @@ class CalendarAPIView(APIView):
         if end_date:
             schedule_queryset = schedule_queryset.filter(date__lte=end_date)
         
+        # 3. Fetch User's Personal Notes for faster lookup
+        personal_notes = {
+            note.related_agenda_id: note 
+            for note in PersonalNote.objects.filter(user=request.user, related_agenda__isnull=False)
+        }
+
         events = []
         
         # Format Agendas
         for agenda in agenda_queryset:
+            # Check for existing personal note
+            note = personal_notes.get(agenda.id)
+            
             event = {
                 'id': agenda.id,
                 'type': 'agenda',
@@ -1235,6 +1309,11 @@ class CalendarAPIView(APIView):
                 'status': agenda.status,
                 'priority': agenda.priority,
                 'is_overdue': agenda.is_overdue,
+                'project_name': agenda.project.name if agenda.project else None,
+                'personal_note': {
+                    'id': note.id,
+                    'content': note.content
+                } if note else None
             }
             if agenda.time:
                 event['start'] += f'T{agenda.time}'

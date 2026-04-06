@@ -284,18 +284,11 @@ class GoogleToken(models.Model):
     client_id = models.CharField(max_length=200)
     client_secret = models.CharField(max_length=200)
 
-def normalize_phone_for_sync(phone):
-    """Utility to clean phone numbers for automated matching"""
-    if not phone: return ""
-    digits = "".join(filter(str.isdigit, str(phone)))
-    if digits.startswith('88'): digits = digits[2:]
-    if digits.startswith('0'): digits = digits[1:]
-    return digits
-
 # --- SIGNALS FOR AUTOMATED PROFILE MANAGEMENT ---
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
+from .utils import ensure_user_profile_sync
 
 @receiver(post_save, sender=User)
 def manage_user_profiles(sender, instance, created, **kwargs):
@@ -303,56 +296,7 @@ def manage_user_profiles(sender, instance, created, **kwargs):
     Automatically manage UserProfile and Collaborator when a User is saved.
     This ensures no user is ever 'orphaned' without their professional profile.
     """
-    # 1. Ensure UserProfile exists (Internal phone number)
-    profile, p_created = UserProfile.objects.get_or_create(user=instance)
-    
-    # Auto-populate phone from username if it looks like one
-    if not profile.phone_number:
-        norm_username = normalize_phone_for_sync(instance.username)
-        if len(norm_username) >= 10: # Likely a phone number
-            profile.phone_number = instance.username # Keep original format but it's a match
-            profile.save()
-
-    # 2. Ensure Collaborator exists (Professional profile)
-    collab = getattr(instance, 'collaborator_profile', None)
-    if not collab:
-        # Try to find an existing disconnected collaborator by phone number match
-        norm_uid = normalize_phone_for_sync(instance.username)
-        existing_collab = None
-        if len(norm_uid) >= 10:
-            # We iterate to find a match (performance is fine for small/medium set)
-            all_disconnected = Collaborator.objects.filter(user__isnull=True)
-            for c in all_disconnected:
-                if normalize_phone_for_sync(c.whatsapp_number) == norm_uid:
-                    existing_collab = c
-                    break
-        
-        if existing_collab:
-            existing_collab.user = instance
-            existing_collab.save()
-            collab = existing_collab
-        else:
-            # Create new Collaborator profile
-            collab = Collaborator.objects.create(
-                user=instance,
-                name=f"{instance.first_name} {instance.last_name}".strip() or instance.username,
-                email=instance.email,
-                whatsapp_number=instance.username if len(norm_uid) >= 10 else ""
-            )
-
-    # 3. Synchronize names/emails if they changed on the User object
-    collab_updated = False
-    full_name = f"{instance.first_name} {instance.last_name}".strip()
-    if full_name and collab.name != full_name:
-        collab.name = full_name
-        collab_updated = True
-    
-    if instance.email and collab.email != instance.email:
-        collab.email = instance.email
-        collab_updated = True
-        
-    if collab_updated:
-        collab.save()
+    ensure_user_profile_sync(instance)
     scopes = models.TextField()
     expiry = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -418,6 +362,7 @@ class AgendaAssignment(models.Model):
 class PersonalNote(models.Model):
     """Simple personal notes for users"""
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='personal_notes')
+    related_agenda = models.ForeignKey('Agenda', on_delete=models.CASCADE, null=True, blank=True, related_name='personal_notes')
     title = models.CharField(max_length=200, blank=True)
     content = models.TextField()
     color = models.CharField(max_length=50, default='#ffffff')  # hex color

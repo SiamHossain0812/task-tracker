@@ -47,6 +47,8 @@ urlpatterns = [
     # Export
     path('export/past-work-pdf/', api_views.export_past_work_pdf, name='api-export-pdf'),
     
+    path('agendas/updates/<int:update_id>/download/', api_views.TaskUpdateDownloadView.as_view(), name='api-update-download'),
+    
     # Task Time Extension
     path('agendas/<int:pk>/extend-time/', api_views.ExtendTaskTimeView.as_view(), name='api-agenda-extend-time'),
     

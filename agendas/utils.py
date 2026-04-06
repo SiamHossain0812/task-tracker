@@ -5,7 +5,75 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-from .models import Agenda, Notification, Schedule
+
+
+def normalize_phone_for_sync(phone):
+    """Utility to clean phone numbers for automated matching"""
+    if not phone: return ""
+    digits = "".join(filter(str.isdigit, str(phone)))
+    if digits.startswith('88'): digits = digits[2:]
+    if digits.startswith('0'): digits = digits[1:]
+    return digits
+
+def ensure_user_profile_sync(instance):
+    """
+    Ensures UserProfile and Collaborator exists and are synced with User object.
+    Can be called from signals or manually for 'healing' broken connections.
+    """
+    from .models import UserProfile, Collaborator
+    
+    # 1. Ensure UserProfile exists (Internal phone number)
+    profile, p_created = UserProfile.objects.get_or_create(user=instance)
+    
+    # Auto-populate phone from username if it looks like one
+    if not profile.phone_number:
+        norm_username = normalize_phone_for_sync(instance.username)
+        if len(norm_username) >= 10: # Likely a phone number
+            profile.phone_number = instance.username # Keep original format but it's a match
+            profile.save()
+
+    # 2. Ensure Collaborator exists (Professional profile)
+    collab = getattr(instance, 'collaborator_profile', None)
+    if not collab:
+        # Try to find an existing disconnected collaborator by phone number match
+        norm_uid = normalize_phone_for_sync(instance.username)
+        existing_collab = None
+        if len(norm_uid) >= 10:
+            # We iterate to find a match (performance is fine for small/medium set)
+            all_disconnected = Collaborator.objects.filter(user__isnull=True)
+            for c in all_disconnected:
+                if normalize_phone_for_sync(c.whatsapp_number) == norm_uid:
+                    existing_collab = c
+                    break
+        
+        if existing_collab:
+            existing_collab.user = instance
+            existing_collab.save()
+            collab = existing_collab
+        else:
+            # Create new Collaborator profile
+            collab = Collaborator.objects.create(
+                user=instance,
+                name=f"{instance.first_name} {instance.last_name}".strip() or instance.username,
+                email=instance.email,
+                whatsapp_number=instance.username if len(norm_uid) >= 10 else ""
+            )
+
+    # 3. Synchronize names/emails if they changed on the User object
+    collab_updated = False
+    full_name = f"{instance.first_name} {instance.last_name}".strip()
+    if full_name and collab.name != full_name:
+        collab.name = full_name
+        collab_updated = True
+    
+    if instance.email and collab.email != instance.email:
+        collab.email = instance.email
+        collab_updated = True
+        
+    if collab_updated:
+        collab.save()
+    
+    return collab
 
 
 def calculate_status(date_str, time_str, end_date_str, end_time_str):
@@ -69,13 +137,18 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
     created_alerts = []
     
     # Get user's relevant agendas (not completed)
+    from django.db.models import Q
     if user.is_superuser:
+        from .models import Agenda
         agendas = Agenda.objects.exclude(status='completed')
     else:
+        from .models import Agenda
+        # Include tasks where user is assigned, leader, or creator
+        q_filter = Q(created_by=user)
         if hasattr(user, 'collaborator_profile'):
-            agendas = Agenda.objects.filter(collaborators=user.collaborator_profile).exclude(status='completed')
-        else:
-            agendas = Agenda.objects.none()
+            q_filter |= Q(collaborators=user.collaborator_profile) | Q(team_leader=user.collaborator_profile)
+        
+        agendas = Agenda.objects.filter(q_filter).exclude(status='completed').distinct()
 
     for agenda in agendas:
         
@@ -155,20 +228,24 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
                 time_left = int((finish_dt - now).total_seconds() / 60)
                 message = f"'{agenda.title}' is reaching its milestone soon (in {time_left} minutes)."
 
-        # --- Rule 4: Overdue (Missed Deadline) ---
-        elif agenda.status != 'completed' and now > finish_dt:
+        # --- Rule 4: Overdue (Missed Deadline) & Auto-Archive ---
+        elif not agenda.is_archived and agenda.status != 'completed' and now > finish_dt:
+             agenda.is_archived = True
+             agenda.save()
+             
              if not Notification.objects.filter(
                 user=user, 
                 related_agenda=agenda, 
                 notification_type='agenda_overdue',
-                created_at__date=now.date()
+                message__icontains='archived'
             ).exists():
                 alert_type = 'agenda_overdue'
-                title = "Milestone Overlooked"
-                message = f"'{agenda.title}' has passed its expected completion time. Please review current progress or update the schedule."
+                title = "Task Archived (Expired)"
+                message = f"'{agenda.title}' has been automatically moved to the archive as it passed its expected completion time."
 
         # --- Actions ---
         if alert_type:
+            from .models import Notification
             notification = Notification.objects.create(
                 user=user,
                 title=title,
@@ -226,6 +303,7 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
                     pass  # Native push failed
 
     # --- Rule 5: Schedules (30-minute & 48-hour Warnings) ---
+    from .models import Schedule
     schedules = Schedule.objects.filter(
         user=user, 
         status='undone'

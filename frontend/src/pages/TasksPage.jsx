@@ -80,8 +80,9 @@ const TasksPage = () => {
     };
 
     const handleToggleClick = (task) => {
-        const nextStatus = task.status === 'pending' ? 'in-progress' : (task.status === 'in-progress' ? 'completed' : 'pending');
-        const statusLabel = nextStatus === 'in-progress' ? 'In Progress' : (nextStatus === 'completed' ? 'Completed' : 'Pending');
+        if (task.status === 'pending') return;
+        const nextStatus = task.status === 'in-progress' ? 'completed' : 'in-progress';
+        const statusLabel = nextStatus === 'completed' ? 'Completed' : 'In Progress';
         setModal({ show: true, task, nextStatus, statusLabel });
     };
 
@@ -308,16 +309,22 @@ const TasksPage = () => {
                                                 </td>
                                                 <td className="px-6 py-4 text-sm font-bold text-gray-700">{task.date}</td>
                                                 <td className="px-6 py-4">
-                                                    <button
-                                                        onClick={() => handleToggleClick(task)}
-                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all w-28 ${task.status === 'in-progress' ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100' :
-                                                                task.is_overdue ? 'bg-red-50 text-red-600 hover:bg-red-100' :
-                                                                    'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                                                            }`}
-                                                    >
-                                                        {task.is_overdue ? 'OVERDUE' :
-                                                            (task.status_display || (task.status === 'in-progress' ? 'In Progress' : task.status))}
-                                                    </button>
+                                                    {task.status === 'pending' ? (
+                                                        <div className={`px-3 py-1.5 rounded-lg text-xs font-bold w-28 text-center ${
+                                                            task.is_overdue ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-500'
+                                                        }`}>
+                                                            {task.is_overdue ? 'OVERDUE' : (task.status_display || 'Pending')}
+                                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleToggleClick(task)}
+                                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all w-28 ${task.status === 'in-progress' ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100' :
+                                                                    'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                                                                }`}
+                                                        >
+                                                            {task.status_display || (task.status === 'in-progress' ? 'In Progress' : 'Completed')}
+                                                        </button>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 text-right pr-8">
                                                     <div className="flex items-center justify-end gap-1">

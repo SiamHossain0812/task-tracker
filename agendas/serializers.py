@@ -146,14 +146,48 @@ class AgendaUpdateSerializer(serializers.ModelSerializer):
     """Serializer for progress updates on a task"""
     author_name = serializers.CharField(source='author.get_full_name', read_only=True)
     author_username = serializers.CharField(source='author.username', read_only=True)
+    secure_download_url = serializers.SerializerMethodField()
+    can_view_attachment = serializers.SerializerMethodField()
     
     class Meta:
         model = AgendaUpdate
         fields = [
             'id', 'agenda', 'author', 'author_name', 'author_username',
-            'text', 'time_elapsed_percentage', 'attachment', 'created_at'
+            'text', 'time_elapsed_percentage', 'secure_download_url', 'can_view_attachment', 'created_at'
         ]
         read_only_fields = ['id', 'author', 'time_elapsed_percentage', 'created_at']
+
+    def get_can_view_attachment(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user:
+            return False
+            
+        user = request.user
+        if user.is_superuser:
+            return True
+        
+        # Access allowed only for the creator/leader (who are the same person as per USER)
+        if obj.agenda.created_by == user:
+            return True
+            
+        if obj.agenda.team_leader and obj.agenda.team_leader.user == user:
+            return True
+            
+        return False
+
+    def get_secure_download_url(self, obj):
+        if not obj.attachment:
+            return None
+            
+        request = self.context.get('request')
+        if request:
+            from django.urls import reverse
+            try:
+                # Return the new secure endpoint
+                return request.build_absolute_uri(reverse('api-update-download', kwargs={'update_id': obj.id}))
+            except Exception:
+                return None
+        return None
 
 
 
@@ -493,5 +527,5 @@ class PersonalNoteSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = PersonalNote
-        fields = ['id', 'user', 'title', 'content', 'color', 'is_pinned', 'created_at', 'updated_at']
+        fields = ['id', 'user', 'related_agenda', 'title', 'content', 'color', 'is_pinned', 'created_at', 'updated_at']
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
