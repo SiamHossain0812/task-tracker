@@ -185,6 +185,9 @@ def check_and_create_alerts(user, emit_websocket=True, loud_types=None):
             agenda.status = 'in-progress'
             agenda.save()
             
+            # Auto-accept all pending assignments as the task time has reached
+            agenda.assignments.filter(status='pending').update(status='accepted')
+            
             # Check if we already alerted this auto-start today
             if not Notification.objects.filter(
                 user=user, 

@@ -7,6 +7,7 @@ import ConfirmModal from '../common/ConfirmModal';
 import ExtendTaskModal from './ExtendTaskModal';
 import TaskUpdatesList from './TaskUpdatesList';
 import CompleteTaskModal from './CompleteTaskModal';
+import TaskCommentSection from './TaskCommentSection';
 
 const AgendaDetailView = () => {
     const { id } = useParams();
@@ -427,6 +428,9 @@ const AgendaDetailView = () => {
 
                         {/* Task Updates Timeline */}
                         <TaskUpdatesList task={task} onUpdatePosted={fetchTaskDetails} />
+
+                        {/* Task Comments Section */}
+                        <TaskCommentSection task={task} />
                     </div>
 
                     {/* Right Panel: Sidebar (1/3) */}
@@ -505,12 +509,25 @@ const AgendaDetailView = () => {
                                                 )}
                                             </button>
                                         ) : task.status === 'completed' ? (
-                                            <button
-                                                onClick={handleStatusToggle}
-                                                className="w-full py-3 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl font-bold text-sm hover:bg-emerald-100 transition-all"
-                                            >
-                                                Re-open Task
-                                            </button>
+                                            <div className="space-y-2">
+                                                <button
+                                                    onClick={handleStatusToggle}
+                                                    disabled={!task.can_reopen}
+                                                    className={`w-full py-3 rounded-xl font-bold text-sm transition-all shadow-sm ${
+                                                        task.can_reopen 
+                                                        ? 'bg-emerald-50 border border-emerald-100 text-emerald-700 hover:bg-emerald-100' 
+                                                        : 'bg-gray-50 border border-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                                                    }`}
+                                                    title={!task.can_reopen ? "Task must be reviewed and commented on by the Leader before reopening." : ""}
+                                                >
+                                                    {task.can_reopen ? 'Re-open Task' : 'Locked: Awaiting Review'}
+                                                </button>
+                                                {!task.can_reopen && (
+                                                    <p className="text-[10px] text-center font-bold text-gray-400 px-2 leading-tight italic">
+                                                        Leader must post a review comment to unlock reopening.
+                                                    </p>
+                                                )}
+                                            </div>
                                         ) : null}
 
                                         {canExtend && task.extension_status === 'none' && task.is_overdue && task.extension_count < 1 && (

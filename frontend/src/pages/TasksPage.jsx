@@ -2,27 +2,35 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import CompleteTaskModal from '../components/agendas/CompleteTaskModal';
 
 const TasksPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [data, setData] = useState({
         all_undone: [],
+        all_completed: [],
+        all_archived: [],
         completed_today: [],
         pending_invitations: [],
         pending_count: 0,
         in_progress_count: 0,
         high_priority_count: 0,
+        completed_total_count: 0,
         completed_today_count: 0
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [modal, setModal] = useState({ show: false, task: null, nextStatus: '', statusLabel: '' });
+    const [completeModal, setCompleteModal] = useState({ show: false, task: null });
     const [archiveModal, setArchiveModal] = useState({ show: false, task: null });
     const [deleteModal, setDeleteModal] = useState({ show: false, task: null });
     const [rejectModal, setRejectModal] = useState({ show: false, task: null, reason: '' });
+    const [restoreModal, setRestoreModal] = useState({ show: false, task: null });
+    const [isArchiveOpen, setIsArchiveOpen] = useState(false);
     const [toggling, setToggling] = useState(false);
     const [archiving, setArchiving] = useState(false);
+    const [restoring, setRestoring] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [responding, setResponding] = useState(false);
 
@@ -82,8 +90,29 @@ const TasksPage = () => {
     const handleToggleClick = (task) => {
         if (task.status === 'pending') return;
         const nextStatus = task.status === 'in-progress' ? 'completed' : 'in-progress';
+        
+        if (nextStatus === 'completed') {
+            setCompleteModal({ show: true, task });
+            return;
+        }
+
         const statusLabel = nextStatus === 'completed' ? 'Completed' : 'In Progress';
         setModal({ show: true, task, nextStatus, statusLabel });
+    };
+
+    const handleCompleteTask = async (qualityScores) => {
+        if (!completeModal.task) return;
+        try {
+            await apiClient.post(`agendas/${completeModal.task.id}/toggle/`, {
+                quality_scores: qualityScores
+            });
+            await fetchTasks();
+            setCompleteModal({ show: false, task: null });
+        } catch (err) {
+            console.error('Completion toggle failed', err);
+            alert('Failed to complete task');
+            throw err;
+        }
     };
 
     const confirmToggle = async () => {
@@ -121,6 +150,25 @@ const TasksPage = () => {
             alert('Failed to archive task');
         } finally {
             setArchiving(false);
+        }
+    };
+
+    const handleUnarchiveClick = (task) => {
+        setRestoreModal({ show: true, task });
+    };
+
+    const confirmRestore = async () => {
+        if (!restoreModal.task) return;
+        setRestoring(true);
+        try {
+            await apiClient.post(`agendas/${restoreModal.task.id}/unarchive/`);
+            await fetchTasks();
+            setRestoreModal({ show: false, task: null });
+        } catch (err) {
+            console.error('Restore failed', err);
+            alert('Failed to restore task');
+        } finally {
+            setRestoring(false);
         }
     };
 
@@ -192,12 +240,15 @@ const TasksPage = () => {
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-3xl border border-emerald-100 shadow-md">
-                    <div className="text-emerald-600 text-xs font-bold uppercase mb-2">Completed Today</div>
+                    <div className="text-emerald-600 text-xs font-bold uppercase mb-2">Completed Tasks</div>
                     <div className="flex items-end justify-between">
-                        <span className="text-4xl font-bold text-emerald-600">{data.completed_today_count}</span>
+                        <span className="text-4xl font-bold text-emerald-600">{data.completed_total_count}</span>
                         <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500">
                             <i className="fas fa-check-double"></i>
                         </div>
+                    </div>
+                    <div className="text-[10px] text-emerald-400 font-bold mt-2 font-mono">
+                        +{data.completed_today_count} TODAY
                     </div>
                 </div>
             </div>
@@ -363,20 +414,20 @@ const TasksPage = () => {
                     )}
                 </div>
 
-                {/* Completed Today Section */}
+                {/* Completed Tasks Section */}
                 <div>
                     <div className="flex items-center gap-3 mb-4">
                         <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
                             <i className="fas fa-check-circle"></i>
                         </div>
-                        <h3 className="text-lg font-bold text-gray-800">Completed Today <span className="text-emerald-400 text-sm font-medium ml-2">({data.completed_today.length})</span></h3>
+                        <h3 className="text-lg font-bold text-gray-800">Completed Tasks <span className="text-emerald-400 text-sm font-medium ml-2">({data.all_completed.length})</span></h3>
                     </div>
 
-                    {data.completed_today.length > 0 ? (
-                        <div className="bg-white rounded-3xl border border-emerald-100 shadow-sm overflow-hidden opacity-90">
+                    {data.all_completed.length > 0 ? (
+                        <div className="bg-white rounded-3xl border border-emerald-100 shadow-sm overflow-hidden opacity-90 max-h-[500px] overflow-y-auto custom-scrollbar">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
-                                    <thead>
+                                    <thead className="sticky top-0 bg-white z-10">
                                         <tr className="bg-emerald-50/30 border-b border-emerald-50 text-xs font-bold uppercase tracking-wider text-emerald-700">
                                             <th className="px-6 py-4 w-12"></th>
                                             <th className="px-6 py-4">Task Name</th>
@@ -386,7 +437,7 @@ const TasksPage = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-emerald-50/50">
-                                        {data.completed_today.map(task => (
+                                        {data.all_completed.map(task => (
                                             <tr key={task.id} className="group hover:bg-emerald-50/20 transition-colors">
                                                 <td className="px-6 py-4">
                                                     <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
@@ -444,6 +495,82 @@ const TasksPage = () => {
                     ) : (
                         <div className="bg-gray-50 rounded-3xl border border-dashed border-gray-200 p-8 text-center">
                             <p className="text-gray-400 text-sm italic">Finish your first task today!</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Archived Tasks Section */}
+                <div className="pt-4 border-t border-gray-100">
+                    <button 
+                        onClick={() => setIsArchiveOpen(!isArchiveOpen)}
+                        className="flex items-center gap-3 group hover:opacity-80 transition-opacity"
+                    >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isArchiveOpen ? 'bg-amber-100 text-amber-600' : 'bg-gray-50 text-gray-400'}`}>
+                            <i className={`fas ${isArchiveOpen ? 'fa-folder-open' : 'fa-folder'} text-sm`}></i>
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-800">Archived History <span className="text-gray-400 text-sm font-medium ml-2">({data.all_archived?.length || 0})</span></h3>
+                        <i className={`fas fa-chevron-right text-[10px] text-gray-300 transition-transform duration-300 ${isArchiveOpen ? 'rotate-90' : ''}`}></i>
+                    </button>
+
+                    {isArchiveOpen && (
+                        <div className="mt-6 animate-fade-in">
+                            {data.all_archived && data.all_archived.length > 0 ? (
+                                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-gray-50/50 border-b border-gray-100 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                                                    <th className="px-6 py-4 w-12"></th>
+                                                    <th className="px-6 py-4">Task Name</th>
+                                                    <th className="px-6 py-4">Status</th>
+                                                    <th className="px-6 py-4 w-12 text-right pr-8">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-50">
+                                                {data.all_archived.map(task => (
+                                                    <tr key={task.id} className="group hover:bg-gray-50/50 transition-colors">
+                                                        <td className="px-6 py-4">
+                                                            <div className="w-2 h-2 rounded-full bg-gray-300"></div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-bold text-gray-400 italic mb-0.5">{task.title}</span>
+                                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{task.project_info?.name || 'InBox'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="px-2.5 py-1 rounded-lg bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest border border-gray-100">
+                                                                {task.status_display || task.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right pr-8">
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <button
+                                                                    onClick={() => handleUnarchiveClick(task)}
+                                                                    className="px-4 py-1.5 rounded-xl bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest border border-amber-100 hover:bg-amber-100 transition-all"
+                                                                >
+                                                                    Restore
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteClick(task)}
+                                                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all"
+                                                                >
+                                                                    <i className="fas fa-trash text-xs"></i>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="p-12 text-center border-2 border-dashed border-gray-100 rounded-[2.5rem] opacity-40">
+                                    <i className="fas fa-archive text-2xl mb-3 block"></i>
+                                    <p className="text-sm font-bold italic tracking-tight">Your archive is currently empty.</p>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -522,6 +649,41 @@ const TasksPage = () => {
                 </div>
             )}
 
+            {/* Restore Modal */}
+            {restoreModal.show && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm animate-fade-in" onClick={() => !restoring && setRestoreModal({ show: false, task: null })}></div>
+                    <div className="relative transform overflow-hidden rounded-[2rem] bg-white shadow-2xl transition-all sm:max-w-sm w-full animate-fade-in-up z-10 p-8 border border-gray-100">
+                        <div className="text-center">
+                            <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-500 text-2xl mx-auto mb-4 border border-emerald-100/50">
+                                <i className="fas fa-undo"></i>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900">Restore Task?</h3>
+                            <p className="text-gray-500 text-xs font-medium mt-2 leading-relaxed">
+                                This will move the task back to your active lists. Its previous status and data will be preserved.
+                            </p>
+                        </div>
+                        <div className="mt-8 flex gap-3">
+                            <button
+                                onClick={() => setRestoreModal({ show: false, task: null })}
+                                disabled={restoring}
+                                className="flex-1 px-4 py-3 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmRestore}
+                                disabled={restoring}
+                                className="flex-[2] px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-emerald-100"
+                            >
+                                {restoring ? <i className="fas fa-spinner fa-spin mr-2"></i> : null}
+                                Yes, Restore
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Delete Modal */}
             {deleteModal.show && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -559,6 +721,14 @@ const TasksPage = () => {
                     </div>
                 </div>
             )}
+
+            {/* Complete Task Modal with Ratings */}
+            <CompleteTaskModal
+                task={completeModal.task}
+                isOpen={completeModal.show}
+                onClose={() => setCompleteModal({ show: false, task: null })}
+                onConfirm={handleCompleteTask}
+            />
 
             {/* Rejection Modal */}
             {rejectModal.show && (

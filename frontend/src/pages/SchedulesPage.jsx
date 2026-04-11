@@ -21,12 +21,8 @@ const SchedulesPage = () => {
     const { showToast, registerPush } = useNotifications();
     const navigate = useNavigate();
 
-    useEffect(() => {
-        if (user && !user.is_superuser) {
-            toast.error('Access Denied: Superadmin only');
-            navigate('/');
-        }
-    }, [user, navigate]);
+
+
 
 
     const fetchSchedules = async (isLoadMore = false, isFilterChange = false) => {
@@ -309,6 +305,12 @@ const SchedulesPage = () => {
                             setEditingSchedule(s); 
                             setShowForm(true); 
                         }} 
+                        onNewSchedule={(date) => {
+                            setEditingSchedule(null);
+                            // We could force the date in the form if we wanted, 
+                            // but for now just opening the form is a big improvement.
+                            setShowForm(true);
+                        }}
                     />
                 </div>
             )}

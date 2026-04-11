@@ -13,6 +13,7 @@ const Dashboard = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+    const [activeCard, setActiveCard] = useState(null); // 'completed', 'in_progress', 'todo', 'overdue'
 
     const [responding, setResponding] = useState(false);
     const [rejectModal, setRejectModal] = useState({ show: false, task: null, reason: '' });
@@ -78,6 +79,10 @@ const Dashboard = () => {
         }
     };
 
+    const toggleCard = (card) => {
+        setActiveCard(prev => prev === card ? null : card);
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
@@ -122,9 +127,9 @@ const Dashboard = () => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
                 {/* Total Projects */}
-                <div className="bg-gradient-to-br from-[#104a37] to-[#047857] rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-white relative overflow-hidden shadow-xl shadow-emerald-100 h-32 sm:h-48 flex flex-col justify-between group">
+                <div onClick={() => navigate('/projects')} className="bg-gradient-to-br from-[#104a37] to-[#047857] rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-white relative overflow-hidden shadow-xl shadow-emerald-100 h-32 sm:h-48 flex flex-col justify-between group cursor-pointer hover:scale-[1.02] transition-transform">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-white opacity-5 rounded-full blur-2xl -mr-8 -mt-8"></div>
                     <div className="flex justify-between items-start relative z-10">
                         <span className="text-xs sm:text-sm font-medium text-emerald-100">Projects</span>
@@ -139,10 +144,13 @@ const Dashboard = () => {
                 </div>
 
                 {/* Completed Tasks */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-gray-100 h-32 sm:h-48 flex flex-col justify-between group">
+                <div 
+                    onClick={() => toggleCard('completed')} 
+                    className={`rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border h-32 sm:h-48 flex flex-col justify-between group cursor-pointer transition-all hover:shadow-md ${activeCard === 'completed' ? 'bg-emerald-50 border-emerald-200 ring-2 ring-emerald-500/20' : 'bg-white border-gray-100'}`}
+                >
                     <div className="flex justify-between items-start">
                         <span className="text-xs sm:text-sm font-bold text-gray-700">Completed</span>
-                        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-gray-100 flex items-center justify-center text-emerald-500">
+                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border flex items-center justify-center transition-colors ${activeCard === 'completed' ? 'bg-emerald-500 border-emerald-600 text-white' : 'border-gray-100 text-emerald-500'}`}>
                             <i className="fas fa-check text-[10px] sm:text-xs"></i>
                         </div>
                     </div>
@@ -153,10 +161,13 @@ const Dashboard = () => {
                 </div>
 
                 {/* In Progress */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-gray-100 h-32 sm:h-48 flex flex-col justify-between group">
+                <div 
+                    onClick={() => toggleCard('in_progress')} 
+                    className={`rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border h-32 sm:h-48 flex flex-col justify-between group cursor-pointer transition-all hover:shadow-md ${activeCard === 'in_progress' ? 'bg-blue-50 border-blue-200 ring-2 ring-blue-500/20' : 'bg-white border-gray-100'}`}
+                >
                     <div className="flex justify-between items-start">
                         <span className="text-xs sm:text-sm font-bold text-gray-700">In Progress</span>
-                        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-gray-100 flex items-center justify-center text-blue-500">
+                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border flex items-center justify-center transition-colors ${activeCard === 'in_progress' ? 'bg-blue-500 border-blue-600 text-white' : 'border-gray-100 text-blue-500'}`}>
                             <i className="fas fa-spinner text-[10px] sm:text-xs animate-spin-slow"></i>
                         </div>
                     </div>
@@ -167,10 +178,13 @@ const Dashboard = () => {
                 </div>
 
                 {/* Pending Tasks */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-gray-100 h-32 sm:h-48 flex flex-col justify-between group">
+                <div 
+                    onClick={() => toggleCard('todo')} 
+                    className={`rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border h-32 sm:h-48 flex flex-col justify-between group cursor-pointer transition-all hover:shadow-md ${activeCard === 'todo' ? 'bg-amber-50 border-amber-200 ring-2 ring-amber-500/20' : 'bg-white border-gray-100'}`}
+                >
                     <div className="flex justify-between items-start">
                         <span className="text-xs sm:text-sm font-bold text-gray-700">To Do</span>
-                        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-gray-100 flex items-center justify-center text-amber-500">
+                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border flex items-center justify-center transition-colors ${activeCard === 'todo' ? 'bg-amber-500 border-amber-600 text-white' : 'border-gray-100 text-amber-500'}`}>
                             <i className="fas fa-hourglass-start text-[10px] sm:text-xs"></i>
                         </div>
                     </div>
@@ -179,7 +193,162 @@ const Dashboard = () => {
                         <div className="text-[10px] font-medium text-gray-400">Waiting</div>
                     </div>
                 </div>
+
+                {/* Overdue Tasks */}
+                <div 
+                    onClick={() => toggleCard('overdue')} 
+                    className={`rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border h-32 sm:h-48 flex flex-col justify-between group cursor-pointer transition-all hover:shadow-md ${activeCard === 'overdue' ? 'bg-red-50 border-red-200 ring-2 ring-red-500/20' : 'bg-white border-gray-100'}`}
+                >
+                    <div className="flex justify-between items-start">
+                        <span className="text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-tighter">Overdue</span>
+                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border flex items-center justify-center transition-colors ${activeCard === 'overdue' ? 'bg-red-500 border-red-600 text-white' : 'border-gray-100 text-red-500'}`}>
+                            <i className="fas fa-exclamation-triangle text-[10px] sm:text-xs"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div className="text-3xl sm:text-5xl font-bold text-gray-800 mb-1 sm:mb-3">{stats.overdue_count || 0}</div>
+                        <div className="text-[10px] font-medium text-gray-400">Alerts</div>
+                    </div>
+                </div>
             </div>
+
+            {/* Stats Table Modal */}
+            {activeCard && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
+                    {/* Backdrop */}
+                    <div 
+                        className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" 
+                        onClick={() => toggleCard(null)}
+                    ></div>
+                    
+                    {/* Modal Content */}
+                    <div className="relative bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[85vh] shadow-2xl overflow-hidden flex flex-col animate-modal-enter border border-gray-100">
+                        {/* Status Header */}
+                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-[1.25rem] flex items-center justify-center shadow-sm transition-colors ${
+                                    activeCard === 'completed' ? 'bg-emerald-100 text-emerald-600' :
+                                    activeCard === 'in_progress' ? 'bg-blue-100 text-blue-600' :
+                                    activeCard === 'todo' ? 'bg-amber-100 text-amber-600' :
+                                    'bg-red-100 text-red-600'
+                                }`}>
+                                    <i className={`fas text-xl ${
+                                        activeCard === 'completed' ? 'fa-check-circle' :
+                                        activeCard === 'in_progress' ? 'fa-spinner fa-spin-slow' :
+                                        activeCard === 'todo' ? 'fa-list-ul' :
+                                        'fa-exclamation-circle'
+                                    }`}></i>
+                                </div>
+                                <div>
+                                    <h3 className="font-extrabold text-gray-800 text-xl capitalize leading-none mb-1">
+                                        {activeCard.replace('_', ' ')} Tasks
+                                    </h3>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                        Summary of your current activities
+                                    </p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => toggleCard(null)}
+                                className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-800 transition-all border border-gray-50"
+                            >
+                                <i className="fas fa-times text-lg"></i>
+                            </button>
+                        </div>
+
+                        {/* Table Body */}
+                        <div className="overflow-y-auto flex-1 p-8 custom-scrollbar">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
+                                    <tr className="border-b border-gray-50">
+                                        <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Task Detail</th>
+                                        <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Project</th>
+                                        <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date / Time</th>
+                                        <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Priority</th>
+                                        <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right pr-2">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {(activeCard === 'completed' ? data.completed_agendas_list :
+                                      activeCard === 'in_progress' ? data.in_progress_agendas_list :
+                                      activeCard === 'todo' ? data.pending_agendas_list :
+                                      data.overdue_agendas
+                                    )?.map((task) => (
+                                        <tr key={task.id} className="group hover:bg-gray-50/50 transition-colors">
+                                            <td className="py-5 pl-2">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-gray-800 group-hover:text-emerald-600 transition-colors truncate max-w-[240px]" title={task.title}>
+                                                        {task.title}
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mt-0.5">ID: #{task.id}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-5">
+                                                {task.project_info ? (
+                                                    <span className="px-2.5 py-1 rounded-xl bg-gray-100 text-[10px] font-black text-gray-600 uppercase tracking-wider">
+                                                        {task.project_info.name}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">General</span>
+                                                )}
+                                            </td>
+                                            <td className="py-5">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-bold text-gray-600">{task.date}</span>
+                                                    <span className="text-[10px] text-gray-400">{task.time || 'All day'}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-5">
+                                                <span className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                                                    task.priority === 'high' ? 'bg-red-50 text-red-500' :
+                                                    task.priority === 'medium' ? 'bg-blue-50 text-blue-500' :
+                                                    'bg-gray-50 text-gray-400'
+                                                }`}>
+                                                    {task.priority || 'low'}
+                                                </span>
+                                            </td>
+                                            <td className="py-5 text-right pr-2">
+                                                <NavLink 
+                                                    to={`/tasks/${task.id}`}
+                                                    className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-gray-50 text-gray-400 hover:bg-[#104a37] hover:text-white transition-all group/btn shadow-sm"
+                                                >
+                                                    <i className="fas fa-arrow-right text-[10px] group-hover/btn:translate-x-0.5 transition-transform"></i>
+                                                </NavLink>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {((activeCard === 'completed' ? data.completed_agendas_list :
+                                      activeCard === 'in_progress' ? data.in_progress_agendas_list :
+                                      activeCard === 'todo' ? data.pending_agendas_list :
+                                      data.overdue_agendas
+                                    )?.length === 0) && (
+                                        <tr>
+                                            <td colSpan="5" className="py-20 text-center opacity-30">
+                                                <div className="w-20 h-20 rounded-[2rem] bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                                                    <i className="fas fa-clipboard-list text-3xl"></i>
+                                                </div>
+                                                <p className="text-sm font-bold text-gray-500">No tasks found in this category.</p>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        {/* Footer */}
+                        <div className="px-8 py-4 bg-gray-50/50 border-t border-gray-100 flex justify-end shrink-0">
+                            <button 
+                                onClick={() => toggleCard(null)}
+                                className="px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
+                            >
+                                Close View
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Overdue Alert */}
 
             {/* Overdue Alert */}
             {stats.overdue_count > 0 && (

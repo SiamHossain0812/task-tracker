@@ -36,10 +36,10 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
-from .models import Project, Agenda, Collaborator, ProjectRequest, AgendaAssignment, Notification, PersonalNote, Schedule
+from .models import Project, Agenda, Collaborator, ProjectRequest, AgendaAssignment, Notification, PersonalNote, Schedule, TaskComment, AgendaUpdate
 from .serializers import (
     ProjectSerializer, AgendaListSerializer, AgendaDetailSerializer,
-    CollaboratorSerializer, UserSerializer, ProjectRequestSerializer, PersonalNoteSerializer, ScheduleSerializer
+    CollaboratorSerializer, UserSerializer, ProjectRequestSerializer, PersonalNoteSerializer, ScheduleSerializer, TaskCommentSerializer
 )
 from .utils import check_and_create_alerts, send_notification_email
 
@@ -294,6 +294,8 @@ class AgendaViewSet(viewsets.ModelViewSet):
             if now >= start_dt:
                 agenda.status = 'in-progress'
                 agenda.save(update_fields=['status'])
+                # Auto-accept all pending assignments as the time has reached
+                agenda.assignments.filter(status='pending').update(status='accepted')
 
     @staticmethod
     def _broadcast_notification(notification):
@@ -444,8 +446,44 @@ class AgendaViewSet(viewsets.ModelViewSet):
         }
         
         new_status = status_cycle.get(current_status, 'pending')
+        
+        from django.utils import timezone
+        now = timezone.now()
+
+        # Rule: If reopening a completed task, verify there is a leader/creator review comment
+        if current_status == 'completed' and new_status == 'pending' and not request.user.is_superuser:
+            # Reusing the logic: Check for comments by Leader or Creator after completion
+            reviewer_ids = []
+            if agenda.team_leader and agenda.team_leader.user_id: reviewer_ids.append(agenda.team_leader.user_id)
+            if agenda.created_by_id: reviewer_ids.append(agenda.created_by_id)
+            
+            from .models import TaskComment
+            has_review = False
+            if agenda.completed_at and reviewer_ids:
+                has_review = TaskComment.objects.filter(
+                    agenda=agenda,
+                    author_id__in=reviewer_ids,
+                    created_at__gte=agenda.completed_at
+                ).exists()
+            else:
+                # If no completion timestamp or no reviewers, allow (graceful fail)
+                has_review = True
+                
+            if not has_review:
+                return Response(
+                    {"error": "Task must be reviewed and commented on by the Leader or Creator before it can be reopened."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
         agenda.status = new_status
+        if new_status == 'completed':
+            agenda.completed_at = now
+            
         agenda.save()
+
+        # Auto-accept logic for manual starts
+        if new_status == 'in-progress':
+            agenda.assignments.filter(status='pending').update(status='accepted')
 
         # KPIs Calculation on Completion
         if new_status == 'completed':
@@ -716,7 +754,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     ViewSet for private Schedule CRUD operations
     """
     serializer_class = ScheduleSerializer
-    permission_classes = [IsAuthenticated, IsSuperUser]
+    permission_classes = [IsAuthenticated]
 
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['subject', 'description']
@@ -824,6 +862,128 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         
         return Response(self.get_serializer(schedule).data)
 
+
+class TaskCommentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for task-specific comments with privacy controls.
+    """
+    serializer_class = TaskCommentSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['created_at']
+    ordering = ['created_at']
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = TaskComment.objects.all()
+
+        # Managerial/Admin visibility bypasses individual privacy
+        is_managerial = user.is_superuser
+        
+        # We need to filter based on involvement and privacy
+        # 1. Group comments: Visible to task members
+        # 2. Private comments: Visible to Author, Recipient, Team Leader, or Admin
+        
+        # Optimization: Filter by agenda involvement first if not superuser
+        if not user.is_superuser:
+            queryset = queryset.filter(
+                Q(agenda__collaborators__user=user) | 
+                Q(agenda__team_leader__user=user) |
+                Q(agenda__created_by=user)
+            ).distinct()
+
+        # Privacy Filter:
+        # Show if (is_group) OR (is_author) OR (is_recipient) OR (is_leader) OR (is_creator) OR (is_admin)
+        privacy_query = Q(is_group_comment=True) | Q(author=user) | Q(recipients=user)
+        
+        if not user.is_superuser:
+            # If user is team leader or creator of the agenda, they can see all comments on that agenda
+            queryset = queryset.filter(
+                privacy_query | Q(agenda__team_leader__user=user) | Q(agenda__created_by=user)
+            )
+        
+        # Default filtering by agenda if provided in query params
+        agenda_id = self.request.query_params.get('agenda')
+        if agenda_id:
+            queryset = queryset.filter(agenda_id=agenda_id)
+
+        return queryset.distinct()
+
+    def perform_create(self, serializer):
+        comment = serializer.save(author=self.request.user)
+        agenda = comment.agenda
+        
+        # Determine who should be notified
+        notification_recipients = []
+        if comment.is_group_comment:
+            # Notify all task members except the author
+            leader_user = agenda.team_leader.user if agenda.team_leader else None
+            creator_user = agenda.created_by
+            
+            # Use set for uniqueness
+            recipient_users = set()
+            if leader_user: recipient_users.add(leader_user)
+            if creator_user: recipient_users.add(creator_user)
+            
+            for assignment in agenda.assignments.all():
+                if assignment.collaborator.user:
+                    recipient_users.add(assignment.collaborator.user)
+            
+            # Remove the author from the notification list
+            recipient_users.discard(self.request.user)
+            notification_recipients = list(recipient_users)
+            subject_prefix = "[Group Comment]"
+        else:
+            # Notify only the explicit recipients (if any)
+            # Recipients are already set by the serializer via M2M
+            notification_recipients = list(comment.recipients.exclude(id=self.request.user.id))
+            subject_prefix = "[Private Comment]"
+
+        # 1. Internal Notifications & Real-time Broadcast
+        from .models import Notification
+        from .serializers import NotificationSerializer
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        
+        channel_layer = get_channel_layer()
+        
+        for recipient in notification_recipients:
+            # Create internal notification
+            title_text = f"New {comment.is_group_comment and 'Group' or 'Private'} Comment"
+            message_text = f"{self.request.user.get_full_name() or self.request.user.username} commented on '{agenda.title}': \"{comment.text[:50]}{len(comment.text) > 50 and '...' or ''}\""
+            
+            notif = Notification.objects.create(
+                user=recipient,
+                title=title_text,
+                message=message_text,
+                notification_type='comment_added',
+                related_agenda=agenda,
+                related_project=agenda.project
+            )
+            
+            # Real-time WebSocket update
+            if channel_layer:
+                try:
+                    serializer_data = NotificationSerializer(notif).data
+                    async_to_sync(channel_layer.group_send)(
+                        f'notifications_{recipient.id}',
+                        {
+                            'type': 'notification_message',
+                            'notification': serializer_data
+                        }
+                    )
+                except Exception as ws_e:
+                    print(f"[agendas.api_views] Comment WS broadcast failed: {ws_e}")
+
+        # 2. Email Notifications
+        for recipient in notification_recipients:
+            try:
+                email_title = f"{subject_prefix} New comment on: {agenda.title}"
+                email_message = f"{self.request.user.get_full_name() or self.request.user.username} posted a new comment:\n\n\"{comment.text}\""
+                send_notification_email(recipient, email_title, email_message, agenda)
+            except Exception as e:
+                print(f"[agendas.api_views] Comment email failed for {recipient.email}: {e}")
+
 class TasksOverviewAPIView(APIView):
     """
     API endpoint for tasks overview with stats and separated lists
@@ -834,49 +994,72 @@ class TasksOverviewAPIView(APIView):
         user = request.user
         
         if user.is_superuser:
-            agendas = Agenda.objects.filter(is_archived=False).select_related('project')
+            agendas = Agenda.objects.filter(is_archived=False).select_related('project')\
+                .prefetch_related('assignments', 'assignments__collaborator')
+            
+            archived_agendas = Agenda.objects.filter(is_archived=True).select_related('project')\
+                .prefetch_related('assignments', 'assignments__collaborator')
+
             # Superusers can also have invitations
             pending_invitations = Agenda.objects.filter(
                 is_archived=False,
                 assignments__collaborator__user=user,
                 assignments__status='pending'
-            ).select_related('project').distinct()
+            ).select_related('project').prefetch_related('assignments', 'assignments__collaborator').distinct()
         else:
             # User's active tasks (Led or Accepted or Created)
             agendas = Agenda.objects.filter(
                 Q(team_leader__user=user) | 
                 Q(assignments__collaborator__user=user, assignments__status='accepted') |
                 Q(created_by=user)
-            ).filter(is_archived=False).select_related('project').distinct()
+            ).filter(is_archived=False).select_related('project')\
+                .prefetch_related('assignments', 'assignments__collaborator').distinct()
+            
+            # User's archived tasks
+            archived_agendas = Agenda.objects.filter(
+                Q(team_leader__user=user) | 
+                Q(assignments__collaborator__user=user, assignments__status='accepted') |
+                Q(created_by=user)
+            ).filter(is_archived=True).select_related('project')\
+                .prefetch_related('assignments', 'assignments__collaborator').distinct()
             
             # Tasks user is invited to
             pending_invitations = Agenda.objects.filter(
                 is_archived=False,
                 assignments__collaborator__user=user,
                 assignments__status='pending'
-            ).select_related('project').distinct()
+            ).select_related('project').prefetch_related('assignments', 'assignments__collaborator').distinct()
 
         # Undone tasks (pending + in-progress)
         all_undone = agendas.filter(status__in=['pending', 'in-progress']).order_by('-date', '-time', '-id')
         
-        # Today's completed tasks
+        # All completed tasks (not archived)
+        all_completed = agendas.filter(status='completed').order_by('-updated_at')
+        
+        # All archived tasks
+        all_archived = archived_agendas.order_by('-updated_at')
+        
+        # Today's completed tasks (sub-set for specific UI highlighting)
         today = timezone.now().date()
-        completed_today = agendas.filter(status='completed', updated_at__date=today).order_by('-updated_at')
+        completed_today = all_completed.filter(updated_at__date=today)
 
         # Stats
         pending_count = agendas.filter(status='pending').count()
         in_progress_count = agendas.filter(status='in-progress').count()
         high_priority_count = agendas.filter(status__in=['pending', 'in-progress'], priority='high').count()
-        completed_today_count = completed_today.count()
+        completed_total_count = all_completed.count()
 
         return Response({
             'all_undone': AgendaListSerializer(all_undone, many=True, context={'request': request}).data,
+            'all_completed': AgendaListSerializer(all_completed, many=True, context={'request': request}).data,
+            'all_archived': AgendaListSerializer(all_archived, many=True, context={'request': request}).data,
             'completed_today': AgendaListSerializer(completed_today, many=True, context={'request': request}).data,
             'pending_invitations': AgendaListSerializer(pending_invitations, many=True, context={'request': request}).data,
             'pending_count': pending_count,
             'in_progress_count': in_progress_count,
             'high_priority_count': high_priority_count,
-            'completed_today_count': completed_today_count
+            'completed_total_count': completed_total_count,
+            'completed_today_count': completed_today.count()
         })
 
 class AlertCheckView(APIView):
@@ -1232,6 +1415,11 @@ class DashboardAPIView(APIView):
         overall_progress = 0
         if total_agendas > 0:
             overall_progress = int((completed_agendas / total_agendas) * 100)
+        # Get status-specific lists
+        completed_list = all_agendas_qs.filter(status='completed')
+        pending_list = all_agendas_qs.filter(status='pending')
+        in_progress_list = all_agendas_qs.filter(status='in-progress')
+
         return Response({
             'projects': ProjectSerializer(projects, many=True, context={'request': request}).data,
             'pending_invitations': AgendaListSerializer(pending_invitations, many=True, context={'request': request}).data,
@@ -1248,6 +1436,9 @@ class DashboardAPIView(APIView):
             'upcoming_tasks': AgendaListSerializer(upcoming_agendas, many=True, context={'request': request}).data,
             'recent_agendas': AgendaListSerializer(recent_agendas, many=True, context={'request': request}).data,
             'overdue_agendas': AgendaListSerializer(overdue_agendas, many=True, context={'request': request}).data,
+            'completed_agendas_list': AgendaListSerializer(completed_list, many=True, context={'request': request}).data,
+            'pending_agendas_list': AgendaListSerializer(pending_list, many=True, context={'request': request}).data,
+            'in_progress_agendas_list': AgendaListSerializer(in_progress_list, many=True, context={'request': request}).data,
         })
 
 

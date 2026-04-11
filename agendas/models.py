@@ -154,7 +154,8 @@ class Agenda(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+    completed_at = models.DateTimeField(null=True, blank=True, help_text="Timestamp when status was last set to 'completed'")
+
     class Meta:
         ordering = ['date', 'time']
     
@@ -233,6 +234,7 @@ class Notification(models.Model):
         ('time_elapsed_warning', 'Time Elapsed Warning'),
         ('deadline_warning', 'Deadline Warning'),
         ('stagnation', 'Task Stagnant'),
+        ('comment_added', 'New Task Comment'),
     ]
     
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE, related_name='notifications')
@@ -407,3 +409,23 @@ class Schedule(models.Model):
     
     def __str__(self):
         return f"{self.subject} ({self.date})"
+
+
+class TaskComment(models.Model):
+    """
+    Specialized comment system for agendas.
+    Supports Group (Everyone) and Individual (Private) comments.
+    """
+    agenda = models.ForeignKey(Agenda, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='task_comments')
+    recipients = models.ManyToManyField(User, related_name='private_comments', blank=True, help_text="Empty for Group comments")
+    text = models.TextField()
+    is_group_comment = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        scope = "Group" if self.is_group_comment else f"Private ({self.recipients.count()} recipients)"
+        return f"Comment by {self.author.username} ({scope}) on {self.agenda.title}"

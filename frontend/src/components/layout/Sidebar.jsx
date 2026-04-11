@@ -42,7 +42,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             title: "Personal Workspace",
             items: [
                 { to: "/about", icon: "fas fa-user-circle", label: "My Profile" },
-                { to: "/schedules", icon: "fas fa-clock", label: "My Schedule", adminOnly: true },
+                { to: "/schedules", icon: "fas fa-clock", label: "My Schedule" },
                 {
                     to: "/project-requests",
                     icon: "fas fa-file-contract",

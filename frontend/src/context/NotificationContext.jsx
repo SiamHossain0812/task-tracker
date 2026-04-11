@@ -129,7 +129,14 @@ export const NotificationProvider = ({ children }) => {
             console.log('[NotificationContext] Syncing notification list from server...');
             fetchNotifications();
 
-            // 3. Show native push notification
+            // 3. Dispatch custom event for features like TaskDetail to live-update
+            if (data.notification.notification_type === 'comment_added') {
+                window.dispatchEvent(new CustomEvent('task_comment_added', { 
+                    detail: { agendaId: data.notification.related_agenda?.id } 
+                }));
+            }
+
+            // 4. Show native push notification
             if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
                 try {
                     const registration = await navigator.serviceWorker.ready;

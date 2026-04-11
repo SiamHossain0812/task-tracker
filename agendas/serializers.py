@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.db import transaction
 from django.contrib.auth.models import User
-from .models import Project, Agenda, Collaborator, Notification, ProjectRequest, AgendaAssignment, PersonalNote, Schedule, AgendaUpdate
+from .models import Project, Agenda, Collaborator, Notification, ProjectRequest, AgendaAssignment, PersonalNote, Schedule, AgendaUpdate, TaskComment
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -202,6 +202,7 @@ class AgendaListSerializer(serializers.ModelSerializer):
     project_info = serializers.SerializerMethodField()
     creator_name = serializers.SerializerMethodField()
     team_leader_name = serializers.SerializerMethodField()
+    assignments = AgendaAssignmentSerializer(many=True, read_only=True)
     
     class Meta:
         model = Agenda
@@ -210,7 +211,7 @@ class AgendaListSerializer(serializers.ModelSerializer):
             'project', 'project_name', 'project_color', 'project_info',
             'is_overdue', 'calculated_category', 'collaborator_count', 'meeting_link', 
             'created_by', 'creator_name', 'team_leader', 'team_leader_name', 
-            'actual_participants', 'extension_status', 'created_at', 'extension_count'
+            'assignments', 'actual_participants', 'extension_status', 'created_at', 'extension_count'
         ]
         read_only_fields = ['id', 'created_at', 'created_by', 'team_leader', 'extension_status', 'extension_count']
 
@@ -282,6 +283,7 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
     updates = AgendaUpdateSerializer(many=True, read_only=True)
     
     can_approve_extension = serializers.SerializerMethodField()
+    can_reopen = serializers.SerializerMethodField()
     
     class Meta:
         model = Agenda
@@ -292,6 +294,7 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
             'collaborators', 'collaborator_ids', 'assignments', 'actual_participants', 'team_leader', 'team_leader_id', 'is_overdue', 'calculated_category',
             'meeting_link', 'google_event_id', 'created_by',
             'extension_status', 'requested_finish_date', 'requested_finish_time', 'extension_reason', 'extension_requested_by', 'can_approve_extension',
+            'can_reopen',
             'created_at', 'updated_at', 'extension_count', 'updates',
             'estimated_hours', 'actual_hours', 'rework_count', 'missed_updates'
         ]
@@ -308,6 +311,36 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
         if obj.team_leader and obj.team_leader.user == user:
             return True
         return False
+    
+    def get_can_reopen(self, obj):
+        """
+        Logic: After complete, task can only be reopened if the leader or creator 
+        has commented on it AFTER the completion timestamp.
+        """
+        if obj.status != 'completed':
+            return True
+            
+        if not obj.completed_at:
+            # If no completion timestamp, allow for backward compatibility/graceful fail
+            return True
+
+        # Check for comments by Leader or Creator after completion
+        reviewer_ids = []
+        if obj.team_leader and obj.team_leader.user_id: reviewer_ids.append(obj.team_leader.user_id)
+        if obj.created_by_id: reviewer_ids.append(obj.created_by_id)
+        
+        if not reviewer_ids:
+            return True
+
+        from .models import TaskComment
+        # Use simple exists() query
+        has_review = TaskComment.objects.filter(
+            agenda=obj,
+            author_id__in=reviewer_ids,
+            created_at__gte=obj.completed_at
+        ).exists()
+        
+        return has_review
     
     def get_attachment_url(self, obj):
         """Get absolute URL for attachment"""
@@ -529,3 +562,40 @@ class PersonalNoteSerializer(serializers.ModelSerializer):
         model = PersonalNote
         fields = ['id', 'user', 'related_agenda', 'title', 'content', 'color', 'is_pinned', 'created_at', 'updated_at']
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+
+
+class TaskCommentSerializer(serializers.ModelSerializer):
+    """Serializer for specialized task comments"""
+    author_name = serializers.CharField(source='author.get_full_name', read_only=True)
+    author_username = serializers.CharField(source='author.username', read_only=True)
+    author_image = serializers.SerializerMethodField()
+    recipients_info = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = TaskComment
+        fields = [
+            'id', 'agenda', 'author', 'author_name', 'author_username', 'author_image',
+            'recipients', 'recipients_info',
+            'text', 'is_group_comment', 'created_at'
+        ]
+        read_only_fields = ['id', 'author', 'created_at']
+
+    def get_author_image(self, obj):
+        if hasattr(obj.author, 'collaborator_profile') and obj.author.collaborator_profile.image:
+            request = self.context.get('request')
+            url = obj.author.collaborator_profile.image.url
+            if request:
+                return request.build_absolute_uri(url)
+            return url
+        return None
+
+    def get_recipients_info(self, obj):
+        if not obj.is_group_comment:
+            return [
+                {
+                    "id": r.id,
+                    "name": r.get_full_name() or r.username,
+                    "username": r.username
+                } for r in obj.recipients.all()
+            ]
+        return [{"id": None, "name": "Everyone", "username": "all"}]
