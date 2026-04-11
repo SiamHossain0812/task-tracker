@@ -133,7 +133,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                             Agromet Lab<br />Task Tracker
                         </span>
                         <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full w-fit mt-1 uppercase tracking-wider">
-                            v6.2 BETA
+                            v7.1 BETA
                         </span>
                     </div>
                 </NavLink>
