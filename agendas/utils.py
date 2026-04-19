@@ -743,17 +743,26 @@ def calculate_assignment_performance(assignment):
     # --- 1. Timeliness Score (TS) ---
     ts_score = 100
     if agenda.expected_finish_date and agenda.updated_at:
-        finish_deadline = agenda.expected_finish_date
-        actual_finish = agenda.updated_at.date()
+        from datetime import time
+        from django.utils import timezone
         
-        if actual_finish <= finish_deadline:
-            if actual_finish < finish_deadline:
-                ts_score = 100 # Early
-            else:
-                ts_score = 90  # On Time
+        # Combine date and time to get a precise deadline
+        # If no time provided, assume the end of the day (23:59:59)
+        deadline_time = agenda.expected_finish_time or time(23, 59, 59)
+        deadline_datetime = timezone.make_aware(datetime.combine(agenda.expected_finish_date, deadline_time))
+        
+        actual_finish_datetime = agenda.updated_at
+        
+        # If finished before the specific deadline (date + time)
+        if actual_finish_datetime < deadline_datetime:
+            ts_score = 100
+        # If finished on the same day but after the exact time, it's counted as 90
+        elif actual_finish_datetime.date() == agenda.expected_finish_date:
+            ts_score = 90
+        # Delayed scoring based on days
         else:
-            delay_days = (actual_finish - finish_deadline).days
-            ts_score = max(0, 90 - (delay_days * 10)) # 1st day late = 80, 2nd day = 70, etc.
+            delay_days = (actual_finish_datetime.date() - agenda.expected_finish_date).days
+            ts_score = max(0, 90 - (delay_days * 10))
     else:
         ts_score = 90
 

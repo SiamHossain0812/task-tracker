@@ -95,6 +95,34 @@ class Agenda(models.Model):
         ('mid', 'Mid-term'),
         ('long', 'Long-term'),
     ]
+
+    TASK_TAG_CHOICES = [
+        ('professional_knowledge', 'Professional Knowledge'),
+        ('quality_of_work', 'Quality of Work'),
+        ('devotion_to_duty', 'Devotion to Duty'),
+        ('quantity_of_work_performed', 'Quantity of Work Performed'),
+        ('decision_making_skills', 'Decision-Making Skills'),
+        ('ability_to_implement_decisions', 'Ability to Implement Decisions'),
+        ('supervise_lead_subordinates', 'Capacity to Supervise and Lead Subordinates'),
+        ('teamwork_leadership', 'Capacity for Teamwork, Cooperation, and Leadership'),
+        ('efiling_internet_usage', 'Interest and Proficiency in E-filing and Internet Usage'),
+        ('innovative_work', 'Interest and Capacity for Innovative Work'),
+        ('expression_writing', 'Power of Expression (Writing)'),
+        ('expression_verbal', 'Power of Expression (Verbal)'),
+        ('morality_ethics', 'Morality / Ethics'),
+        ('honesty_integrity', 'Honesty / Integrity'),
+        ('discipline', 'Sense of Discipline'),
+        ('judgment_proportion', 'Judgment and Sense of Proportion'),
+        ('personality', 'Personality'),
+        ('cooperative_attitude', 'Cooperative Attitude'),
+        ('punctuality', 'Punctuality'),
+        ('reliability_dependability', 'Reliability / Dependability'),
+        ('responsibility', 'Sense of Responsibility'),
+        ('interest_attentiveness', 'Interest and Attentiveness in Work'),
+        ('following_instructions', 'Promptness in Following Instructions of Higher Authorities'),
+        ('initiative', 'Initiative'),
+        ('stakeholder_behavior', 'Behavior with Service Recipients / Stakeholders'),
+    ]
     
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='agendas', null=True, blank=True)
     title = models.CharField(max_length=200)
@@ -106,6 +134,7 @@ class Agenda(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium')
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, blank=True, null=True, help_text="Manual category override")
+    task_tag = models.CharField(max_length=100, choices=TASK_TAG_CHOICES, blank=True, null=True, help_text="Formal task classification")
     
     TYPE_CHOICES = [
         ('task', 'Task'),

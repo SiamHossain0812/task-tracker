@@ -4,6 +4,34 @@ import apiClient from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import CompleteTaskModal from '../components/agendas/CompleteTaskModal';
 
+const TASK_TAG_LABELS = {
+    'professional_knowledge': 'Professional Knowledge',
+    'quality_of_work': 'Quality of Work',
+    'devotion_to_duty': 'Devotion to Duty',
+    'quantity_of_work_performed': 'Quantity of Work Performed',
+    'decision_making_skills': 'Decision-Making Skills',
+    'ability_to_implement_decisions': 'Ability to Implement Decisions',
+    'supervise_lead_subordinates': 'Capacity to Supervise and Lead Subordinates',
+    'teamwork_leadership': 'Capacity for Teamwork, Cooperation, and Leadership',
+    'efiling_internet_usage': 'Interest and Proficiency in E-filing and Internet Usage',
+    'innovative_work': 'Interest and Capacity for Innovative Work',
+    'expression_writing': 'Power of Expression (Writing)',
+    'expression_verbal': 'Power of Expression (Verbal)',
+    'morality_ethics': 'Morality / Ethics',
+    'honesty_integrity': 'Honesty / Integrity',
+    'discipline': 'Sense of Discipline',
+    'judgment_proportion': 'Judgment and Sense of Proportion',
+    'personality': 'Personality',
+    'cooperative_attitude': 'Cooperative Attitude',
+    'punctuality': 'Punctuality',
+    'reliability_dependability': 'Reliability / Dependability',
+    'responsibility': 'Sense of Responsibility',
+    'interest_attentiveness': 'Interest and Attentiveness in Work',
+    'following_instructions': 'Promptness in Following Instructions of Higher Authorities',
+    'initiative': 'Initiative',
+    'stakeholder_behavior': 'Behavior with Service Recipients / Stakeholders'
+};
+
 const TasksPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -345,7 +373,14 @@ const TasksPage = () => {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <NavLink to={`/tasks/${task.id}`} className="flex flex-col hover:text-emerald-600 transition-colors">
-                                                        <span className="text-sm font-bold text-gray-800">{task.title}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm font-bold text-gray-800">{task.title}</span>
+                                                            {task.task_tag && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 text-[8px] font-black uppercase tracking-widest border border-emerald-100/50">
+                                                                    {TASK_TAG_LABELS[task.task_tag] || task.task_tag}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         {task.description && <span className="text-[10px] text-gray-400 truncate max-w-xs">{task.description}</span>}
                                                     </NavLink>
                                                 </td>
@@ -443,8 +478,17 @@ const TasksPage = () => {
                                                     <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <NavLink to={`/tasks/${task.id}`} className="text-sm font-bold text-gray-500 line-through decoration-emerald-200 hover:text-emerald-600 transition-colors">
-                                                        {task.title}
+                                                    <NavLink to={`/tasks/${task.id}`} className="flex flex-col hover:text-emerald-600 transition-colors group/item">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm font-bold text-gray-500 line-through decoration-emerald-200 group-hover/item:text-emerald-600 transition-colors">
+                                                                {task.title}
+                                                            </span>
+                                                            {task.task_tag && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-gray-50 text-gray-400 text-[8px] font-bold uppercase tracking-widest border border-gray-100">
+                                                                    {TASK_TAG_LABELS[task.task_tag] || task.task_tag}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </NavLink>
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -534,7 +578,14 @@ const TasksPage = () => {
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <div className="flex flex-col">
-                                                                <span className="text-sm font-bold text-gray-400 italic mb-0.5">{task.title}</span>
+                                                                <div className="flex items-center gap-2 mb-0.5">
+                                                                    <span className="text-sm font-bold text-gray-400 italic">{task.title}</span>
+                                                                    {task.task_tag && (
+                                                                        <span className="px-1.5 py-0.5 rounded bg-gray-50 text-gray-300 text-[8px] font-bold uppercase tracking-widest border border-gray-100">
+                                                                            {TASK_TAG_LABELS[task.task_tag] || task.task_tag}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{task.project_info?.name || 'InBox'}</span>
                                                             </div>
                                                         </td>

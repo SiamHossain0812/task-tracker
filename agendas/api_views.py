@@ -450,30 +450,40 @@ class AgendaViewSet(viewsets.ModelViewSet):
         from django.utils import timezone
         now = timezone.now()
 
-        # Rule: If reopening a completed task, verify there is a leader/creator review comment
+        # Rule: If reopening a completed task, verify there is a valid review comment based on hierarchy
         if current_status == 'completed' and new_status == 'pending' and not request.user.is_superuser:
-            # Reusing the logic: Check for comments by Leader or Creator after completion
-            reviewer_ids = []
-            if agenda.team_leader and agenda.team_leader.user_id: reviewer_ids.append(agenda.team_leader.user_id)
-            if agenda.created_by_id: reviewer_ids.append(agenda.created_by_id)
-            
             from .models import TaskComment
+            from django.contrib.auth.models import User
+            
+            # Identify potential reviewers
+            admin_ids = list(User.objects.filter(is_superuser=True).values_list('id', flat=True))
+            leader_id = agenda.team_leader.user_id if agenda.team_leader else None
+            creator_id = agenda.created_by_id
+            
+            # Determine who is an AUTHORIZED reviewer for THIS specific requester
+            authorized_reviewer_ids = admin_ids.copy()
+            
+            # A Team Leader or Creator can ONLY be authorized by an Admin (Superuser)
+            # A regular collaborator can be authorized by the Leader, Creator, or Admin
+            is_leader_or_creator = (request.user.id == leader_id or request.user.id == creator_id)
+            
+            if not is_leader_or_creator:
+                if leader_id: authorized_reviewer_ids.append(leader_id)
+                if creator_id: authorized_reviewer_ids.append(creator_id)
+            
             has_review = False
-            if agenda.completed_at and reviewer_ids:
+            if agenda.completed_at:
                 has_review = TaskComment.objects.filter(
                     agenda=agenda,
-                    author_id__in=reviewer_ids,
+                    author_id__in=authorized_reviewer_ids,
                     created_at__gte=agenda.completed_at
                 ).exists()
             else:
-                # If no completion timestamp or no reviewers, allow (graceful fail)
-                has_review = True
+                has_review = True # Graceful fail
                 
             if not has_review:
-                return Response(
-                    {"error": "Task must be reviewed and commented on by the Leader or Creator before it can be reopened."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
+                error_msg = "This task requires an Admin review comment before it can be reopened." if is_leader_or_creator else "This task requires a review comment from the Leader or an Admin before it can be reopened."
+                return Response({"error": error_msg}, status=status.HTTP_403_FORBIDDEN)
 
         agenda.status = new_status
         if new_status == 'completed':
@@ -1317,7 +1327,7 @@ class CollaboratorViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def performance(self, request, pk=None):
         """
-        Get aggregated performance metrics for a collaborator based on completed tasks
+        Get aggregated performance metrics (Lifetime and Period-based) for a collaborator
         """
         if not request.user.is_superuser:
              return Response({"detail": "Access Denied: Performance metrics are for Admin review only."}, status=status.HTTP_403_FORBIDDEN)
@@ -1325,32 +1335,72 @@ class CollaboratorViewSet(viewsets.ModelViewSet):
         from django.db.models import Avg, Count
         collaborator = self.get_object()
         
-        # Only aggregate scores from accepted AND completed assignments
-        completed_assignments = collaborator.assignments.filter(
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        
+        # Base queryset for completed/rated assignments
+        base_qs = collaborator.assignments.filter(
             status='accepted', 
             agenda__status='completed',
             composite_score__isnull=False
         )
 
-        metrics = completed_assignments.aggregate(
-            avg_quality=Avg('quality_score'),
-            avg_timeliness=Avg('timeliness_score'),
-            avg_efficiency=Avg('efficiency_score'),
-            avg_reliability=Avg('reliability_score'),
-            avg_composite=Avg('composite_score'),
-            total_completed_tasks=Count('id')
-        )
+        def get_metrics_dict(qs):
+            metrics = qs.aggregate(
+                avg_quality=Avg('quality_score'),
+                avg_timeliness=Avg('timeliness_score'),
+                avg_efficiency=Avg('efficiency_score'),
+                avg_reliability=Avg('reliability_score'),
+                avg_composite=Avg('composite_score'),
+                total_completed_tasks=Count('id')
+            )
+            return {
+                'quality': round(metrics['avg_quality'] * 20, 1) if metrics['avg_quality'] else 0, # Scale to 100
+                'timeliness': round(metrics['avg_timeliness'] or 0, 1) if metrics['avg_timeliness'] else 0,
+                'efficiency': round(metrics['avg_efficiency'] or 0, 1) if metrics['avg_efficiency'] else 0,
+                'reliability': round(metrics['avg_reliability'] or 0, 1) if metrics['avg_reliability'] else 0,
+                'composite_score': round(metrics['avg_composite'] or 0, 1) if metrics['avg_composite'] else 0,
+                'tasks_count': metrics['total_completed_tasks'] or 0
+            }
 
-        # Return the aggregated metrics, formatting to 1 decimal place if applicable
+        # 1. Lifetime Metrics
+        lifetime = get_metrics_dict(base_qs)
+        
+        # 2. Period Metrics (Optional filter)
+        period = lifetime
+        if start_date or end_date:
+            period_qs = base_qs
+            if start_date:
+                period_qs = period_qs.filter(agenda__date__gte=start_date)
+            if end_date:
+                period_qs = period_qs.filter(agenda__date__lte=end_date)
+            period = get_metrics_dict(period_qs)
+
+        # 3. Task-Wise History
+        history_qs = base_qs.select_related('agenda').order_by('-agenda__date', '-agenda__completed_at')[:50]
+        history = []
+        for ass in history_qs:
+            history.append({
+                'id': ass.id,
+                'agenda_id': ass.agenda.id,
+                'task_title': ass.agenda.title,
+                'date': ass.agenda.date,
+                'completed_at': ass.agenda.completed_at,
+                'quality': ass.quality_score,
+                'timeliness': ass.timeliness_score,
+                'efficiency': ass.efficiency_score,
+                'reliability': ass.reliability_score,
+                'composite_score': ass.composite_score
+            })
+
         return Response({
-            'collaborator_id': collaborator.id,
+            'lifetime': lifetime,
+            'period': period,
+            'history': history,
             'collaborator_name': collaborator.name,
-            'total_completed_tasks': metrics['total_completed_tasks'],
-            'quality': round(metrics['avg_quality'] or 0, 1),
-            'timeliness': round(metrics['avg_timeliness'] or 0, 1),
-            'efficiency': round(metrics['avg_efficiency'] or 0, 1),
-            'reliability': round(metrics['avg_reliability'] or 0, 1),
-            'composite_score': round(metrics['avg_composite'] or 0, 1),
+            'is_filtered': bool(start_date or end_date),
+            # Keep flat keys for backward compatibility during transition
+            **lifetime
         })
 
 

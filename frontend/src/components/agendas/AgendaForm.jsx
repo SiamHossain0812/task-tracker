@@ -5,6 +5,34 @@ import apiClient from '../../api/client';
 import { toast } from 'react-hot-toast';
 import ConfirmModal from '../common/ConfirmModal';
 
+const TASK_TAG_CHOICES = [
+    { value: 'professional_knowledge', label: 'Professional Knowledge' },
+    { value: 'quality_of_work', label: 'Quality of Work' },
+    { value: 'devotion_to_duty', label: 'Devotion to Duty' },
+    { value: 'quantity_of_work_performed', label: 'Quantity of Work Performed' },
+    { value: 'decision_making_skills', label: 'Decision-Making Skills' },
+    { value: 'ability_to_implement_decisions', label: 'Ability to Implement Decisions' },
+    { value: 'supervise_lead_subordinates', label: 'Capacity to Supervise and Lead Subordinates' },
+    { value: 'teamwork_leadership', label: 'Capacity for Teamwork, Cooperation, and Leadership' },
+    { value: 'efiling_internet_usage', label: 'Interest and Proficiency in E-filing and Internet Usage' },
+    { value: 'innovative_work', label: 'Interest and Capacity for Innovative Work' },
+    { value: 'expression_writing', label: 'Power of Expression (Writing)' },
+    { value: 'expression_verbal', label: 'Power of Expression (Verbal)' },
+    { value: 'morality_ethics', label: 'Morality / Ethics' },
+    { value: 'honesty_integrity', label: 'Honesty / Integrity' },
+    { value: 'discipline', label: 'Sense of Discipline' },
+    { value: 'judgment_proportion', label: 'Judgment and Sense of Proportion' },
+    { value: 'personality', label: 'Personality' },
+    { value: 'cooperative_attitude', label: 'Cooperative Attitude' },
+    { value: 'punctuality', label: 'Punctuality' },
+    { value: 'reliability_dependability', label: 'Reliability / Dependability' },
+    { value: 'responsibility', label: 'Sense of Responsibility' },
+    { value: 'interest_attentiveness', label: 'Interest and Attentiveness in Work' },
+    { value: 'following_instructions', label: 'Promptness in Following Instructions of Higher Authorities' },
+    { value: 'initiative', label: 'Initiative' },
+    { value: 'stakeholder_behavior', label: 'Behavior with Service Recipients / Stakeholders' },
+];
+
 const AgendaForm = () => {
     const { id } = useParams();
     const { user } = useAuth();
@@ -27,6 +55,7 @@ const AgendaForm = () => {
         status: 'pending',
         priority: 'medium',
         category: '', // Manual category selection
+        task_tag: '', 
         external_link: '',
         collaborators: [],
         collaborator_duties: {}, // {collabId: "duties"}
@@ -77,6 +106,10 @@ const AgendaForm = () => {
     const [myAssignment, setMyAssignment] = useState(null);
     const [rejectModal, setRejectModal] = useState({ show: false, reason: '' });
 
+    const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
+    const [tagSearch, setTagSearch] = useState('');
+    const tagDropdownRef = useRef(null);
+
     const dropdownRef = useRef(null);
 
     useEffect(() => {
@@ -123,6 +156,9 @@ const AgendaForm = () => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsCollabDropdownOpen(false);
+            }
+            if (tagDropdownRef.current && !tagDropdownRef.current.contains(event.target)) {
+                setIsTagDropdownOpen(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -347,6 +383,62 @@ const AgendaForm = () => {
                                     </select>
                                 </div>
                             )}
+                            <div>
+                                <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1 flex items-center gap-1.5"><i className="fas fa-tag text-[9px]"></i> Task Tag</label>
+                                <div className="relative" ref={tagDropdownRef}>
+                                    <button 
+                                        type="button" 
+                                        disabled={isReadOnly}
+                                        onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-left flex justify-between items-center hover:border-emerald-300 transition-all focus:ring-4 focus:ring-emerald-500/10 outline-none disabled:bg-gray-50"
+                                    >
+                                        <span className={`text-sm font-bold truncate ${formData.task_tag ? 'text-gray-800' : 'text-gray-400'}`}>
+                                            {formData.task_tag ? TASK_TAG_CHOICES.find(t => t.value === formData.task_tag)?.label : 'Select Classification...'}
+                                        </span>
+                                        <i className={`fas fa-chevron-down text-[10px] text-gray-400 transition-transform ${isTagDropdownOpen ? 'rotate-180' : ''}`}></i>
+                                    </button>
+
+                                    {isTagDropdownOpen && !isReadOnly && (
+                                        <div className="absolute z-30 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl p-2 animate-fade-in origin-top">
+                                            <div className="relative mb-2">
+                                                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[10px]"></i>
+                                                <input 
+                                                    autoFocus
+                                                    type="text" 
+                                                    placeholder="Search tags..." 
+                                                    value={tagSearch}
+                                                    onChange={(e) => setTagSearch(e.target.value)}
+                                                    className="w-full pl-8 pr-4 py-2 bg-gray-50 border-none rounded-xl text-xs font-bold focus:ring-0 outline-none"
+                                                />
+                                            </div>
+                                            <div className="max-h-60 overflow-y-auto custom-scrollbar">
+                                                {TASK_TAG_CHOICES.filter(t => t.label.toLowerCase().includes(tagSearch.toLowerCase())).length > 0 ? (
+                                                    TASK_TAG_CHOICES.filter(t => t.label.toLowerCase().includes(tagSearch.toLowerCase())).map(tag => (
+                                                        <button
+                                                            key={tag.value}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setFormData({ ...formData, task_tag: tag.value });
+                                                                setIsTagDropdownOpen(false);
+                                                                setTagSearch('');
+                                                            }}
+                                                            className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold transition-colors mb-0.5 flex items-center justify-between group ${formData.task_tag === tag.value ? 'bg-emerald-500 text-white' : 'text-gray-600 hover:bg-emerald-50'}`}
+                                                        >
+                                                            {tag.label}
+                                                            {formData.task_tag === tag.value && <i className="fas fa-check text-[10px]"></i>}
+                                                        </button>
+                                                    ))
+                                                ) : (
+                                                    <div className="py-8 text-center">
+                                                        <i className="fas fa-search text-gray-200 text-2xl mb-2 block"></i>
+                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">No matching tags</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                             <div>
                                 <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Priority</label>
                                 <div className="relative"><select value={formData.priority} disabled={isReadOnly} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-700 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all appearance-none disabled:bg-gray-50 text-sm font-bold"><option value="low">Low Priority</option><option value="medium">Medium Priority</option><option value="high">High Priority</option></select><div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-400"><i className="fas fa-chevron-down text-[10px]"></i></div></div>

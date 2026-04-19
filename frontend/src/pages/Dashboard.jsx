@@ -6,6 +6,34 @@ import apiClient from '../api/client';
 import ProjectRequestModal from '../components/projects/ProjectRequestModal';
 import { toast } from 'react-hot-toast';
 
+const TASK_TAG_LABELS = {
+    'professional_knowledge': 'Professional Knowledge',
+    'quality_of_work': 'Quality of Work',
+    'devotion_to_duty': 'Devotion to Duty',
+    'quantity_of_work_performed': 'Quantity of Work Performed',
+    'decision_making_skills': 'Decision-Making Skills',
+    'ability_to_implement_decisions': 'Ability to Implement Decisions',
+    'supervise_lead_subordinates': 'Capacity to Supervise and Lead Subordinates',
+    'teamwork_leadership': 'Capacity for Teamwork, Cooperation, and Leadership',
+    'efiling_internet_usage': 'Interest and Proficiency in E-filing and Internet Usage',
+    'innovative_work': 'Interest and Capacity for Innovative Work',
+    'expression_writing': 'Power of Expression (Writing)',
+    'expression_verbal': 'Power of Expression (Verbal)',
+    'morality_ethics': 'Morality / Ethics',
+    'honesty_integrity': 'Honesty / Integrity',
+    'discipline': 'Sense of Discipline',
+    'judgment_proportion': 'Judgment and Sense of Proportion',
+    'personality': 'Personality',
+    'cooperative_attitude': 'Cooperative Attitude',
+    'punctuality': 'Punctuality',
+    'reliability_dependability': 'Reliability / Dependability',
+    'responsibility': 'Sense of Responsibility',
+    'interest_attentiveness': 'Interest and Attentiveness in Work',
+    'following_instructions': 'Promptness in Following Instructions of Higher Authorities',
+    'initiative': 'Initiative',
+    'stakeholder_behavior': 'Behavior with Service Recipients / Stakeholders'
+};
+
 const Dashboard = () => {
     const { user } = useAuth();
     const { refresh: refreshNotifications, showToast } = useNotifications();
@@ -280,7 +308,14 @@ const Dashboard = () => {
                                                     <span className="text-sm font-bold text-gray-800 group-hover:text-emerald-600 transition-colors truncate max-w-[240px]" title={task.title}>
                                                         {task.title}
                                                     </span>
-                                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mt-0.5">ID: #{task.id}</span>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">ID: #{task.id}</span>
+                                                        {task.task_tag && (
+                                                            <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 text-[8px] font-black uppercase tracking-widest border border-emerald-100/50">
+                                                                {TASK_TAG_LABELS[task.task_tag] || task.task_tag}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="py-5">
@@ -581,6 +616,11 @@ const Dashboard = () => {
                                                 }`}>
                                                 {task.priority}
                                             </span>
+                                            {task.task_tag && (
+                                                <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center border border-emerald-100/50 shadow-sm" title={TASK_TAG_LABELS[task.task_tag]}>
+                                                    <i className="fas fa-tag text-[8px]"></i>
+                                                </div>
+                                            )}
                                             <i className="fas fa-chevron-right text-[10px] text-gray-300 group-hover:text-emerald-500 transition-colors"></i>
                                         </div>
                                     </NavLink>

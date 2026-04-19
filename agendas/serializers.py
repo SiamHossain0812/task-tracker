@@ -207,7 +207,7 @@ class AgendaListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Agenda
         fields = [
-            'id', 'title', 'type', 'date', 'time', 'status', 'priority', 'category',
+            'id', 'title', 'type', 'date', 'time', 'status', 'priority', 'category', 'task_tag',
             'project', 'project_name', 'project_color', 'project_info',
             'is_overdue', 'calculated_category', 'collaborator_count', 'meeting_link', 
             'created_by', 'creator_name', 'team_leader', 'team_leader_name', 
@@ -290,7 +290,7 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'project', 'project_id', 'title', 'description', 'type',
             'date', 'time', 'expected_finish_date', 'expected_finish_time',
-            'status', 'priority', 'category', 'external_link', 'attachment', 'attachment_url',
+            'status', 'priority', 'category', 'task_tag', 'external_link', 'attachment', 'attachment_url',
             'collaborators', 'collaborator_ids', 'assignments', 'actual_participants', 'team_leader', 'team_leader_id', 'is_overdue', 'calculated_category',
             'meeting_link', 'google_event_id', 'created_by',
             'extension_status', 'requested_finish_date', 'requested_finish_time', 'extension_reason', 'extension_requested_by', 'can_approve_extension',

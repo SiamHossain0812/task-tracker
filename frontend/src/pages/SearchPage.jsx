@@ -2,6 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, NavLink } from 'react-router-dom';
 import apiClient from '../api/client';
 
+const TASK_TAG_LABELS = {
+    'professional_knowledge': 'Professional Knowledge',
+    'quality_of_work': 'Quality of Work',
+    'devotion_to_duty': 'Devotion to Duty',
+    'quantity_of_work_performed': 'Quantity of Work Performed',
+    'decision_making_skills': 'Decision-Making Skills',
+    'ability_to_implement_decisions': 'Ability to Implement Decisions',
+    'supervise_lead_subordinates': 'Capacity to Supervise and Lead Subordinates',
+    'teamwork_leadership': 'Capacity for Teamwork, Cooperation, and Leadership',
+    'efiling_internet_usage': 'Interest and Proficiency in E-filing and Internet Usage',
+    'innovative_work': 'Interest and Capacity for Innovative Work',
+    'expression_writing': 'Power of Expression (Writing)',
+    'expression_verbal': 'Power of Expression (Verbal)',
+    'morality_ethics': 'Morality / Ethics',
+    'honesty_integrity': 'Honesty / Integrity',
+    'discipline': 'Sense of Discipline',
+    'judgment_proportion': 'Judgment and Sense of Proportion',
+    'personality': 'Personality',
+    'cooperative_attitude': 'Cooperative Attitude',
+    'punctuality': 'Punctuality',
+    'reliability_dependability': 'Reliability / Dependability',
+    'responsibility': 'Sense of Responsibility',
+    'interest_attentiveness': 'Interest and Attentiveness in Work',
+    'following_instructions': 'Promptness in Following Instructions of Higher Authorities',
+    'initiative': 'Initiative',
+    'stakeholder_behavior': 'Behavior with Service Recipients / Stakeholders'
+};
+
 const SearchPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const query = searchParams.get('q') || '';
@@ -170,7 +198,14 @@ const SearchPage = () => {
                                                             </td>
                                                             <td className="px-6 py-4">
                                                                 <div className="flex flex-col">
-                                                                    <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">{task.title}</span>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">{task.title}</span>
+                                                                        {task.task_tag && (
+                                                                            <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 text-[8px] font-black uppercase tracking-widest border border-emerald-100/50">
+                                                                                {TASK_TAG_LABELS[task.task_tag] || task.task_tag}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                     {task.description && <span className="text-xs text-gray-400 truncate max-w-xs mt-0.5">{task.description}</span>}
                                                                 </div>
                                                             </td>

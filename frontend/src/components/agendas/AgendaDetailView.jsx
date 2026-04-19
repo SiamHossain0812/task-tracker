@@ -9,6 +9,34 @@ import TaskUpdatesList from './TaskUpdatesList';
 import CompleteTaskModal from './CompleteTaskModal';
 import TaskCommentSection from './TaskCommentSection';
 
+const TASK_TAG_LABELS = {
+    'professional_knowledge': 'Professional Knowledge',
+    'quality_of_work': 'Quality of Work',
+    'devotion_to_duty': 'Devotion to Duty',
+    'quantity_of_work_performed': 'Quantity of Work Performed',
+    'decision_making_skills': 'Decision-Making Skills',
+    'ability_to_implement_decisions': 'Ability to Implement Decisions',
+    'supervise_lead_subordinates': 'Capacity to Supervise and Lead Subordinates',
+    'teamwork_leadership': 'Capacity for Teamwork, Cooperation, and Leadership',
+    'efiling_internet_usage': 'Interest and Proficiency in E-filing and Internet Usage',
+    'innovative_work': 'Interest and Capacity for Innovative Work',
+    'expression_writing': 'Power of Expression (Writing)',
+    'expression_verbal': 'Power of Expression (Verbal)',
+    'morality_ethics': 'Morality / Ethics',
+    'honesty_integrity': 'Honesty / Integrity',
+    'discipline': 'Sense of Discipline',
+    'judgment_proportion': 'Judgment and Sense of Proportion',
+    'personality': 'Personality',
+    'cooperative_attitude': 'Cooperative Attitude',
+    'punctuality': 'Punctuality',
+    'reliability_dependability': 'Reliability / Dependability',
+    'responsibility': 'Sense of Responsibility',
+    'interest_attentiveness': 'Interest and Attentiveness in Work',
+    'following_instructions': 'Promptness in Following Instructions of Higher Authorities',
+    'initiative': 'Initiative',
+    'stakeholder_behavior': 'Behavior with Service Recipients / Stakeholders'
+};
+
 const AgendaDetailView = () => {
     const { id } = useParams();
     const { user } = useAuth();
@@ -361,8 +389,14 @@ const AgendaDetailView = () => {
                                     {task.priority} Priority
                                 </span>
                                 {task.category && (
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded bg-gray-50 text-gray-500 border border-gray-100 text-[10px] font-bold uppercase tracking-wider">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded bg-gray-50 text-gray-400 border border-gray-100 text-[10px] font-bold uppercase tracking-wider">
                                         {task.category}
+                                    </span>
+                                )}
+                                {task.task_tag && (
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-black uppercase tracking-widest shadow-sm">
+                                        <i className="fas fa-tag mr-1.5 text-[8px]"></i>
+                                        {TASK_TAG_LABELS[task.task_tag] || task.task_tag}
                                     </span>
                                 )}
                             </div>
