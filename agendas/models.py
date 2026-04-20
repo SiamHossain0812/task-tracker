@@ -323,10 +323,35 @@ class GoogleToken(models.Model):
         return f"Google Token for {self.user.username}"
 
 # --- SIGNALS FOR AUTOMATED PROFILE MANAGEMENT ---
-from django.db.models.signals import post_save, post_delete
+import threading
+from django.db.models.signals import post_save, post_delete, pre_delete
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from .utils import ensure_user_profile_sync
+
+# Thread-local storage to track which User IDs are currently being deleted.
+# This prevents the post_delete signal on Collaborator from trying to delete
+# a User that is already mid-deletion (which causes a 500 Server Error in admin).
+_users_being_deleted = threading.local()
+
+@receiver(pre_delete, sender=User)
+def mark_user_deletion_in_progress(sender, instance, **kwargs):
+    """
+    Called BEFORE a User is deleted (including via admin or code).
+    Sets a thread-local flag so the Collaborator signal knows not to
+    re-delete this User (it's already being handled).
+    """
+    if not hasattr(_users_being_deleted, 'ids'):
+        _users_being_deleted.ids = set()
+    _users_being_deleted.ids.add(instance.id)
+
+
+@receiver(post_delete, sender=User)
+def clear_user_deletion_flag(sender, instance, **kwargs):
+    """Cleans up the thread-local flag after User deletion is complete."""
+    if hasattr(_users_being_deleted, 'ids'):
+        _users_being_deleted.ids.discard(instance.id)
+
 
 @receiver(post_save, sender=User)
 def manage_user_profiles(sender, instance, created, **kwargs):
@@ -343,21 +368,31 @@ def manage_user_profiles(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=Collaborator)
 def delete_user_account(sender, instance, **kwargs):
     """
-    Ensure the User account is deleted if the Collaborator profile is removed.
+    Ensure the User account is deleted if the Collaborator profile is removed directly.
     This enforces the rule that every user MUST be a collaborator.
+    
+    IMPORTANT: This signal checks the thread-local flag to skip deletion if this
+    Collaborator is being cascade-deleted because its linked User is already being
+    deleted. Without this check, we get a double-delete which causes 500 errors.
     """
     user_id = getattr(instance, 'user_id', None)
-    if user_id:
-        try:
-            # We use filter().delete() as it is safer and doesn't raise DoesNotExist
-            # if the user was already deleted (e.g. via CASCADE from User.delete())
-            deleted_count, _ = User.objects.filter(id=user_id).delete()
-            if deleted_count:
-                print(f"[agendas.models] Collaborator {instance.id} deleted. Removed associated User ID {user_id}.")
-        except Exception as e:
-            # We catch all exceptions to prevent deletion of collaborator from failing
-            # due to a secondary account cleanup issue.
-            print(f"[agendas.models] Error in delete_user_account signal for User {user_id}: {e}")
+    if not user_id:
+        return
+
+    # If the User owning this Collaborator is already being deleted (e.g. via Admin
+    # or User.delete()), the cascade already handles cleanup. Skip.
+    currently_deleting = getattr(_users_being_deleted, 'ids', set())
+    if user_id in currently_deleting:
+        return
+
+    # The Collaborator was deleted directly (not via User cascade).
+    # Delete the linked User to maintain 1:1 integrity.
+    try:
+        deleted_count, _ = User.objects.filter(id=user_id).delete()
+        if deleted_count:
+            print(f"[agendas.models] Collaborator {instance.id} deleted directly. Removed associated User ID {user_id}.")
+    except Exception as e:
+        print(f"[agendas.models] Error in delete_user_account signal for User {user_id}: {e}")
 
 
 class ProjectRequest(models.Model):
