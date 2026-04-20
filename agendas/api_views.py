@@ -1783,9 +1783,12 @@ def approve_user(request, user_id):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @authentication_classes([])  # Disable SessionAuth to bypass CSRF check
-@transaction.atomic
 def register_user(request):
     """Register a new user (inactive until approved)"""
+    from django.db import IntegrityError
+    from .models import UserProfile
+    from .utils import ensure_user_profile_sync
+
     username = request.data.get('username', '').strip()
     email = request.data.get('email', '').strip()
     password = request.data.get('password')
@@ -1800,36 +1803,37 @@ def register_user(request):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # 1. Check if Username (Phone) exists in User or Collaborator
+    # 1. Check if Username (Phone) is already taken as a User login
     if User.objects.filter(username=username).exists():
         return Response(
-            {'error': f'Phone number {username} already exists as a username.'},
+            {'error': f'Phone number {username} is already registered. Please log in or contact an admin.'},
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # 1. Check if Username (Phone) exists in User
-    if User.objects.filter(username=username).exists():
+    # 2. Check if this phone is already stored as a UserProfile phone_number
+    #    (unique=True on that field - prevents IntegrityError during profile sync)
+    if UserProfile.objects.filter(phone_number=username).exists():
         return Response(
-            {'error': f'Phone number {username} already exists as a username.'},
+            {'error': f'Phone number {username} is already associated with an existing account.'},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
-    # Check if Collaborator exists and is already linked to ANOTHER user
+
+    # 3. Check if Collaborator's whatsapp_number is linked to another user
     collab_with_phone = Collaborator.objects.filter(whatsapp_number=username).first()
     if collab_with_phone and collab_with_phone.user:
-         return Response(
+        return Response(
             {'error': f'Phone number {username} is already registered to a collaborator profile with a login account.'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # 2. Check if Email already exists in User
+    # 4. Check if Email is already taken
     if User.objects.filter(email__iexact=email).exists():
         return Response(
             {'error': f'Email {email} is already taken by another user.'},
             status=status.HTTP_400_BAD_REQUEST
         )
         
-    # Check if Collaborator exists with this email and is already linked to ANOTHER user
+    # 5. Check if Collaborator with this email is already linked to a user
     collab_with_email = Collaborator.objects.filter(email__iexact=email).first()
     if collab_with_email and collab_with_email.user:
         return Response(
@@ -1837,24 +1841,45 @@ def register_user(request):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # Create inactive user
-    user = User.objects.create_user(
-        username=username,
-        email=email,
-        password=password,
-        first_name=first_name,
-        last_name=last_name
-    )
-    user.is_active = False
-    user.save()
+    # --- Create the user in its own atomic block ---
+    # We do NOT use @transaction.atomic on the whole view because the post_save signal
+    # fires inside create_user() and can raise IntegrityError (e.g. on phone uniqueness),
+    # which would poison the outer transaction and cause a 500 with no useful message.
+    try:
+        with transaction.atomic():
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name
+            )
+            user.is_active = False
+            user.save()
+    except IntegrityError as e:
+        print(f"[agendas.api_views] IntegrityError during user creation for {username}: {e}")
+        return Response(
+            {'error': 'An account with this phone number or email may already exist. Please try a different phone or email.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    except Exception as e:
+        print(f"[agendas.api_views] Unexpected error creating user {username}: {e}")
+        return Response(
+            {'error': 'Registration failed due to an unexpected server error. Please try again.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
-    # We manually trigger sync here with extra attributes. 
-    # The post_save signal in models.py will also trigger sync, but it will be a safe no-op.
-    from .utils import ensure_user_profile_sync
-    ensure_user_profile_sync(user, extra_attrs={
-        'designation': designation,
-        'division': division
-    })
+    # --- Sync Collaborator profile with extra attributes (designation, division) ---
+    # The post_save signal already ran ensure_user_profile_sync(user) without extra_attrs.
+    # We call it again here to apply the extra fields. It is fully idempotent.
+    try:
+        ensure_user_profile_sync(user, extra_attrs={
+            'designation': designation,
+            'division': division
+        })
+    except Exception as sync_err:
+        # Profile sync failure is non-fatal. User is created; admin can fix profile later.
+        print(f"[agendas.api_views] Warning: Profile sync failed for {username}: {sync_err}")
     
     return Response({
         'message': 'Registration successful. Account is pending admin approval.',

@@ -33,9 +33,17 @@ def test_user_management_fixes():
         return
 
     print("\n2. Testing 'Auto-Healing' (Simulating Dashboard visit)")
-    # Manually delete ONLY the collaborator (simulating an orphan)
+    # We disconnect the signal temporarily to create an ORPHAN user (user without collab)
+    # This tests the 'healing' capacity of ensure_user_profile_sync
+    from agendas.models import delete_user_account, post_delete
+    post_delete.disconnect(delete_user_account, sender=Collaborator)
+    
     collab_pk = collab.pk
+    print("Forcefully creating an orphan (disconnecting signal)...")
     Collaborator.objects.filter(pk=collab_pk).delete()
+    
+    # Reconnect signal
+    post_delete.connect(delete_user_account, sender=Collaborator)
     
     # Reload user and check
     user = User.objects.get(username=test_username)
@@ -52,22 +60,21 @@ def test_user_management_fixes():
         print("FAILED: Healing logic did not restore profile.")
         return
 
-    print("\n3. Testing Unified Deletion (Simulating 'collaborator_delete' view)")
-    # We call the logic we added to the view
+    print("\n3. Testing Unified Deletion (Signal check)")
+    # With the new signals, deleting the collaborator should automatically delete the user
     collab = user.collaborator_profile
-    associated_user = collab.user
+    user_id_to_check = user.id
     
-    print(f"Deleting collaborator '{collab.name}' and its associated user...")
+    print(f"Deleting collaborator '{collab.name}' (expecting automatic User deletion)...")
     collab.delete()
-    if associated_user:
-        associated_user.delete()
         
     # Check if both are gone
-    user_exists = User.objects.filter(username=test_username).exists()
+    user_exists = User.objects.filter(id=user_id_to_check).exists()
     collab_exists = Collaborator.objects.filter(whatsapp_number=test_username).exists()
     
     if not user_exists and not collab_exists:
-        print("SUCCESS: Both User and Collaborator deleted permanently. Re-registration is now possible.")
+        print("SUCCESS: Both User and Collaborator deleted automatically via signals.")
+        print("Bidirectional integrity is confirmed.")
     else:
         print(f"FAILED: Cleanup failed. User exists: {user_exists}, Collab exists: {collab_exists}")
 

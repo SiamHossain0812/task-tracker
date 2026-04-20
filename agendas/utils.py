@@ -17,96 +17,125 @@ def normalize_phone_for_sync(phone):
 
 def ensure_user_profile_sync(instance, extra_attrs=None):
     """
-    Ensures UserProfile and Collaborator exists and are synced with User object.
-    Can be called from signals or manually for 'healing' broken connections.
+    Ensures UserProfile and Collaborator exist and are synced with the User object.
+    Uses database savepoints to isolate failures so each step is independent.
+    This function is fully idempotent and safe to call multiple times.
     """
     if extra_attrs is None:
         extra_attrs = {}
     from .models import UserProfile, Collaborator
-    from django.db import IntegrityError
-    
-    # 1. Ensure UserProfile exists (Internal phone number)
+    from django.db import IntegrityError, transaction
+
+    # --- Step 1: Ensure UserProfile exists ---
+    # Use a savepoint so an IntegrityError here doesn't abort the outer transaction.
     try:
-        profile, p_created = UserProfile.objects.get_or_create(user=instance)
-        
-        # Auto-populate phone from username if it looks like one
+        with transaction.atomic():
+            profile, p_created = UserProfile.objects.get_or_create(user=instance)
+
+        # Auto-populate phone from username if it looks like a phone number
         if not profile.phone_number:
             norm_username = normalize_phone_for_sync(instance.username)
-            if len(norm_username) >= 10: # Likely a phone number
-                profile.phone_number = instance.username # Keep original format but it's a match
-                profile.save()
+            if len(norm_username) >= 10:
+                # Guard against unique constraint - check first
+                if not UserProfile.objects.filter(phone_number=instance.username).exclude(user=instance).exists():
+                    profile.phone_number = instance.username
+                    profile.save(update_fields=['phone_number'])
     except Exception as e:
         print(f"[agendas.utils] UserProfile sync error for {instance.username}: {e}")
 
-    # 2. Ensure Collaborator exists (Professional profile)
-    collab = getattr(instance, 'collaborator_profile', None)
+    # --- Step 2: Ensure Collaborator exists ---
+    # Refresh from db to get accurate relation state
+    try:
+        collab = instance.collaborator_profile
+    except Exception:
+        collab = None
+
     if not collab:
-        # Try to find an existing disconnected collaborator by phone number match
         norm_uid = normalize_phone_for_sync(instance.username)
         existing_collab = None
-        
+
+        # Look for an unlinked collaborator with matching phone number
         if len(norm_uid) >= 10:
-            # First, check if ANY collaborator already has this whatsapp_number (connected or not)
-            # This helps avoid IntegrityErrors (Unique constraint failed)
-            all_potential = Collaborator.objects.all()
-            for c in all_potential:
+            for c in Collaborator.objects.filter(user__isnull=True):
                 if normalize_phone_for_sync(c.whatsapp_number) == norm_uid:
-                    # If this collaborator is already linked to ANOTHER user, we cannot steal it
-                    if c.user and c.user != instance:
-                        print(f"[agendas.utils] Warning: Found existing collaborator {c.id} with number {norm_uid} already linked to user {c.user_id}. Skipping auto-link.")
-                        break
                     existing_collab = c
                     break
-        
+
+            # Also check collaborators linked to THIS user (shouldn't happen, but be safe)
+            if not existing_collab:
+                for c in Collaborator.objects.filter(user=instance):
+                    existing_collab = c
+                    break
+
         if existing_collab:
-            if existing_collab.user != instance:
-                existing_collab.user = instance
-                existing_collab.save()
-            collab = existing_collab
-        else:
-            # Create new Collaborator profile
+            # Link this orphaned collaborator to the user
             try:
-                collab = Collaborator.objects.create(
-                    user=instance,
-                    name=f"{instance.first_name} {instance.last_name}".strip() or instance.username,
-                    email=instance.email,
-                    whatsapp_number=instance.username if len(norm_uid) >= 10 else "",
-                    designation=extra_attrs.get('designation', ''),
-                    division=extra_attrs.get('division', '')
-                )
+                with transaction.atomic():
+                    existing_collab.user = instance
+                    existing_collab.save(update_fields=['user'])
+                collab = existing_collab
+            except Exception as e:
+                print(f"[agendas.utils] Error linking existing collaborator {existing_collab.id} to user {instance.username}: {e}")
+        else:
+            # Create a brand new Collaborator profile inside a savepoint
+            try:
+                with transaction.atomic():
+                    collab = Collaborator.objects.create(
+                        user=instance,
+                        name=f"{instance.first_name} {instance.last_name}".strip() or instance.username,
+                        email=instance.email,
+                        whatsapp_number=instance.username if len(norm_uid) >= 10 else "",
+                        designation=extra_attrs.get('designation', ''),
+                        division=extra_attrs.get('division', '')
+                    )
             except IntegrityError as ie:
-                print(f"[agendas.utils] IntegrityError creating collaborator for {instance.username}: {ie}. This usually means the phone number is already in use.")
-                return None
+                print(f"[agendas.utils] IntegrityError creating collaborator for {instance.username}: {ie}")
+                # Try one more time without the whatsapp_number (the likely conflict field)
+                try:
+                    with transaction.atomic():
+                        collab = Collaborator.objects.create(
+                            user=instance,
+                            name=f"{instance.first_name} {instance.last_name}".strip() or instance.username,
+                            email=instance.email,
+                            whatsapp_number='',  # Leave blank to avoid unique constraint conflict
+                            designation=extra_attrs.get('designation', ''),
+                            division=extra_attrs.get('division', '')
+                        )
+                    print(f"[agendas.utils] Collaborator created without whatsapp_number for {instance.username}")
+                except Exception as e2:
+                    print(f"[agendas.utils] Failed to create collaborator even without phone for {instance.username}: {e2}")
+                    return None
             except Exception as e:
                 print(f"[agendas.utils] Unexpected error creating collaborator for {instance.username}: {e}")
                 return None
 
-    # 3. Synchronize names/emails if they changed on the User object
+    # --- Step 3: Sync fields from User → Collaborator ---
     if collab:
         try:
-            collab_updated = False
+            updated_fields = []
             full_name = f"{instance.first_name} {instance.last_name}".strip()
+
             if full_name and collab.name != full_name:
                 collab.name = full_name
-                collab_updated = True
-            
+                updated_fields.append('name')
+
             if instance.email and collab.email != instance.email:
                 collab.email = instance.email
-                collab_updated = True
-                
-            if extra_attrs.get('designation') and collab.designation != extra_attrs.get('designation'):
-                collab.designation = extra_attrs.get('designation')
-                collab_updated = True
-            
-            if extra_attrs.get('division') and collab.division != extra_attrs.get('division'):
-                collab.division = extra_attrs.get('division')
-                collab_updated = True
+                updated_fields.append('email')
 
-            if collab_updated:
-                collab.save()
+            if extra_attrs.get('designation') and collab.designation != extra_attrs['designation']:
+                collab.designation = extra_attrs['designation']
+                updated_fields.append('designation')
+
+            if extra_attrs.get('division') and collab.division != extra_attrs['division']:
+                collab.division = extra_attrs['division']
+                updated_fields.append('division')
+
+            if updated_fields:
+                collab.save(update_fields=updated_fields)
         except Exception as e:
-            print(f"[agendas.utils] Error updating collaborator fields for {instance.username}: {e}")
-    
+            print(f"[agendas.utils] Error syncing collaborator fields for {instance.username}: {e}")
+
     return collab
 
 
