@@ -21,16 +21,20 @@ def ensure_user_profile_sync(instance):
     Can be called from signals or manually for 'healing' broken connections.
     """
     from .models import UserProfile, Collaborator
+    from django.db import IntegrityError
     
     # 1. Ensure UserProfile exists (Internal phone number)
-    profile, p_created = UserProfile.objects.get_or_create(user=instance)
-    
-    # Auto-populate phone from username if it looks like one
-    if not profile.phone_number:
-        norm_username = normalize_phone_for_sync(instance.username)
-        if len(norm_username) >= 10: # Likely a phone number
-            profile.phone_number = instance.username # Keep original format but it's a match
-            profile.save()
+    try:
+        profile, p_created = UserProfile.objects.get_or_create(user=instance)
+        
+        # Auto-populate phone from username if it looks like one
+        if not profile.phone_number:
+            norm_username = normalize_phone_for_sync(instance.username)
+            if len(norm_username) >= 10: # Likely a phone number
+                profile.phone_number = instance.username # Keep original format but it's a match
+                profile.save()
+    except Exception as e:
+        print(f"[agendas.utils] UserProfile sync error for {instance.username}: {e}")
 
     # 2. Ensure Collaborator exists (Professional profile)
     collab = getattr(instance, 'collaborator_profile', None)
@@ -38,40 +42,58 @@ def ensure_user_profile_sync(instance):
         # Try to find an existing disconnected collaborator by phone number match
         norm_uid = normalize_phone_for_sync(instance.username)
         existing_collab = None
+        
         if len(norm_uid) >= 10:
-            # We iterate to find a match (performance is fine for small/medium set)
-            all_disconnected = Collaborator.objects.filter(user__isnull=True)
-            for c in all_disconnected:
+            # First, check if ANY collaborator already has this whatsapp_number (connected or not)
+            # This helps avoid IntegrityErrors (Unique constraint failed)
+            all_potential = Collaborator.objects.all()
+            for c in all_potential:
                 if normalize_phone_for_sync(c.whatsapp_number) == norm_uid:
+                    # If this collaborator is already linked to ANOTHER user, we cannot steal it
+                    if c.user and c.user != instance:
+                        print(f"[agendas.utils] Warning: Found existing collaborator {c.id} with number {norm_uid} already linked to user {c.user_id}. Skipping auto-link.")
+                        break
                     existing_collab = c
                     break
         
         if existing_collab:
-            existing_collab.user = instance
-            existing_collab.save()
+            if existing_collab.user != instance:
+                existing_collab.user = instance
+                existing_collab.save()
             collab = existing_collab
         else:
             # Create new Collaborator profile
-            collab = Collaborator.objects.create(
-                user=instance,
-                name=f"{instance.first_name} {instance.last_name}".strip() or instance.username,
-                email=instance.email,
-                whatsapp_number=instance.username if len(norm_uid) >= 10 else ""
-            )
+            try:
+                collab = Collaborator.objects.create(
+                    user=instance,
+                    name=f"{instance.first_name} {instance.last_name}".strip() or instance.username,
+                    email=instance.email,
+                    whatsapp_number=instance.username if len(norm_uid) >= 10 else ""
+                )
+            except IntegrityError as ie:
+                print(f"[agendas.utils] IntegrityError creating collaborator for {instance.username}: {ie}. This usually means the phone number is already in use.")
+                return None
+            except Exception as e:
+                print(f"[agendas.utils] Unexpected error creating collaborator for {instance.username}: {e}")
+                return None
 
     # 3. Synchronize names/emails if they changed on the User object
-    collab_updated = False
-    full_name = f"{instance.first_name} {instance.last_name}".strip()
-    if full_name and collab.name != full_name:
-        collab.name = full_name
-        collab_updated = True
-    
-    if instance.email and collab.email != instance.email:
-        collab.email = instance.email
-        collab_updated = True
-        
-    if collab_updated:
-        collab.save()
+    if collab:
+        try:
+            collab_updated = False
+            full_name = f"{instance.first_name} {instance.last_name}".strip()
+            if full_name and collab.name != full_name:
+                collab.name = full_name
+                collab_updated = True
+            
+            if instance.email and collab.email != instance.email:
+                collab.email = instance.email
+                collab_updated = True
+                
+            if collab_updated:
+                collab.save()
+        except Exception as e:
+            print(f"[agendas.utils] Error updating collaborator fields for {instance.username}: {e}")
     
     return collab
 

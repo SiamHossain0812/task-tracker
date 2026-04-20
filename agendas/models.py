@@ -333,8 +333,12 @@ def manage_user_profiles(sender, instance, created, **kwargs):
     """
     Automatically manage UserProfile and Collaborator when a User is saved.
     This ensures no user is ever 'orphaned' without their professional profile.
+    This is wrapped in a try-except to prevent registration/save crashes if sync fails.
     """
-    ensure_user_profile_sync(instance)
+    try:
+        ensure_user_profile_sync(instance)
+    except Exception as e:
+        print(f"[agendas.models] Warning: Profile sync failed for user {instance.username}: {e}")
 
 @receiver(post_delete, sender=Collaborator)
 def delete_user_account(sender, instance, **kwargs):
