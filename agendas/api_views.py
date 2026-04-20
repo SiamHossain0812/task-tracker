@@ -1807,22 +1807,33 @@ def register_user(request):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    if Collaborator.objects.filter(whatsapp_number=username).exists():
+    # 1. Check if Username (Phone) exists in User
+    if User.objects.filter(username=username).exists():
+        return Response(
+            {'error': f'Phone number {username} already exists as a username.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if Collaborator exists and is already linked to ANOTHER user
+    collab_with_phone = Collaborator.objects.filter(whatsapp_number=username).first()
+    if collab_with_phone and collab_with_phone.user:
          return Response(
-            {'error': f'Phone number {username} is already registered to a collaborator profile.'},
+            {'error': f'Phone number {username} is already registered to a collaborator profile with a login account.'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # 2. Check if Email already exists in User or Collaborator
+    # 2. Check if Email already exists in User
     if User.objects.filter(email__iexact=email).exists():
         return Response(
             {'error': f'Email {email} is already taken by another user.'},
             status=status.HTTP_400_BAD_REQUEST
         )
         
-    if Collaborator.objects.filter(email__iexact=email).exists():
+    # Check if Collaborator exists with this email and is already linked to ANOTHER user
+    collab_with_email = Collaborator.objects.filter(email__iexact=email).first()
+    if collab_with_email and collab_with_email.user:
         return Response(
-            {'error': f'Email {email} is already associated with a collaborator profile.'},
+            {'error': f'Email {email} is already associated with a collaborator profile that has a login account.'},
             status=status.HTTP_400_BAD_REQUEST
         )
     
@@ -1837,16 +1848,13 @@ def register_user(request):
     user.is_active = False
     user.save()
 
-    # Create Collaborator Profile immediately
-    fullname = f"{first_name} {last_name}".strip() or username
-    Collaborator.objects.create(
-        user=user,
-        name=fullname,
-        email=email,
-        whatsapp_number=username,
-        designation=designation,
-        division=division
-    )
+    # We manually trigger sync here with extra attributes. 
+    # The post_save signal in models.py will also trigger sync, but it will be a safe no-op.
+    from .utils import ensure_user_profile_sync
+    ensure_user_profile_sync(user, extra_attrs={
+        'designation': designation,
+        'division': division
+    })
     
     return Response({
         'message': 'Registration successful. Account is pending admin approval.',

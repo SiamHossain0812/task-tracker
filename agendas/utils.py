@@ -15,11 +15,13 @@ def normalize_phone_for_sync(phone):
     if digits.startswith('0'): digits = digits[1:]
     return digits
 
-def ensure_user_profile_sync(instance):
+def ensure_user_profile_sync(instance, extra_attrs=None):
     """
     Ensures UserProfile and Collaborator exists and are synced with User object.
     Can be called from signals or manually for 'healing' broken connections.
     """
+    if extra_attrs is None:
+        extra_attrs = {}
     from .models import UserProfile, Collaborator
     from django.db import IntegrityError
     
@@ -68,7 +70,9 @@ def ensure_user_profile_sync(instance):
                     user=instance,
                     name=f"{instance.first_name} {instance.last_name}".strip() or instance.username,
                     email=instance.email,
-                    whatsapp_number=instance.username if len(norm_uid) >= 10 else ""
+                    whatsapp_number=instance.username if len(norm_uid) >= 10 else "",
+                    designation=extra_attrs.get('designation', ''),
+                    division=extra_attrs.get('division', '')
                 )
             except IntegrityError as ie:
                 print(f"[agendas.utils] IntegrityError creating collaborator for {instance.username}: {ie}. This usually means the phone number is already in use.")
@@ -90,6 +94,14 @@ def ensure_user_profile_sync(instance):
                 collab.email = instance.email
                 collab_updated = True
                 
+            if extra_attrs.get('designation') and collab.designation != extra_attrs.get('designation'):
+                collab.designation = extra_attrs.get('designation')
+                collab_updated = True
+            
+            if extra_attrs.get('division') and collab.division != extra_attrs.get('division'):
+                collab.division = extra_attrs.get('division')
+                collab_updated = True
+
             if collab_updated:
                 collab.save()
         except Exception as e:
