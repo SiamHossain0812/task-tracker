@@ -314,9 +314,16 @@ class GoogleToken(models.Model):
     token_uri = models.CharField(max_length=200, default="https://oauth2.googleapis.com/token")
     client_id = models.CharField(max_length=200)
     client_secret = models.CharField(max_length=200)
+    scopes = models.TextField()
+    expiry = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Google Token for {self.user.username}"
 
 # --- SIGNALS FOR AUTOMATED PROFILE MANAGEMENT ---
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from .utils import ensure_user_profile_sync
@@ -328,13 +335,25 @@ def manage_user_profiles(sender, instance, created, **kwargs):
     This ensures no user is ever 'orphaned' without their professional profile.
     """
     ensure_user_profile_sync(instance)
-    scopes = models.TextField()
-    expiry = models.DateTimeField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"Google Token for {self.user.username}"
+@receiver(post_delete, sender=Collaborator)
+def delete_user_account(sender, instance, **kwargs):
+    """
+    Ensure the User account is deleted if the Collaborator profile is removed.
+    This enforces the rule that every user MUST be a collaborator.
+    """
+    user_id = getattr(instance, 'user_id', None)
+    if user_id:
+        try:
+            # We use filter().delete() as it is safer and doesn't raise DoesNotExist
+            # if the user was already deleted (e.g. via CASCADE from User.delete())
+            deleted_count, _ = User.objects.filter(id=user_id).delete()
+            if deleted_count:
+                print(f"[agendas.models] Collaborator {instance.id} deleted. Removed associated User ID {user_id}.")
+        except Exception as e:
+            # We catch all exceptions to prevent deletion of collaborator from failing
+            # due to a secondary account cleanup issue.
+            print(f"[agendas.models] Error in delete_user_account signal for User {user_id}: {e}")
 
 
 class ProjectRequest(models.Model):

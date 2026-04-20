@@ -43,11 +43,25 @@ class CollaboratorAdmin(admin.ModelAdmin):
     list_display = ['name', 'user', 'is_linked', 'institute', 'email', 'whatsapp_number']
     list_filter = [('user', admin.EmptyFieldListFilter), 'institute', 'division']
     search_fields = ['name', 'institute', 'email', 'whatsapp_number', 'user__username']
+    autocomplete_fields = ['user']
     
+    actions = ['delete_associated_user_account']
+
     def is_linked(self, obj):
         return bool(obj.user)
     is_linked.boolean = True
     is_linked.short_description = 'User Linked'
+
+    @admin.action(description="Delete associated User accounts")
+    def delete_associated_user_account(self, request, queryset):
+        user_ids = [c.user.id for c in queryset if c.user]
+        if not user_ids:
+            self.message_user(request, "No linked users found to delete.", level='warning')
+            return
+            
+        count = User.objects.filter(id__in=user_ids).count()
+        User.objects.filter(id__in=user_ids).delete()
+        self.message_user(request, f"Successfully deleted {count} user account(s).")
 
 
 class AgendaInline(admin.TabularInline):

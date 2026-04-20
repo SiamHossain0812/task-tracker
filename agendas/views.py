@@ -531,16 +531,37 @@ def collaborator_edit(request, pk):
 
 @login_required
 def collaborator_delete(request, pk):
+    """Delete a collaborator and their associated user account."""
+    if not request.user.is_superuser:
+        messages.error(request, "Only superusers can delete members.")
+        return redirect('collaborator_list')
+        
     collaborator = get_object_or_404(Collaborator, pk=pk)
     if request.method == 'POST':
         user = collaborator.user
-        collaborator.delete()
-        # Also delete the associated User to prevent "already exists" errors on re-registration
+        
+        print(f"[agendas.views] Deleting collaborator {collaborator.id} (Name: {collaborator.name})")
+        
         if user:
+            if user.id == request.user.id:
+                messages.error(request, "You cannot delete your own account.")
+                return redirect('collaborator_list')
+                
+            print(f"[agendas.views] Deleting linked user {user.id}")
+            # CASCADE will delete the collaborator
             user.delete()
+        else:
+            print(f"[agendas.views] Deleting unlinked collaborator {collaborator.id}")
+            collaborator.delete()
+            
         messages.success(request, "Collaborator and associated user account deleted.")
         return redirect('collaborator_list')
-    return render(request, 'agendas/confirm_delete.html', {'object': collaborator, 'title': 'Delete Collaborator'}) 
+        
+    return render(request, 'agendas/confirm_delete.html', {
+        'object': collaborator, 
+        'title': 'Delete Collaborator',
+        'type': 'collaborator'
+    }) 
 @csrf_exempt
 @require_POST
 def api_collaborator_create(request):

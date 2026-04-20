@@ -1310,16 +1310,24 @@ class CollaboratorViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         """Override delete to ensure associated User is also permanently removed."""
         if not request.user.is_superuser:
-            return Response({'error': 'Only admins can delete users.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': 'Only superusers can delete members and their accounts.'}, status=status.HTTP_403_FORBIDDEN)
             
         instance = self.get_object()
         user = instance.user
         
-        # Deleting the user will trigger CASCADE to delete this collaborator
+        print(f"[agendas.api_views] Deleting collaborator {instance.id} (Name: {instance.name})")
+        
         if user:
+            # Safety: Prevent superuser from deleting their own account via this endpoint
+            if user.id == request.user.id:
+                return Response({'error': 'You cannot delete your own account from the team page.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            print(f"[agendas.api_views] Found linked user {user.id} ({user.username}). Deleting user account...")
+            # Deleting the user will trigger CASCADE to delete this collaborator instance
             user.delete()
+            print(f"[agendas.api_views] User {user.id} deleted successfully.")
         else:
-            # If for some reason there's no user, delete the collaborator directly
+            print(f"[agendas.api_views] No linked user found. Deleting collaborator record only.")
             instance.delete()
             
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -104,12 +104,22 @@ const CollaboratorList = () => {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this member?')) return;
+        const collaborator = collaborators.find(c => c.id === id);
+        const hasAccount = collaborator?.user;
+        
+        const confirmMsg = hasAccount 
+            ? `WARNING: Are you sure you want to delete ${collaborator.name}?\n\nThis will PERMANENTLY delete their login account, professional profile, and all associated personal data. This action cannot be undone.`
+            : `Are you sure you want to delete ${collaborator?.name}?`;
+
+        if (!window.confirm(confirmMsg)) return;
+        
         try {
             await apiClient.delete(`collaborators/${id}/`);
             await fetchCollaborators();
         } catch (error) {
             console.error('Failed to delete collaborator', error);
+            const errorMsg = error.response?.data?.error || 'Failed to delete member.';
+            alert(errorMsg);
         }
     };
 
@@ -158,8 +168,15 @@ const CollaboratorList = () => {
                                     collaborator.name[0]
                                 )}
                             </div>
-                            <div className="min-w-0">
-                                <h3 className="font-bold text-gray-800 group-hover:text-emerald-600 transition-colors truncate">{collaborator.name}</h3>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                    <h3 className="font-bold text-gray-800 group-hover:text-emerald-600 transition-colors truncate">{collaborator.name}</h3>
+                                    {collaborator.user && (
+                                        <span className="flex-shrink-0 px-2 py-0.5 bg-emerald-100 text-[8px] text-emerald-700 font-bold uppercase tracking-tighter rounded-md border border-emerald-200" title="This member has a login account">
+                                            Account Active
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{collaborator.designation || collaborator.institute || "Collaborator"}</div>
                             </div>
                         </div>
