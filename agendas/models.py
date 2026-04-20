@@ -1,5 +1,6 @@
 from django.db import models, transaction
 from django.contrib.auth.models import User
+from django.utils import timezone
 from datetime import date
 
 
@@ -316,7 +317,7 @@ class GoogleToken(models.Model):
     client_secret = models.CharField(max_length=200)
     scopes = models.TextField()
     expiry = models.DateTimeField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
