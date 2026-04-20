@@ -316,7 +316,7 @@ class GoogleToken(models.Model):
     client_id = models.CharField(max_length=200)
     client_secret = models.CharField(max_length=200)
     scopes = models.TextField()
-    expiry = models.DateTimeField()
+    expiry = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
