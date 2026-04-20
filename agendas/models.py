@@ -310,12 +310,12 @@ class UserProfile(models.Model):
 class GoogleToken(models.Model):
     """Stores Google OAuth tokens for a user"""
     user = models.OneToOneField('auth.User', on_delete=models.CASCADE, related_name='google_token')
-    access_token = models.TextField()
+    access_token = models.TextField(default='')
     refresh_token = models.TextField(null=True, blank=True)
     token_uri = models.CharField(max_length=200, default="https://oauth2.googleapis.com/token")
-    client_id = models.CharField(max_length=200)
-    client_secret = models.CharField(max_length=200)
-    scopes = models.TextField()
+    client_id = models.CharField(max_length=200, default='')
+    client_secret = models.CharField(max_length=200, default='')
+    scopes = models.TextField(default='')
     expiry = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
