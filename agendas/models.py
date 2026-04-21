@@ -179,6 +179,7 @@ class Agenda(models.Model):
     estimated_hours = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, help_text="Estimated time to complete this task (for Efficiency Score)")
     actual_hours = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, help_text="Actual time taken to complete this task")
     is_archived = models.BooleanField(default=False, help_text="Hide from main view while retaining for reference")
+    is_approved = models.BooleanField(default=True, help_text="True if created by admin or fully approved")
     rework_count = models.IntegerField(default=0, help_text="Number of times task was sent back for rework (for Reliability Score)")
     missed_updates = models.IntegerField(default=0, help_text="Number of missed scheduled updates (for Reliability Score)")
     

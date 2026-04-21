@@ -380,6 +380,11 @@ const TasksPage = () => {
                                                                     {TASK_TAG_LABELS[task.task_tag] || task.task_tag}
                                                                 </span>
                                                             )}
+                                                            {task.is_approved === false && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 text-[8px] font-black uppercase tracking-widest border border-amber-200" title="Pending admin approval">
+                                                                    Awaiting Approval
+                                                                </span>
+                                                            )}
                                                         </div>
                                                         {task.description && <span className="text-[10px] text-gray-400 truncate max-w-xs">{task.description}</span>}
                                                     </NavLink>
