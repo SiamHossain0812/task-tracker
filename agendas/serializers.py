@@ -211,9 +211,9 @@ class AgendaListSerializer(serializers.ModelSerializer):
             'project', 'project_name', 'project_color', 'project_info',
             'is_overdue', 'calculated_category', 'collaborator_count', 'meeting_link', 
             'created_by', 'creator_name', 'team_leader', 'team_leader_name', 
-            'assignments', 'actual_participants', 'extension_status', 'created_at', 'extension_count'
+            'assignments', 'actual_participants', 'extension_status', 'created_at', 'extension_count', 'is_approved'
         ]
-        read_only_fields = ['id', 'created_at', 'created_by', 'team_leader', 'extension_status', 'extension_count']
+        read_only_fields = ['id', 'created_at', 'created_by', 'team_leader', 'extension_status', 'extension_count', 'is_approved']
 
     def get_project_name(self, obj):
         if obj.project:
@@ -284,6 +284,7 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
     
     can_approve_extension = serializers.SerializerMethodField()
     can_reopen = serializers.SerializerMethodField()
+    can_approve = serializers.SerializerMethodField()
     
     class Meta:
         model = Agenda
@@ -294,11 +295,17 @@ class AgendaDetailSerializer(serializers.ModelSerializer):
             'collaborators', 'collaborator_ids', 'assignments', 'actual_participants', 'team_leader', 'team_leader_id', 'is_overdue', 'calculated_category',
             'meeting_link', 'google_event_id', 'created_by',
             'extension_status', 'requested_finish_date', 'requested_finish_time', 'extension_reason', 'extension_requested_by', 'can_approve_extension',
-            'can_reopen',
+            'can_reopen', 'is_approved', 'can_approve',
             'created_at', 'updated_at', 'extension_count', 'updates',
             'estimated_hours', 'actual_hours', 'rework_count', 'missed_updates'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'extension_status', 'requested_finish_date', 'requested_finish_time', 'extension_reason', 'extension_requested_by', 'extension_count', 'actual_hours', 'rework_count', 'missed_updates']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'extension_status', 'requested_finish_date', 'requested_finish_time', 'extension_reason', 'extension_requested_by', 'extension_count', 'actual_hours', 'rework_count', 'missed_updates', 'is_approved']
+    
+    def get_can_approve(self, obj):
+        request = self.context.get('request')
+        if request and request.user:
+            return request.user.is_superuser
+        return False
     
     def get_can_approve_extension(self, obj):
         request = self.context.get('request')

@@ -103,17 +103,17 @@ const TaskCommentSection = ({ task }) => {
     return (
         <div className="mt-12 bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden animate-fade-in mb-10">
             {/* Header */}
-            <div className="px-8 py-6 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 flex items-center justify-between">
+            <div className="px-4 sm:px-8 py-6 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-100">
-                        <i className="fas fa-comments text-lg"></i>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-100 shrink-0">
+                        <i className="fas fa-comments text-base sm:text-lg"></i>
                     </div>
-                    <div>
-                        <h3 className="text-lg font-extrabold text-gray-900 tracking-tight">Activity & Discussions</h3>
-                        <p className="text-xs text-gray-400 font-medium">Coordinate and share updates with task members</p>
+                    <div className="min-w-0">
+                        <h3 className="text-base sm:text-lg font-extrabold text-gray-900 tracking-tight truncate">Activity & Discussions</h3>
+                        <p className="text-[10px] sm:text-xs text-gray-400 font-medium">Coordinate and share updates</p>
                     </div>
                 </div>
-                <div className="px-4 py-1.5 bg-gray-100 rounded-full text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                <div className="self-start sm:self-center px-4 py-1.5 bg-gray-100 rounded-full text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">
                     {comments.length} Messages
                 </div>
             </div>
@@ -122,20 +122,20 @@ const TaskCommentSection = ({ task }) => {
                 {/* Modern Comment Form */}
                 <form onSubmit={handleSubmit} className="mb-12 bg-gray-50/50 rounded-2xl p-6 border border-gray-100 shadow-inner">
                     <div className="mb-6">
-                        <div className="flex flex-wrap items-center gap-4 mb-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Visibility Scope:</label>
-                            <div className="flex bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
+                            <div className="flex bg-white p-1 rounded-xl border border-gray-100 shadow-sm w-full sm:w-auto">
                                 <button
                                     type="button"
                                     onClick={() => setIsGroup(true)}
-                                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isGroup ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' : 'text-gray-500 hover:text-gray-800'}`}
+                                    className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${isGroup ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' : 'text-gray-500 hover:text-gray-800'}`}
                                 >
                                     Group (Everyone)
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setIsGroup(false)}
-                                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${!isGroup ? 'bg-amber-600 text-white shadow-md shadow-amber-100' : 'text-gray-500 hover:text-gray-800'}`}
+                                    className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${!isGroup ? 'bg-amber-600 text-white shadow-md shadow-amber-100' : 'text-gray-500 hover:text-gray-800'}`}
                                 >
                                     Individual (Private)
                                 </button>
@@ -174,7 +174,7 @@ const TaskCommentSection = ({ task }) => {
                                 className="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-50/50 focus:border-indigo-500 outline-none transition-all text-sm min-h-[120px] shadow-sm placeholder-gray-400 font-medium resize-none"
                             />
                             <div className="absolute bottom-4 right-4 flex items-center gap-2">
-                                <span className={`text-[10px] font-bold ${newComment.length > 500 ? 'text-red-500' : 'text-gray-300'}`}>
+                                <span className={`text-[9px] sm:text-[10px] font-bold ${newComment.length > 500 ? 'text-red-500' : 'text-gray-300'}`}>
                                     {newComment.length} chars
                                 </span>
                             </div>
@@ -185,7 +185,7 @@ const TaskCommentSection = ({ task }) => {
                         <button
                             type="submit"
                             disabled={submitting || !newComment.trim() || (!isGroup && selectedRecipients.length === 0)}
-                            className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg transition-all flex items-center gap-3 active:scale-95 ${
+                            className={`w-full sm:w-auto px-8 py-3.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest shadow-lg transition-all flex items-center justify-center gap-3 active:scale-95 ${
                                 isGroup 
                                 ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200' 
                                 : 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-200'

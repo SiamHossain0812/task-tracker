@@ -172,8 +172,10 @@ class AgendaViewSet(viewsets.ModelViewSet):
         else:
              queryset = Agenda.objects.filter(is_archived=is_archived_param).select_related('project').prefetch_related('collaborators')
         
-        # User Isolation: Collaborators only see their assigned tasks OR tasks in their projects
         if not self.request.user.is_superuser:
+            # First, check if task is approved OR created by the user
+            queryset = queryset.filter(Q(is_approved=True) | Q(created_by=self.request.user))
+            
             # Show tasks where they are collaborators (and NOT rejected) OR the team leader OR the creator
             # OR tasks belonging to a project they are a member of
             queryset = queryset.filter(
@@ -272,8 +274,12 @@ class AgendaViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied("You must have a collaborator profile to create tasks in projects.")
 
         collaborator = getattr(user, 'collaborator_profile', None)
+        
+        # Enforce approval requirement for non-admin creators
+        is_approved = True if user.is_superuser else False
+        
         # The serializer.save() will use context['collaborator_duties'] if provided
-        agenda = serializer.save(created_by=user, team_leader=collaborator)
+        agenda = serializer.save(created_by=user, team_leader=collaborator, is_approved=is_approved)
         
         # Auto-start if start time is in the past
         self.check_and_auto_start(agenda)
@@ -396,6 +402,41 @@ class AgendaViewSet(viewsets.ModelViewSet):
                 pass
             
         return Response({'message': 'Invitation rejected'})
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsSuperUser])
+    def approve(self, request, pk=None):
+        """Approve a task created by a collaborator"""
+        agenda = self.get_object()
+        
+        if agenda.is_approved:
+            return Response({'message': 'Task is already approved'})
+            
+        agenda.is_approved = True
+        agenda.save(update_fields=['is_approved'])
+        
+        # Notify the creator
+        if agenda.created_by:
+            notification = Notification.objects.create(
+                user=agenda.created_by,
+                title="Task Approved",
+                message=f"Your task '{agenda.title}' has been approved by admin and is now active.",
+                notification_type='status_change',
+                related_agenda=agenda
+            )
+            self._broadcast_notification(notification)
+            
+            try:
+                from .utils import send_notification_email
+                send_notification_email(
+                    recipient=agenda.created_by,
+                    title="Task Approved",
+                    message=f"Your task '{agenda.title}' has been approved by the administrator.",
+                    agenda=agenda
+                )
+            except Exception:
+                pass
+                
+        return Response({'message': 'Task approved successfully'})
     
     @action(detail=True, methods=['post'], url_path='rate')
     def rate(self, request, pk=None):
