@@ -241,10 +241,53 @@ const AgendaDetailView = () => {
         }
     };
 
+    const handleApprove = async () => {
+        setResponding(true);
+        try {
+            await apiClient.post(`agendas/${id}/approve/`);
+            toast.success('Task approved successfully!');
+            await fetchTaskDetails();
+        } catch (err) {
+            console.error('Approval failed', err);
+            toast.error(err.response?.data?.error || 'Failed to approve task');
+        } finally {
+            setResponding(false);
+        }
+    };
+
 
     return (
         <div className="min-h-screen bg-gray-50/50 pb-20 pt-8 animate-fade-in">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+
+                {/* 0. Approval Banner */}
+                {!task.is_approved && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-fade-in">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-500 shrink-0">
+                                <i className="fas fa-user-clock text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-black text-amber-900 tracking-tight">Pending Admin Approval</h3>
+                                <p className="text-xs font-medium text-amber-700 mt-0.5">
+                                    {task.can_approve 
+                                        ? "This task was created by a collaborator and requires your approval to become active." 
+                                        : "This task is currently hidden from other collaborators until an admin approves it."}
+                                </p>
+                            </div>
+                        </div>
+                        {task.can_approve && (
+                            <button
+                                onClick={handleApprove}
+                                disabled={responding}
+                                className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-md shadow-amber-200 disabled:opacity-50 shrink-0"
+                            >
+                                {responding ? <i className="fas fa-spinner fa-spin mr-2"></i> : <i className="fas fa-check mr-2"></i>}
+                                Approve Task
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 {/* 1. Header Navigation */}
                 <div className="flex items-center justify-between mb-6">
@@ -587,21 +630,49 @@ const AgendaDetailView = () => {
                             <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">Collaborators</h4>
                             <div className="flex flex-col gap-3">
                                 {task.team_leader && (
-                                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-white transition-colors">
-                                        <div className="relative">
-                                            <img
-                                                src={task.team_leader.image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(task.team_leader.name)}&background=104a37&color=fff`}
-                                                alt={task.team_leader.name}
-                                                className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm"
-                                            />
-                                            <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5" title="Team Leader">
-                                                <i className="fas fa-crown text-[10px] text-amber-500"></i>
+                                    <div className="flex flex-col gap-2 p-2 rounded-lg hover:bg-white transition-colors group">
+                                        <div className="flex items-center gap-3">
+                                            <div className="relative">
+                                                <img
+                                                    src={task.team_leader.image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(task.team_leader.name)}&background=104a37&color=fff`}
+                                                    alt={task.team_leader.name}
+                                                    className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm"
+                                                />
+                                                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5" title="Team Leader">
+                                                    <i className="fas fa-crown text-[10px] text-amber-500"></i>
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-sm font-bold text-gray-900 truncate">{task.team_leader.name}</div>
+                                                <div className="text-[10px] text-gray-500">Creator / Leader</div>
                                             </div>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-bold text-gray-900 truncate">{task.team_leader.name}</div>
-                                            <div className="text-[10px] text-gray-500">Leader</div>
-                                        </div>
+
+                                        {/* Admin can rate the creator/leader after approval */}
+                                        {user?.is_superuser && task.is_approved && (
+                                            <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-50 opacity-60 group-hover:opacity-100 transition-opacity">
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                                    {localRatings[task.team_leader.id] ? 'Rated' : 'Rate Quality'}
+                                                </span>
+                                                <div className="flex gap-1">
+                                                    {localRatings[task.team_leader.id] ? (
+                                                        <div className="text-xs font-bold text-amber-500 flex items-center gap-1">
+                                                            {localRatings[task.team_leader.id]} <i className="fas fa-star"></i>
+                                                        </div>
+                                                    ) : (
+                                                        [1, 2, 3, 4, 5].map((star) => (
+                                                            <button
+                                                                key={star}
+                                                                onClick={() => handleRate(task.team_leader.id, star)}
+                                                                className="text-sm transition-all hover:scale-125 text-gray-200 hover:text-amber-200"
+                                                            >
+                                                                <i className="fas fa-star"></i>
+                                                            </button>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -626,21 +697,25 @@ const AgendaDetailView = () => {
                                         {/* Quality Score Stars (Visible to Admins/Leaders) */}
                                         {canEdit && assignment.status === 'accepted' && (task.status === 'in-progress' || task.status === 'completed') && (
                                             <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-50 opacity-60 group-hover:opacity-100 transition-opacity">
-                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Quality Score</span>
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                                    {localRatings[assignment.collaborator] ? 'Rated' : 'Rate Quality'}
+                                                </span>
                                                 <div className="flex gap-1">
-                                                    {[1, 2, 3, 4, 5].map((star) => (
-                                                        <button
-                                                            key={star}
-                                                            onClick={() => handleRate(assignment.collaborator, star)}
-                                                            className={`text-sm transition-all hover:scale-125 ${
-                                                                (localRatings[assignment.collaborator] || 0) >= star
-                                                                ? 'text-amber-400'
-                                                                : 'text-gray-200 hover:text-amber-200'
-                                                            }`}
-                                                        >
-                                                            <i className="fas fa-star"></i>
-                                                        </button>
-                                                    ))}
+                                                    {localRatings[assignment.collaborator] ? (
+                                                        <div className="text-xs font-bold text-amber-500 flex items-center gap-1">
+                                                            {localRatings[assignment.collaborator]} <i className="fas fa-star"></i>
+                                                        </div>
+                                                    ) : (
+                                                        [1, 2, 3, 4, 5].map((star) => (
+                                                            <button
+                                                                key={star}
+                                                                onClick={() => handleRate(assignment.collaborator, star)}
+                                                                className="text-sm transition-all hover:scale-125 text-gray-200 hover:text-amber-200"
+                                                            >
+                                                                <i className="fas fa-star"></i>
+                                                            </button>
+                                                        ))
+                                                    )}
                                                 </div>
                                             </div>
                                         )}

@@ -197,27 +197,27 @@ const TaskUpdatesList = ({ task, onUpdatePosted }) => {
                                 />
                                 <label 
                                     htmlFor="attachment"
-                                    className={`flex items-center justify-between w-full px-4 py-3 bg-white border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                                    className={`flex flex-col sm:flex-row sm:items-center justify-between w-full px-4 py-4 sm:py-3 bg-white border-2 border-dashed rounded-xl cursor-pointer transition-all gap-3 ${
                                         selectedFile 
                                         ? 'border-emerald-200 bg-emerald-50/30' 
                                         : 'border-gray-200 hover:border-indigo-300 hover:bg-gray-50'
                                     }`}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedFile ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${selectedFile ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
                                             <i className={`fas ${selectedFile ? 'fa-file-upload' : 'fa-cloud-upload-alt'}`}></i>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-700 truncate max-w-[200px]">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold text-gray-700 truncate max-w-[150px] sm:max-w-[200px]">
                                                 {selectedFile ? selectedFile.name : 'Choose a file to upload'}
                                             </p>
-                                            <p className="text-[10px] text-gray-400 font-medium">Max size: 10MB</p>
+                                            <p className="text-[10px] text-gray-400 font-medium tracking-tight">Max size: 10MB</p>
                                         </div>
                                     </div>
                                     {selectedFile ? (
-                                        <i className="fas fa-check-circle text-emerald-500"></i>
+                                        <i className="fas fa-check-circle text-emerald-500 shrink-0"></i>
                                     ) : (
-                                        <span className="text-[10px] font-bold text-indigo-600 uppercase">Browse</span>
+                                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full sm:bg-transparent sm:px-0">Browse</span>
                                     )}
                                 </label>
                             </div>

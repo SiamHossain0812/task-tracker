@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
-// recharts no longer needed for radar — custom SVG used instead
 import { collaboratorService } from '../../api/collaborators';
+import apiClient from '../../api/client';
 
 /* ─── helpers ─── */
 const getCategory = (score) => {
@@ -66,10 +66,10 @@ const METRIC_ICONS = { Quality: 'fa-star', Timeliness: 'fa-clock', Efficiency: '
 const METRIC_COLORS = { Quality: '#f59e0b', Timeliness: '#10b981', Efficiency: '#6366f1', Reliability: '#8b5cf6' };
 
 const CustomRadar = ({ data }) => {
-    const SIZE   = 420;
+    const SIZE   = 500;
     const CX     = SIZE / 2;
     const CY     = SIZE / 2;
-    const RADIUS = 148;
+    const RADIUS = 140;
     const RINGS  = [25, 50, 75, 100];
     const n      = data.length;
 
@@ -83,8 +83,8 @@ const CustomRadar = ({ data }) => {
         data.map((d, i) => { const p = pt(d[key], i); return `${p.x},${p.y}`; }).join(' ');
 
     return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px 0' }}>
-            <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ overflow: 'visible' }}>
+        <div className="w-full flex justify-center items-center py-4">
+            <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full h-auto max-w-[420px] drop-shadow-sm" style={{ overflow: 'visible' }}>
                 <defs>
                     {/* Radial canvas backdrop */}
                     <radialGradient id="canvasBg" cx="50%" cy="50%" r="50%">
@@ -339,6 +339,19 @@ const PerformanceDashboard = () => {
         }
     };
 
+    const handleRate = async (agendaId, score) => {
+        try {
+            await apiClient.post(`agendas/${agendaId}/rate/`, {
+                quality_scores: { [targetId]: score }
+            });
+            toast.success('Rating given successfully!');
+            fetchPerformance(startDate, endDate);
+        } catch (err) {
+            console.error('Failed to update rating', err);
+            toast.error(err.response?.data?.error || 'Failed to update rating');
+        }
+    };
+
     useEffect(() => {
         if (!user?.is_superuser) { toast.error('Admin access only.'); navigate('/'); return; }
         if (!targetId) { setError('No collaborator found.'); setLoading(false); return; }
@@ -564,14 +577,32 @@ const PerformanceDashboard = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-5 text-center">
-                                        <div className="flex flex-col items-center gap-1">
-                                            <div className="flex gap-0.5">
-                                                {[1,2,3,4,5].map(i => (
-                                                    <i key={i} className={`fas fa-star text-[9px] ${i <= log.quality ? 'text-amber-400' : 'text-gray-100'}`} />
-                                                ))}
+                                        {log.quality ? (
+                                            <div className="flex flex-col items-center gap-1">
+                                                <div className="flex gap-0.5">
+                                                    {[1,2,3,4,5].map(i => (
+                                                        <i key={i} className={`fas fa-star text-[9px] ${i <= log.quality ? 'text-amber-400' : 'text-gray-100'}`} />
+                                                    ))}
+                                                </div>
+                                                <span className="text-[10px] font-black text-gray-500">{log.quality}/5</span>
                                             </div>
-                                            <span className="text-[10px] font-black text-gray-500">{log.quality}/5</span>
-                                        </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-1">
+                                                <div className="flex gap-1 group/rating">
+                                                    {[1,2,3,4,5].map(i => (
+                                                        <button 
+                                                            key={i} 
+                                                            onClick={(e) => { e.stopPropagation(); handleRate(log.agenda_id, i); }}
+                                                            className={`text-sm transition-all hover:scale-125 text-gray-200 hover:text-amber-300`}
+                                                            title={`Rate ${i} Stars`}
+                                                        >
+                                                            <i className="fas fa-star" />
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Rate Now</span>
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-6 py-5 text-center">
                                         <span className={`text-xs font-black ${log.timeliness >= 90 ? 'text-emerald-600' : 'text-rose-500'}`}>
